@@ -1,0 +1,578 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" /><title>ExtractorUniversal xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../apidocs/org/archive/crawler/extractor/ExtractorUniversal.html">View Javadoc</a></div><pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> Copyright (C) 2003 Internet Archive.</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> *</em>
+<a name="3" href="#3">3</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *</em>
+<a name="5" href="#5">5</a>   <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="6" href="#6">6</a>   <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="7" href="#7">7</a>   <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="8" href="#8">8</a>   <em class="comment"> * any later version.</em>
+<a name="9" href="#9">9</a>   <em class="comment"> *</em>
+<a name="10" href="#10">10</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="12" href="#12">12</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="13" href="#13">13</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="14" href="#14">14</a>  <em class="comment"> *</em>
+<a name="15" href="#15">15</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="17" href="#17">17</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="18" href="#18">18</a>  <em class="comment"> *</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * Created on Jan 15, 2004</em>
+<a name="20" href="#20">20</a>  <em class="comment"> *</em>
+<a name="21" href="#21">21</a>  <em class="comment"> */</em>
+<a name="22" href="#22">22</a>  <strong>package</strong> <a href="../../../../org/archive/crawler/extractor/package-summary.html">org.archive.crawler.extractor</a>;
+<a name="23" href="#23">23</a>  
+<a name="24" href="#24">24</a>  <strong>import</strong> java.io.IOException;
+<a name="25" href="#25">25</a>  <strong>import</strong> java.io.InputStream;
+<a name="26" href="#26">26</a>  <strong>import</strong> java.util.regex.Matcher;
+<a name="27" href="#27">27</a>  
+<a name="28" href="#28">28</a>  <strong>import</strong> javax.management.AttributeNotFoundException;
+<a name="29" href="#29">29</a>  
+<a name="30" href="#30">30</a>  <strong>import</strong> org.apache.commons.io.IOUtils;
+<a name="31" href="#31">31</a>  <strong>import</strong> org.archive.crawler.datamodel.CoreAttributeConstants;
+<a name="32" href="#32">32</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlURI;
+<a name="33" href="#33">33</a>  <strong>import</strong> org.archive.crawler.settings.SimpleType;
+<a name="34" href="#34">34</a>  <strong>import</strong> org.archive.crawler.settings.Type;
+<a name="35" href="#35">35</a>  <strong>import</strong> org.archive.net.UURI;
+<a name="36" href="#36">36</a>  <strong>import</strong> org.archive.util.TextUtils;
+<a name="37" href="#37">37</a>  
+<a name="38" href="#38">38</a>  <em>/**<em>*</em></em>
+<a name="39" href="#39">39</a>  <em> * A last ditch extractor that will look at the raw byte code and try to extract</em>
+<a name="40" href="#40">40</a>  <em> * anything that &lt;i>looks&lt;/i> like a link.</em>
+<a name="41" href="#41">41</a>  <em> *</em>
+<a name="42" href="#42">42</a>  <em> * If used, it should always be specified as the last link extractor in the</em>
+<a name="43" href="#43">43</a>  <em> * order file.</em>
+<a name="44" href="#44">44</a>  <em> * &lt;p></em>
+<a name="45" href="#45">45</a>  <em> * To accomplish this it will scan through the bytecode and try and build up</em>
+<a name="46" href="#46">46</a>  <em> * strings of consecutive bytes that all represent characters that are valid</em>
+<a name="47" href="#47">47</a>  <em> * in a URL (see #isURLableChar(int) for details).</em>
+<a name="48" href="#48">48</a>  <em> * Once it hits the end of such a string (i.e. finds a character that</em>
+<a name="49" href="#49">49</a>  <em> * should not be in a URL) it will try to determine if it has found a URL.</em>
+<a name="50" href="#50">50</a>  <em> * This is done be seeing if the string is an IP address prefixed with</em>
+<a name="51" href="#51">51</a>  <em> * http(s):// or contains a dot followed by a Top Level Domain and end of</em>
+<a name="52" href="#52">52</a>  <em> * string or a slash.</em>
+<a name="53" href="#53">53</a>  <em> *</em>
+<a name="54" href="#54">54</a>  <em> * @author Kristinn Sigurdsson</em>
+<a name="55" href="#55">55</a>  <em> */</em>
+<a name="56" href="#56">56</a>  <strong>public</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/extractor/ExtractorUniversal.html">ExtractorUniversal</a> <strong>extends</strong> <a href="../../../../org/archive/crawler/extractor/Extractor.html">Extractor</a>
+<a name="57" href="#57">57</a>  implements <a href="../../../../org/archive/crawler/datamodel/CoreAttributeConstants.html">CoreAttributeConstants</a> {
+<a name="58" href="#58">58</a>  
+<a name="59" href="#59">59</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = -7593380118857156939L;
+<a name="60" href="#60">60</a>  
+<a name="61" href="#61">61</a>  <em class="comment">//    private static final Logger logger =</em>
+<a name="62" href="#62">62</a>  <em class="comment">//        Logger.getLogger(ExtractorUniversal.class.getName());</em>
+<a name="63" href="#63">63</a>      
+<a name="64" href="#64">64</a>      <strong>private</strong> <strong>static</strong> String ATTR_MAX_DEPTH_BYTES = <span class="string">"max-depth-bytes"</span>;
+<a name="65" href="#65">65</a>  
+<a name="66" href="#66">66</a>      <em>/**<em>* Default value for how far into an unknown document we should scan</em></em>
+<a name="67" href="#67">67</a>  <em>     * - 10k. A value of 0 or lower will disable this.</em>
+<a name="68" href="#68">68</a>  <em>     */</em>
+<a name="69" href="#69">69</a>      <strong>private</strong> <strong>static</strong> <strong>long</strong> DEFAULT_MAX_DEPTH_BYTES = 10240;
+<a name="70" href="#70">70</a>  
+<a name="71" href="#71">71</a>      <strong>private</strong> <strong>static</strong> String ATTR_MAX_URL_LENGTH = <span class="string">"max-url-length"</span>;
+<a name="72" href="#72">72</a>  
+<a name="73" href="#73">73</a>      <em>/**<em>* Maximum length for a URI that we try to match.*/</em></em>
+<a name="74" href="#74">74</a>      <strong>private</strong> <strong>static</strong> <strong>long</strong> DEFAULT_MAX_URL_LENGTH = UURI.MAX_URL_LENGTH;
+<a name="75" href="#75">75</a>  
+<a name="76" href="#76">76</a>      <em>/**<em>*</em></em>
+<a name="77" href="#77">77</a>  <em>     * Matches any string that begins with <a href="http://" target="alexandria_uri">http://</a> or https:// followed by</em>
+<a name="78" href="#78">78</a>  <em>     * something that looks like an ip address (four numbers, none longer then</em>
+<a name="79" href="#79">79</a>  <em>     * 3 chars seperated by 3 dots). Does &lt;b>not&lt;/b> ensure that the numbers are</em>
+<a name="80" href="#80">80</a>  <em>     * each in the range 0-255.</em>
+<a name="81" href="#81">81</a>  <em>     */</em>
+<a name="82" href="#82">82</a>      <strong>static</strong> <strong>final</strong> String IP_ADDRESS =
+<a name="83" href="#83">83</a>          <span class="string">"((http://)|(https://))(&#47;&#47;d(&#47;&#47;d)?(&#47;&#47;d)?&#47;&#47;.&#47;&#47;d(&#47;&#47;d)?(&#47;&#47;d)?&#47;&#47;.&#47;&#47;d(&#47;&#47;d)?(&#47;&#47;d)?&#47;&#47;.&#47;&#47;d(&#47;&#47;d)?(&#47;&#47;d)?)"</span>;
+<a name="84" href="#84">84</a>  
+<a name="85" href="#85">85</a>      <em>/**<em>*</em></em>
+<a name="86" href="#86">86</a>  <em>     * Matches any string that begins with a TLD (no .) followed by a '/' slash</em>
+<a name="87" href="#87">87</a>  <em>     * or end of string. If followed by slash then nothing after the slash is</em>
+<a name="88" href="#88">88</a>  <em>     * of consequence.</em>
+<a name="89" href="#89">89</a>  <em>     */</em>
+<a name="90" href="#90">90</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> String TLDs =
+<a name="91" href="#91">91</a>            <span class="string">"(ac(/.*)?)"</span>  <em class="comment">// ac  Ascension Island</em>
+<a name="92" href="#92">92</a>          + <span class="string">"|(ad(/.*)?)"</span> <em class="comment">// ad  Andorra</em>
+<a name="93" href="#93">93</a>          + <span class="string">"|(ae(/.*)?)"</span> <em class="comment">// ae  United Arab Emirates</em>
+<a name="94" href="#94">94</a>          + <span class="string">"|(af(/.*)?)"</span> <em class="comment">// af  Afghanistan</em>
+<a name="95" href="#95">95</a>          + <span class="string">"|(ag(/.*)?)"</span> <em class="comment">// ag  Antigua and Barbuda</em>
+<a name="96" href="#96">96</a>          + <span class="string">"|(ai(/.*)?)"</span> <em class="comment">// ai  Anguilla</em>
+<a name="97" href="#97">97</a>          + <span class="string">"|(al(/.*)?)"</span> <em class="comment">// al  Albania</em>
+<a name="98" href="#98">98</a>          + <span class="string">"|(am(/.*)?)"</span> <em class="comment">// am  Armenia</em>
+<a name="99" href="#99">99</a>          + <span class="string">"|(an(/.*)?)"</span> <em class="comment">// an  Netherlands Antilles</em>
+<a name="100" href="#100">100</a>         + <span class="string">"|(ao(/.*)?)"</span> <em class="comment">// ao  Angola</em>
+<a name="101" href="#101">101</a>         + <span class="string">"|(aero(/.*)?)"</span> <em class="comment">// aero Air-transport industry</em>
+<a name="102" href="#102">102</a>         + <span class="string">"|(aq(/.*)?)"</span> <em class="comment">// aq  Antarctica</em>
+<a name="103" href="#103">103</a>         + <span class="string">"|(ar(/.*)?)"</span> <em class="comment">// ar  Argentina</em>
+<a name="104" href="#104">104</a>         + <span class="string">"|(as(/.*)?)"</span> <em class="comment">// as  American Samoa</em>
+<a name="105" href="#105">105</a>         + <span class="string">"|(at(/.*)?)"</span> <em class="comment">// at  Austria</em>
+<a name="106" href="#106">106</a>         + <span class="string">"|(au(/.*)?)"</span> <em class="comment">// au  Australia</em>
+<a name="107" href="#107">107</a>         + <span class="string">"|(aw(/.*)?)"</span> <em class="comment">// aw  Aruba</em>
+<a name="108" href="#108">108</a>         + <span class="string">"|(az(/.*)?)"</span> <em class="comment">// az  Azerbaijan</em>
+<a name="109" href="#109">109</a>         + <span class="string">"|(ba(/.*)?)"</span> <em class="comment">// ba  Bosnia Hercegovina</em>
+<a name="110" href="#110">110</a>         + <span class="string">"|(bb(/.*)?)"</span> <em class="comment">// bb  Barbados</em>
+<a name="111" href="#111">111</a>         + <span class="string">"|(bd(/.*)?)"</span> <em class="comment">// bd  Bangladesh</em>
+<a name="112" href="#112">112</a>         + <span class="string">"|(be(/.*)?)"</span> <em class="comment">// be  Belgium</em>
+<a name="113" href="#113">113</a>         + <span class="string">"|(bf(/.*)?)"</span> <em class="comment">// bf  Burkina Faso</em>
+<a name="114" href="#114">114</a>         + <span class="string">"|(bg(/.*)?)"</span> <em class="comment">// bg  Bulgaria</em>
+<a name="115" href="#115">115</a>         + <span class="string">"|(bh(/.*)?)"</span> <em class="comment">// bh  Bahrain</em>
+<a name="116" href="#116">116</a>         + <span class="string">"|(bi(/.*)?)"</span> <em class="comment">// bi  Burundi</em>
+<a name="117" href="#117">117</a>         + <span class="string">"|(biz(/.*)?)"</span> <em class="comment">// biz Businesses</em>
+<a name="118" href="#118">118</a>         + <span class="string">"|(bj(/.*)?)"</span> <em class="comment">// bj  Benin</em>
+<a name="119" href="#119">119</a>         + <span class="string">"|(bm(/.*)?)"</span> <em class="comment">// bm  Bermuda</em>
+<a name="120" href="#120">120</a>         + <span class="string">"|(bn(/.*)?)"</span> <em class="comment">// bn  Brunei Darussalam</em>
+<a name="121" href="#121">121</a>         + <span class="string">"|(bo(/.*)?)"</span> <em class="comment">// bo  Bolivia</em>
+<a name="122" href="#122">122</a>         + <span class="string">"|(br(/.*)?)"</span> <em class="comment">// br  Brazil</em>
+<a name="123" href="#123">123</a>         + <span class="string">"|(bs(/.*)?)"</span> <em class="comment">// bs  Bahamas</em>
+<a name="124" href="#124">124</a>         + <span class="string">"|(bt(/.*)?)"</span> <em class="comment">// bt  Bhutan</em>
+<a name="125" href="#125">125</a>         + <span class="string">"|(bv(/.*)?)"</span> <em class="comment">// bv  Bouvet Island</em>
+<a name="126" href="#126">126</a>         + <span class="string">"|(bw(/.*)?)"</span> <em class="comment">// bw  Botswana</em>
+<a name="127" href="#127">127</a>         + <span class="string">"|(by(/.*)?)"</span> <em class="comment">// by  Belarus (Byelorussia)</em>
+<a name="128" href="#128">128</a>         + <span class="string">"|(bz(/.*)?)"</span> <em class="comment">// bz  Belize</em>
+<a name="129" href="#129">129</a>         + <span class="string">"|(ca(/.*)?)"</span> <em class="comment">// ca  Canada</em>
+<a name="130" href="#130">130</a>         + <span class="string">"|(cc(/.*)?)"</span> <em class="comment">// cc  Cocos Islands (Keeling)</em>
+<a name="131" href="#131">131</a>         + <span class="string">"|(cd(/.*)?)"</span> <em class="comment">// cd  Congo, Democratic Republic of the</em>
+<a name="132" href="#132">132</a>         + <span class="string">"|(cf(/.*)?)"</span> <em class="comment">// cf  Central African Republic</em>
+<a name="133" href="#133">133</a>         + <span class="string">"|(cg(/.*)?)"</span> <em class="comment">// cg  Congo, Republic of</em>
+<a name="134" href="#134">134</a>         + <span class="string">"|(ch(/.*)?)"</span> <em class="comment">// ch  Switzerland</em>
+<a name="135" href="#135">135</a>         + <span class="string">"|(ci(/.*)?)"</span> <em class="comment">// ci  Cote d'Ivoire (Ivory Coast)</em>
+<a name="136" href="#136">136</a>         + <span class="string">"|(ck(/.*)?)"</span> <em class="comment">// ck  Cook Islands</em>
+<a name="137" href="#137">137</a>         + <span class="string">"|(cl(/.*)?)"</span> <em class="comment">// cl  Chile</em>
+<a name="138" href="#138">138</a>         + <span class="string">"|(cm(/.*)?)"</span> <em class="comment">// cm  Cameroon</em>
+<a name="139" href="#139">139</a>         + <span class="string">"|(cn(/.*)?)"</span> <em class="comment">// cn  China</em>
+<a name="140" href="#140">140</a>         + <span class="string">"|(co(/.*)?)"</span> <em class="comment">// co  Colombia</em>
+<a name="141" href="#141">141</a>         + <span class="string">"|(com(/.*)?)"</span> <em class="comment">// com Commercial</em>
+<a name="142" href="#142">142</a>         + <span class="string">"|(coop(/.*)?)"</span> <em class="comment">// coop Cooperatives</em>
+<a name="143" href="#143">143</a>         + <span class="string">"|(cr(/.*)?)"</span> <em class="comment">// cr  Costa Rica</em>
+<a name="144" href="#144">144</a>         + <span class="string">"|(cs(/.*)?)"</span> <em class="comment">// cs  Czechoslovakia</em>
+<a name="145" href="#145">145</a>         + <span class="string">"|(cu(/.*)?)"</span> <em class="comment">// cu  Cuba</em>
+<a name="146" href="#146">146</a>         + <span class="string">"|(cv(/.*)?)"</span> <em class="comment">// cv  Cap Verde</em>
+<a name="147" href="#147">147</a>         + <span class="string">"|(cx(/.*)?)"</span> <em class="comment">// cx  Christmas Island</em>
+<a name="148" href="#148">148</a>         + <span class="string">"|(cy(/.*)?)"</span> <em class="comment">// cy  Cyprus</em>
+<a name="149" href="#149">149</a>         + <span class="string">"|(cz(/.*)?)"</span> <em class="comment">// cz  Czech Republic</em>
+<a name="150" href="#150">150</a>         + <span class="string">"|(de(/.*)?)"</span> <em class="comment">// de  Germany</em>
+<a name="151" href="#151">151</a>         + <span class="string">"|(dj(/.*)?)"</span> <em class="comment">// dj  Djibouti</em>
+<a name="152" href="#152">152</a>         + <span class="string">"|(dk(/.*)?)"</span> <em class="comment">// dk  Denmark</em>
+<a name="153" href="#153">153</a>         + <span class="string">"|(dm(/.*)?)"</span> <em class="comment">// dm  Dominica</em>
+<a name="154" href="#154">154</a>         + <span class="string">"|(do(/.*)?)"</span> <em class="comment">// do  Dominican Republic</em>
+<a name="155" href="#155">155</a>         + <span class="string">"|(dz(/.*)?)"</span> <em class="comment">// dz  Algeria</em>
+<a name="156" href="#156">156</a>         + <span class="string">"|(ec(/.*)?)"</span> <em class="comment">// ec  Ecuador</em>
+<a name="157" href="#157">157</a>         + <span class="string">"|(edu(/.*)?)"</span> <em class="comment">// edu Educational Institution</em>
+<a name="158" href="#158">158</a>         + <span class="string">"|(ee(/.*)?)"</span> <em class="comment">// ee  Estonia</em>
+<a name="159" href="#159">159</a>         + <span class="string">"|(eg(/.*)?)"</span> <em class="comment">// eg  Egypt</em>
+<a name="160" href="#160">160</a>         + <span class="string">"|(eh(/.*)?)"</span> <em class="comment">// eh  Western Sahara</em>
+<a name="161" href="#161">161</a>         + <span class="string">"|(er(/.*)?)"</span> <em class="comment">// er  Eritrea</em>
+<a name="162" href="#162">162</a>         + <span class="string">"|(es(/.*)?)"</span> <em class="comment">// es  Spain</em>
+<a name="163" href="#163">163</a>         + <span class="string">"|(et(/.*)?)"</span> <em class="comment">// et  Ethiopia</em>
+<a name="164" href="#164">164</a>         + <span class="string">"|(fi(/.*)?)"</span> <em class="comment">// fi  Finland</em>
+<a name="165" href="#165">165</a>         + <span class="string">"|(fj(/.*)?)"</span> <em class="comment">// fj  Fiji</em>
+<a name="166" href="#166">166</a>         + <span class="string">"|(fk(/.*)?)"</span> <em class="comment">// fk  Falkland Islands</em>
+<a name="167" href="#167">167</a>         + <span class="string">"|(fm(/.*)?)"</span> <em class="comment">// fm  Micronesia, Federal State of</em>
+<a name="168" href="#168">168</a>         + <span class="string">"|(fo(/.*)?)"</span> <em class="comment">// fo  Faroe Islands</em>
+<a name="169" href="#169">169</a>         + <span class="string">"|(fr(/.*)?)"</span> <em class="comment">// fr  France</em>
+<a name="170" href="#170">170</a>         + <span class="string">"|(ga(/.*)?)"</span> <em class="comment">// ga  Gabon</em>
+<a name="171" href="#171">171</a>         + <span class="string">"|(gd(/.*)?)"</span> <em class="comment">// gd  Grenada</em>
+<a name="172" href="#172">172</a>         + <span class="string">"|(ge(/.*)?)"</span> <em class="comment">// ge  Georgia</em>
+<a name="173" href="#173">173</a>         + <span class="string">"|(gf(/.*)?)"</span> <em class="comment">// gf  French Guiana</em>
+<a name="174" href="#174">174</a>         + <span class="string">"|(gg(/.*)?)"</span> <em class="comment">// gg  Guernsey</em>
+<a name="175" href="#175">175</a>         + <span class="string">"|(gh(/.*)?)"</span> <em class="comment">// gh  Ghana</em>
+<a name="176" href="#176">176</a>         + <span class="string">"|(gi(/.*)?)"</span> <em class="comment">// gi  Gibraltar</em>
+<a name="177" href="#177">177</a>         + <span class="string">"|(gl(/.*)?)"</span> <em class="comment">// gl  Greenland</em>
+<a name="178" href="#178">178</a>         + <span class="string">"|(gm(/.*)?)"</span> <em class="comment">// gm  Gambia</em>
+<a name="179" href="#179">179</a>         + <span class="string">"|(gn(/.*)?)"</span> <em class="comment">// gn  Guinea</em>
+<a name="180" href="#180">180</a>         + <span class="string">"|(gov(/.*)?)"</span> <em class="comment">// gov Government (US)</em>
+<a name="181" href="#181">181</a>         + <span class="string">"|(gp(/.*)?)"</span> <em class="comment">// gp  Guadeloupe</em>
+<a name="182" href="#182">182</a>         + <span class="string">"|(gq(/.*)?)"</span> <em class="comment">// gq  Equatorial Guinea</em>
+<a name="183" href="#183">183</a>         + <span class="string">"|(gr(/.*)?)"</span> <em class="comment">// gr  Greece</em>
+<a name="184" href="#184">184</a>         + <span class="string">"|(gs(/.*)?)"</span> <em class="comment">// gs  South Georgia and the South Sandwich Islands</em>
+<a name="185" href="#185">185</a>         + <span class="string">"|(gt(/.*)?)"</span> <em class="comment">// gt  Guatemala</em>
+<a name="186" href="#186">186</a>         + <span class="string">"|(gu(/.*)?)"</span> <em class="comment">// gu  Guam</em>
+<a name="187" href="#187">187</a>         + <span class="string">"|(gw(/.*)?)"</span> <em class="comment">// gw  Guinea-Bissau</em>
+<a name="188" href="#188">188</a>         + <span class="string">"|(gy(/.*)?)"</span> <em class="comment">// gy  Guyana</em>
+<a name="189" href="#189">189</a>         + <span class="string">"|(hk(/.*)?)"</span> <em class="comment">// hk  Hong Kong</em>
+<a name="190" href="#190">190</a>         + <span class="string">"|(hm(/.*)?)"</span> <em class="comment">// hm  Heard and McDonald Islands</em>
+<a name="191" href="#191">191</a>         + <span class="string">"|(hn(/.*)?)"</span> <em class="comment">// hn  Honduras</em>
+<a name="192" href="#192">192</a>         + <span class="string">"|(hr(/.*)?)"</span> <em class="comment">// hr  Croatia/Hrvatska</em>
+<a name="193" href="#193">193</a>         + <span class="string">"|(ht(/.*)?)"</span> <em class="comment">// ht  Haiti</em>
+<a name="194" href="#194">194</a>         + <span class="string">"|(hu(/.*)?)"</span> <em class="comment">// hu  Hungary</em>
+<a name="195" href="#195">195</a>         + <span class="string">"|(id(/.*)?)"</span> <em class="comment">// id  Indonesia</em>
+<a name="196" href="#196">196</a>         + <span class="string">"|(ie(/.*)?)"</span> <em class="comment">// ie  Ireland</em>
+<a name="197" href="#197">197</a>         + <span class="string">"|(il(/.*)?)"</span> <em class="comment">// il  Israel</em>
+<a name="198" href="#198">198</a>         + <span class="string">"|(im(/.*)?)"</span> <em class="comment">// im  Isle of Man</em>
+<a name="199" href="#199">199</a>         + <span class="string">"|(in(/.*)?)"</span> <em class="comment">// in  India</em>
+<a name="200" href="#200">200</a>         + <span class="string">"|(info(/.*)?)"</span> <em class="comment">// info</em>
+<a name="201" href="#201">201</a>         + <span class="string">"|(int(/.*)?)"</span> <em class="comment">// int Int. Organizations</em>
+<a name="202" href="#202">202</a>         + <span class="string">"|(io(/.*)?)"</span> <em class="comment">// io  British Indian Ocean Territory</em>
+<a name="203" href="#203">203</a>         + <span class="string">"|(iq(/.*)?)"</span> <em class="comment">// iq  Iraq</em>
+<a name="204" href="#204">204</a>         + <span class="string">"|(ir(/.*)?)"</span> <em class="comment">// ir  Iran, Islamic Republic of</em>
+<a name="205" href="#205">205</a>         + <span class="string">"|(is(/.*)?)"</span> <em class="comment">// is  Iceland</em>
+<a name="206" href="#206">206</a>         + <span class="string">"|(it(/.*)?)"</span> <em class="comment">// it  Italy</em>
+<a name="207" href="#207">207</a>         + <span class="string">"|(je(/.*)?)"</span> <em class="comment">// je  Jersey</em>
+<a name="208" href="#208">208</a>         + <span class="string">"|(jm(/.*)?)"</span> <em class="comment">// jm  Jamaica</em>
+<a name="209" href="#209">209</a>         + <span class="string">"|(jo(/.*)?)"</span> <em class="comment">// jo  Jordan</em>
+<a name="210" href="#210">210</a>         + <span class="string">"|(jp(/.*)?)"</span> <em class="comment">// jp  Japan</em>
+<a name="211" href="#211">211</a>         + <span class="string">"|(ke(/.*)?)"</span> <em class="comment">// ke  Kenya</em>
+<a name="212" href="#212">212</a>         + <span class="string">"|(kg(/.*)?)"</span> <em class="comment">// kg  Kyrgyzstan</em>
+<a name="213" href="#213">213</a>         + <span class="string">"|(kh(/.*)?)"</span> <em class="comment">// kh  Cambodia</em>
+<a name="214" href="#214">214</a>         + <span class="string">"|(ki(/.*)?)"</span> <em class="comment">// ki  Kiribati</em>
+<a name="215" href="#215">215</a>         + <span class="string">"|(km(/.*)?)"</span> <em class="comment">// km  Comoros</em>
+<a name="216" href="#216">216</a>         + <span class="string">"|(kn(/.*)?)"</span> <em class="comment">// kn  Saint Kitts and Nevis</em>
+<a name="217" href="#217">217</a>         + <span class="string">"|(kp(/.*)?)"</span> <em class="comment">// kp  Korea, Democratic People's Republic</em>
+<a name="218" href="#218">218</a>         + <span class="string">"|(kr(/.*)?)"</span> <em class="comment">// kr  Korea, Republic of</em>
+<a name="219" href="#219">219</a>         + <span class="string">"|(kw(/.*)?)"</span> <em class="comment">// kw  Kuwait</em>
+<a name="220" href="#220">220</a>         + <span class="string">"|(ky(/.*)?)"</span> <em class="comment">// ky  Cayman Islands</em>
+<a name="221" href="#221">221</a>         + <span class="string">"|(kz(/.*)?)"</span> <em class="comment">// kz  Kazakhstan</em>
+<a name="222" href="#222">222</a>         + <span class="string">"|(la(/.*)?)"</span> <em class="comment">// la  Lao People's Democratic Republic</em>
+<a name="223" href="#223">223</a>         + <span class="string">"|(lb(/.*)?)"</span> <em class="comment">// lb  Lebanon</em>
+<a name="224" href="#224">224</a>         + <span class="string">"|(lc(/.*)?)"</span> <em class="comment">// lc  Saint Lucia</em>
+<a name="225" href="#225">225</a>         + <span class="string">"|(li(/.*)?)"</span> <em class="comment">// li  Liechtenstein</em>
+<a name="226" href="#226">226</a>         + <span class="string">"|(lk(/.*)?)"</span> <em class="comment">// lk  Sri Lanka</em>
+<a name="227" href="#227">227</a>         + <span class="string">"|(lr(/.*)?)"</span> <em class="comment">// lr  Liberia</em>
+<a name="228" href="#228">228</a>         + <span class="string">"|(ls(/.*)?)"</span> <em class="comment">// ls  Lesotho</em>
+<a name="229" href="#229">229</a>         + <span class="string">"|(lt(/.*)?)"</span> <em class="comment">// lt  Lithuania</em>
+<a name="230" href="#230">230</a>         + <span class="string">"|(lu(/.*)?)"</span> <em class="comment">// lu  Luxembourg</em>
+<a name="231" href="#231">231</a>         + <span class="string">"|(lv(/.*)?)"</span> <em class="comment">// lv  Latvia</em>
+<a name="232" href="#232">232</a>         + <span class="string">"|(ly(/.*)?)"</span> <em class="comment">// ly  Libyan Arab Jamahiriya</em>
+<a name="233" href="#233">233</a>         + <span class="string">"|(ma(/.*)?)"</span> <em class="comment">// ma  Morocco</em>
+<a name="234" href="#234">234</a>         + <span class="string">"|(mc(/.*)?)"</span> <em class="comment">// mc  Monaco</em>
+<a name="235" href="#235">235</a>         + <span class="string">"|(md(/.*)?)"</span> <em class="comment">// md  Moldova, Republic of</em>
+<a name="236" href="#236">236</a>         + <span class="string">"|(mg(/.*)?)"</span> <em class="comment">// mg  Madagascar</em>
+<a name="237" href="#237">237</a>         + <span class="string">"|(mh(/.*)?)"</span> <em class="comment">// mh  Marshall Islands</em>
+<a name="238" href="#238">238</a>         + <span class="string">"|(mil(/.*)?)"</span> <em class="comment">// mil Military (US Dept of Defense)</em>
+<a name="239" href="#239">239</a>         + <span class="string">"|(mk(/.*)?)"</span> <em class="comment">// mk  Macedonia, Former Yugoslav Republic</em>
+<a name="240" href="#240">240</a>         + <span class="string">"|(ml(/.*)?)"</span> <em class="comment">// ml  Mali</em>
+<a name="241" href="#241">241</a>         + <span class="string">"|(mm(/.*)?)"</span> <em class="comment">// mm  Myanmar</em>
+<a name="242" href="#242">242</a>         + <span class="string">"|(mn(/.*)?)"</span> <em class="comment">// mn  Mongolia</em>
+<a name="243" href="#243">243</a>         + <span class="string">"|(mo(/.*)?)"</span> <em class="comment">// mo  Macau</em>
+<a name="244" href="#244">244</a>         + <span class="string">"|(mp(/.*)?)"</span> <em class="comment">// mp  Northern Mariana Islands</em>
+<a name="245" href="#245">245</a>         + <span class="string">"|(mq(/.*)?)"</span> <em class="comment">// mq  Martinique</em>
+<a name="246" href="#246">246</a>         + <span class="string">"|(mr(/.*)?)"</span> <em class="comment">// mr  Mauritani</em>
+<a name="247" href="#247">247</a>         + <span class="string">"|(ms(/.*)?)"</span> <em class="comment">// ms  Montserrat</em>
+<a name="248" href="#248">248</a>         + <span class="string">"|(mt(/.*)?)"</span> <em class="comment">// mt  Malta</em>
+<a name="249" href="#249">249</a>         + <span class="string">"|(mu(/.*)?)"</span> <em class="comment">// mu  Mauritius</em>
+<a name="250" href="#250">250</a>         + <span class="string">"|(museum(/.*)?)"</span> <em class="comment">// museum Museums</em>
+<a name="251" href="#251">251</a>         + <span class="string">"|(mv(/.*)?)"</span> <em class="comment">// mv  Maldives</em>
+<a name="252" href="#252">252</a>         + <span class="string">"|(mw(/.*)?)"</span> <em class="comment">// mw  Malawi</em>
+<a name="253" href="#253">253</a>         + <span class="string">"|(mx(/.*)?)"</span> <em class="comment">// mx  Mexico</em>
+<a name="254" href="#254">254</a>         + <span class="string">"|(my(/.*)?)"</span> <em class="comment">// my  Malaysia</em>
+<a name="255" href="#255">255</a>         + <span class="string">"|(mz(/.*)?)"</span> <em class="comment">// mz  Mozambique</em>
+<a name="256" href="#256">256</a>         + <span class="string">"|(na(/.*)?)"</span> <em class="comment">// na  Namibia</em>
+<a name="257" href="#257">257</a>         + <span class="string">"|(name(/.*)?)"</span> <em class="comment">// name Individuals</em>
+<a name="258" href="#258">258</a>         + <span class="string">"|(nc(/.*)?)"</span> <em class="comment">// nc  New Caledonia</em>
+<a name="259" href="#259">259</a>         + <span class="string">"|(ne(/.*)?)"</span> <em class="comment">// ne  Niger</em>
+<a name="260" href="#260">260</a>         + <span class="string">"|(net(/.*)?)"</span> <em class="comment">// net networks</em>
+<a name="261" href="#261">261</a>         + <span class="string">"|(nf(/.*)?)"</span> <em class="comment">// nf  Norfolk Island</em>
+<a name="262" href="#262">262</a>         + <span class="string">"|(ng(/.*)?)"</span> <em class="comment">// ng  Nigeria</em>
+<a name="263" href="#263">263</a>         + <span class="string">"|(ni(/.*)?)"</span> <em class="comment">// ni  Nicaragua</em>
+<a name="264" href="#264">264</a>         + <span class="string">"|(nl(/.*)?)"</span> <em class="comment">// nl  Netherlands</em>
+<a name="265" href="#265">265</a>         + <span class="string">"|(no(/.*)?)"</span> <em class="comment">// no  Norway</em>
+<a name="266" href="#266">266</a>         + <span class="string">"|(np(/.*)?)"</span> <em class="comment">// np  Nepal</em>
+<a name="267" href="#267">267</a>         + <span class="string">"|(nr(/.*)?)"</span> <em class="comment">// nr  Nauru</em>
+<a name="268" href="#268">268</a>         + <span class="string">"|(nt(/.*)?)"</span> <em class="comment">// nt  Neutral Zone</em>
+<a name="269" href="#269">269</a>         + <span class="string">"|(nu(/.*)?)"</span> <em class="comment">// nu  Niue</em>
+<a name="270" href="#270">270</a>         + <span class="string">"|(nz(/.*)?)"</span> <em class="comment">// nz  New Zealand</em>
+<a name="271" href="#271">271</a>         + <span class="string">"|(om(/.*)?)"</span> <em class="comment">// om  Oman</em>
+<a name="272" href="#272">272</a>         + <span class="string">"|(org(/.*)?)"</span> <em class="comment">// org Organization (non-profit)</em>
+<a name="273" href="#273">273</a>         + <span class="string">"|(pa(/.*)?)"</span> <em class="comment">// pa  Panama</em>
+<a name="274" href="#274">274</a>         + <span class="string">"|(pe(/.*)?)"</span> <em class="comment">// pe  Peru</em>
+<a name="275" href="#275">275</a>         + <span class="string">"|(pf(/.*)?)"</span> <em class="comment">// pf  French Polynesia</em>
+<a name="276" href="#276">276</a>         + <span class="string">"|(pg(/.*)?)"</span> <em class="comment">// pg  Papua New Guinea</em>
+<a name="277" href="#277">277</a>         + <span class="string">"|(ph(/.*)?)"</span> <em class="comment">// ph  Philippines</em>
+<a name="278" href="#278">278</a>         + <span class="string">"|(pk(/.*)?)"</span> <em class="comment">// pk  Pakistan</em>
+<a name="279" href="#279">279</a>         + <span class="string">"|(pl(/.*)?)"</span> <em class="comment">// pl  Poland</em>
+<a name="280" href="#280">280</a>         + <span class="string">"|(pm(/.*)?)"</span> <em class="comment">// pm  St. Pierre and Miquelon</em>
+<a name="281" href="#281">281</a>         + <span class="string">"|(pn(/.*)?)"</span> <em class="comment">// pn  Pitcairn Island</em>
+<a name="282" href="#282">282</a>         + <span class="string">"|(pr(/.*)?)"</span> <em class="comment">// pr  Puerto Rico</em>
+<a name="283" href="#283">283</a>         + <span class="string">"|(pro(/.*)?)"</span> <em class="comment">// pro Accountants, lawyers, and physicians</em>
+<a name="284" href="#284">284</a>         + <span class="string">"|(ps(/.*)?)"</span> <em class="comment">// ps  Palestinian Territories</em>
+<a name="285" href="#285">285</a>         + <span class="string">"|(pt(/.*)?)"</span> <em class="comment">// pt  Portugal</em>
+<a name="286" href="#286">286</a>         + <span class="string">"|(pw(/.*)?)"</span> <em class="comment">// pw  Palau</em>
+<a name="287" href="#287">287</a>         + <span class="string">"|(py(/.*)?)"</span> <em class="comment">// py  Paraguay</em>
+<a name="288" href="#288">288</a>         + <span class="string">"|(qa(/.*)?)"</span> <em class="comment">// qa  Qatar</em>
+<a name="289" href="#289">289</a>         + <span class="string">"|(re(/.*)?)"</span> <em class="comment">// re  Reunion Island</em>
+<a name="290" href="#290">290</a>         + <span class="string">"|(ro(/.*)?)"</span> <em class="comment">// ro  Romania</em>
+<a name="291" href="#291">291</a>         + <span class="string">"|(ru(/.*)?)"</span> <em class="comment">// ru  Russian Federation</em>
+<a name="292" href="#292">292</a>         + <span class="string">"|(rw(/.*)?)"</span> <em class="comment">// rw  Rwanda</em>
+<a name="293" href="#293">293</a>         + <span class="string">"|(sa(/.*)?)"</span> <em class="comment">// sa  Saudi Arabia</em>
+<a name="294" href="#294">294</a>         + <span class="string">"|(sb(/.*)?)"</span> <em class="comment">// sb  Solomon Islands</em>
+<a name="295" href="#295">295</a>         + <span class="string">"|(sc(/.*)?)"</span> <em class="comment">// sc  Seychelles</em>
+<a name="296" href="#296">296</a>         + <span class="string">"|(sd(/.*)?)"</span> <em class="comment">// sd  Sudan</em>
+<a name="297" href="#297">297</a>         + <span class="string">"|(se(/.*)?)"</span> <em class="comment">// se  Sweden</em>
+<a name="298" href="#298">298</a>         + <span class="string">"|(sg(/.*)?)"</span> <em class="comment">// sg  Singapore</em>
+<a name="299" href="#299">299</a>         + <span class="string">"|(sh(/.*)?)"</span> <em class="comment">// sh  St. Helena</em>
+<a name="300" href="#300">300</a>         + <span class="string">"|(si(/.*)?)"</span> <em class="comment">// si  Slovenia</em>
+<a name="301" href="#301">301</a>         + <span class="string">"|(sj(/.*)?)"</span> <em class="comment">// sj  Svalbard and Jan Mayen Islands</em>
+<a name="302" href="#302">302</a>         + <span class="string">"|(sk(/.*)?)"</span> <em class="comment">// sk  Slovak Republic</em>
+<a name="303" href="#303">303</a>         + <span class="string">"|(sl(/.*)?)"</span> <em class="comment">// sl  Sierra Leone</em>
+<a name="304" href="#304">304</a>         + <span class="string">"|(sm(/.*)?)"</span> <em class="comment">// sm  San Marino</em>
+<a name="305" href="#305">305</a>         + <span class="string">"|(sn(/.*)?)"</span> <em class="comment">// sn  Senegal</em>
+<a name="306" href="#306">306</a>         + <span class="string">"|(so(/.*)?)"</span> <em class="comment">// so  Somalia</em>
+<a name="307" href="#307">307</a>         + <span class="string">"|(sr(/.*)?)"</span> <em class="comment">// sr  Suriname</em>
+<a name="308" href="#308">308</a>         + <span class="string">"|(sv(/.*)?)"</span> <em class="comment">// sv  El Salvador</em>
+<a name="309" href="#309">309</a>         + <span class="string">"|(st(/.*)?)"</span> <em class="comment">// st  Sao Tome and Principe</em>
+<a name="310" href="#310">310</a>         + <span class="string">"|(sy(/.*)?)"</span> <em class="comment">// sy  Syrian Arab Republic</em>
+<a name="311" href="#311">311</a>         + <span class="string">"|(sz(/.*)?)"</span> <em class="comment">// sz  Swaziland</em>
+<a name="312" href="#312">312</a>         + <span class="string">"|(tc(/.*)?)"</span> <em class="comment">// tc  Turks and Caicos Islands</em>
+<a name="313" href="#313">313</a>         + <span class="string">"|(td(/.*)?)"</span> <em class="comment">// td  Chad</em>
+<a name="314" href="#314">314</a>         + <span class="string">"|(tf(/.*)?)"</span> <em class="comment">// tf  French Southern Territories</em>
+<a name="315" href="#315">315</a>         + <span class="string">"|(tg(/.*)?)"</span> <em class="comment">// tg  Togo</em>
+<a name="316" href="#316">316</a>         + <span class="string">"|(th(/.*)?)"</span> <em class="comment">// th  Thailand</em>
+<a name="317" href="#317">317</a>         + <span class="string">"|(tj(/.*)?)"</span> <em class="comment">// tj  Tajikistan</em>
+<a name="318" href="#318">318</a>         + <span class="string">"|(tk(/.*)?)"</span> <em class="comment">// tk  Tokelau</em>
+<a name="319" href="#319">319</a>         + <span class="string">"|(tm(/.*)?)"</span> <em class="comment">// tm  Turkmenistan</em>
+<a name="320" href="#320">320</a>         + <span class="string">"|(tn(/.*)?)"</span> <em class="comment">// tn  Tunisia</em>
+<a name="321" href="#321">321</a>         + <span class="string">"|(to(/.*)?)"</span> <em class="comment">// to  Tonga</em>
+<a name="322" href="#322">322</a>         + <span class="string">"|(tp(/.*)?)"</span> <em class="comment">// tp  East Timor</em>
+<a name="323" href="#323">323</a>         + <span class="string">"|(tr(/.*)?)"</span> <em class="comment">// tr  Turkey</em>
+<a name="324" href="#324">324</a>         + <span class="string">"|(tt(/.*)?)"</span> <em class="comment">// tt  Trinidad and Tobago</em>
+<a name="325" href="#325">325</a>         + <span class="string">"|(tv(/.*)?)"</span> <em class="comment">// tv  Tuvalu</em>
+<a name="326" href="#326">326</a>         + <span class="string">"|(tw(/.*)?)"</span> <em class="comment">// tw  Taiwan</em>
+<a name="327" href="#327">327</a>         + <span class="string">"|(tz(/.*)?)"</span> <em class="comment">// tz  Tanzania</em>
+<a name="328" href="#328">328</a>         + <span class="string">"|(ua(/.*)?)"</span> <em class="comment">// ua  Ukraine</em>
+<a name="329" href="#329">329</a>         + <span class="string">"|(ug(/.*)?)"</span> <em class="comment">// ug  Uganda</em>
+<a name="330" href="#330">330</a>         + <span class="string">"|(uk(/.*)?)"</span> <em class="comment">// uk  United Kingdom</em>
+<a name="331" href="#331">331</a>         + <span class="string">"|(um(/.*)?)"</span> <em class="comment">// um  US Minor Outlying Islands</em>
+<a name="332" href="#332">332</a>         + <span class="string">"|(us(/.*)?)"</span> <em class="comment">// us  United States</em>
+<a name="333" href="#333">333</a>         + <span class="string">"|(uy(/.*)?)"</span> <em class="comment">// uy  Uruguay</em>
+<a name="334" href="#334">334</a>         + <span class="string">"|(uz(/.*)?)"</span> <em class="comment">// uz  Uzbekistan</em>
+<a name="335" href="#335">335</a>         + <span class="string">"|(va(/.*)?)"</span> <em class="comment">// va  Holy See (City Vatican State)</em>
+<a name="336" href="#336">336</a>         + <span class="string">"|(vc(/.*)?)"</span> <em class="comment">// vc  Saint Vincent and the Grenadines</em>
+<a name="337" href="#337">337</a>         + <span class="string">"|(ve(/.*)?)"</span> <em class="comment">// ve  Venezuela</em>
+<a name="338" href="#338">338</a>         + <span class="string">"|(vg(/.*)?)"</span> <em class="comment">// vg  Virgin Islands (British)</em>
+<a name="339" href="#339">339</a>         + <span class="string">"|(vi(/.*)?)"</span> <em class="comment">// vi  Virgin Islands (USA)</em>
+<a name="340" href="#340">340</a>         + <span class="string">"|(vn(/.*)?)"</span> <em class="comment">// vn  Vietnam</em>
+<a name="341" href="#341">341</a>         + <span class="string">"|(vu(/.*)?)"</span> <em class="comment">// vu  Vanuatu</em>
+<a name="342" href="#342">342</a>         + <span class="string">"|(wf(/.*)?)"</span> <em class="comment">// wf  Wallis and Futuna Islands</em>
+<a name="343" href="#343">343</a>         + <span class="string">"|(ws(/.*)?)"</span> <em class="comment">// ws  Western Samoa</em>
+<a name="344" href="#344">344</a>         + <span class="string">"|(ye(/.*)?)"</span> <em class="comment">// ye  Yemen</em>
+<a name="345" href="#345">345</a>         + <span class="string">"|(yt(/.*)?)"</span> <em class="comment">// yt  Mayotte</em>
+<a name="346" href="#346">346</a>         + <span class="string">"|(yu(/.*)?)"</span> <em class="comment">// yu  Yugoslavia</em>
+<a name="347" href="#347">347</a>         + <span class="string">"|(za(/.*)?)"</span> <em class="comment">// za  South Africa</em>
+<a name="348" href="#348">348</a>         + <span class="string">"|(zm(/.*)?)"</span> <em class="comment">// zm  Zambia</em>
+<a name="349" href="#349">349</a>         + <span class="string">"|(zw(/.*)?)"</span> <em class="comment">// zw  Zimbabwe</em>
+<a name="350" href="#350">350</a>         ;
+<a name="351" href="#351">351</a> 
+<a name="352" href="#352">352</a>     <strong>protected</strong> <strong>long</strong> numberOfCURIsHandled = 0;
+<a name="353" href="#353">353</a>     <strong>protected</strong> <strong>long</strong> numberOfLinksExtracted= 0;
+<a name="354" href="#354">354</a> 
+<a name="355" href="#355">355</a>     <em>/**<em>*</em></em>
+<a name="356" href="#356">356</a> <em>     * Constructor</em>
+<a name="357" href="#357">357</a> <em>     * @param name The name of the module.</em>
+<a name="358" href="#358">358</a> <em>     */</em>
+<a name="359" href="#359">359</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/extractor/ExtractorUniversal.html">ExtractorUniversal</a>(String name) {
+<a name="360" href="#360">360</a>         <strong>super</strong>(name, <span class="string">"Link extraction on unknown file types. A best effort"</span> +
+<a name="361" href="#361">361</a>                 <span class="string">" extractor that looks at the raw byte code of any file "</span> +
+<a name="362" href="#362">362</a>                 <span class="string">"that has not been handled by another extractor and tries"</span> +
+<a name="363" href="#363">363</a>                 <span class="string">" to find URIs. Will only match absolute URIs."</span>);
+<a name="364" href="#364">364</a>         <a href="../../../../org/archive/crawler/settings/Type.html">Type</a> e;
+<a name="365" href="#365">365</a>         e = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_MAX_DEPTH_BYTES,
+<a name="366" href="#366">366</a>             <span class="string">"How deep to look into files for URI strings, in bytes"</span>,
+<a name="367" href="#367">367</a>             <strong>new</strong> Long(DEFAULT_MAX_DEPTH_BYTES)));
+<a name="368" href="#368">368</a>         e.setExpertSetting(<strong>true</strong>);
+<a name="369" href="#369">369</a>         e = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_MAX_URL_LENGTH,
+<a name="370" href="#370">370</a>             <span class="string">"Max length of URIs in bytes"</span>, <strong>new</strong> Long(DEFAULT_MAX_URL_LENGTH)));
+<a name="371" href="#371">371</a>         e.setExpertSetting(<strong>true</strong>);
+<a name="372" href="#372">372</a>     }
+<a name="373" href="#373">373</a> 
+<a name="374" href="#374">374</a>     <strong>protected</strong> <strong>void</strong> extract(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="375" href="#375">375</a>         <strong>if</strong> (!isHttpTransactionContentToProcess(curi)) {
+<a name="376" href="#376">376</a>             <strong>return</strong>;
+<a name="377" href="#377">377</a>         }
+<a name="378" href="#378">378</a> 
+<a name="379" href="#379">379</a>         numberOfCURIsHandled++;
+<a name="380" href="#380">380</a> 
+<a name="381" href="#381">381</a>         InputStream instream = <strong>null</strong>;
+<a name="382" href="#382">382</a>         <strong>try</strong> {
+<a name="383" href="#383">383</a>             instream = curi.getHttpRecorder().getRecordedInput().
+<a name="384" href="#384">384</a>                 getContentReplayInputStream();
+<a name="385" href="#385">385</a>             <strong>int</strong> ch = instream.read();
+<a name="386" href="#386">386</a>             StringBuffer lookat = <strong>new</strong> StringBuffer();
+<a name="387" href="#387">387</a>             <strong>long</strong> counter = 0;
+<a name="388" href="#388">388</a>             <strong>long</strong> maxdepth = ((Long)getAttribute(ATTR_MAX_DEPTH_BYTES,curi)).
+<a name="389" href="#389">389</a>                 longValue();
+<a name="390" href="#390">390</a>             <strong>if</strong>(maxdepth&lt;=0){
+<a name="391" href="#391">391</a>                 maxdepth = Long.MAX_VALUE;
+<a name="392" href="#392">392</a>             }
+<a name="393" href="#393">393</a>             <strong>long</strong> maxURLLength = ((Long)getAttribute(ATTR_MAX_URL_LENGTH,curi)).
+<a name="394" href="#394">394</a>                 longValue();
+<a name="395" href="#395">395</a>             <strong>boolean</strong> foundDot = false;
+<a name="396" href="#396">396</a>             <strong>while</strong>(ch != -1 &amp;&amp; ++counter &lt;= maxdepth) {
+<a name="397" href="#397">397</a>                 <strong>if</strong>(lookat.length()>maxURLLength){
+<a name="398" href="#398">398</a>                     <em class="comment">//Exceeded maximum length of a URL. Start fresh.</em>
+<a name="399" href="#399">399</a>                     lookat = <strong>new</strong> StringBuffer();
+<a name="400" href="#400">400</a>                     foundDot = false;
+<a name="401" href="#401">401</a>                 }
+<a name="402" href="#402">402</a>                 <strong>else</strong> <strong>if</strong>(isURLableChar(ch)){
+<a name="403" href="#403">403</a>                     <em class="comment">//Add to buffer.</em>
+<a name="404" href="#404">404</a>                     <strong>if</strong>(ch == 46){
+<a name="405" href="#405">405</a>                         <em class="comment">// Current character is a dot '.'</em>
+<a name="406" href="#406">406</a>                         foundDot = <strong>true</strong>;
+<a name="407" href="#407">407</a>                     }
+<a name="408" href="#408">408</a>                     lookat.append((<strong>char</strong>)ch);
+<a name="409" href="#409">409</a>                 } <strong>else</strong> <strong>if</strong>(lookat.length() > 3 &amp;&amp; foundDot) {
+<a name="410" href="#410">410</a>                     <em class="comment">// It takes a bare mininum of 4 characters to form a URL</em>
+<a name="411" href="#411">411</a>                     <em class="comment">// Since we have at least that many let's try link</em>
+<a name="412" href="#412">412</a>                     <em class="comment">// extraction.</em>
+<a name="413" href="#413">413</a>                     String newURL = lookat.toString();
+<a name="414" href="#414">414</a>                     <strong>if</strong>(looksLikeAnURL(newURL))
+<a name="415" href="#415">415</a>                     {
+<a name="416" href="#416">416</a>                         <em class="comment">// Looks like we found something.</em>
+<a name="417" href="#417">417</a> 
+<a name="418" href="#418">418</a>                         <em class="comment">// Let's start with a little cleanup as we may have</em>
+<a name="419" href="#419">419</a>                         <em class="comment">// junk in front or at the end.</em>
+<a name="420" href="#420">420</a>                         <strong>if</strong>(newURL.toLowerCase().indexOf(<span class="string">"http"</span>) > 0){
+<a name="421" href="#421">421</a>                             <em class="comment">// Got garbage in front of the protocol. Remove.</em>
+<a name="422" href="#422">422</a>                             newURL = newURL.substring(newURL.toLowerCase().
+<a name="423" href="#423">423</a>                                 indexOf(<span class="string">"http"</span>));
+<a name="424" href="#424">424</a>                         }
+<a name="425" href="#425">425</a>                         <strong>while</strong>(newURL.substring(newURL.length()-1).equals(<span class="string">"."</span>))
+<a name="426" href="#426">426</a>                         {
+<a name="427" href="#427">427</a>                             <em class="comment">// URLs can't end with a dot. Strip it off.</em>
+<a name="428" href="#428">428</a>                             newURL = newURL.substring(0,newURL.length()-1);
+<a name="429" href="#429">429</a>                         }
+<a name="430" href="#430">430</a> 
+<a name="431" href="#431">431</a>                         <em class="comment">// And add the URL to speculative embeds.</em>
+<a name="432" href="#432">432</a>                         numberOfLinksExtracted++;
+<a name="433" href="#433">433</a>                         curi.createAndAddLink(newURL,Link.SPECULATIVE_MISC,Link.SPECULATIVE_HOP);
+<a name="434" href="#434">434</a>                     }
+<a name="435" href="#435">435</a>                     <em class="comment">// Reset lookat for next string.</em>
+<a name="436" href="#436">436</a>                     lookat = <strong>new</strong> StringBuffer();
+<a name="437" href="#437">437</a>                     foundDot = false;
+<a name="438" href="#438">438</a>                 } <strong>else</strong> <strong>if</strong>(lookat.length()>0) {
+<a name="439" href="#439">439</a>                     <em class="comment">// Didn't get enough chars. Reset lookat for next string.</em>
+<a name="440" href="#440">440</a>                     lookat = <strong>new</strong> StringBuffer();
+<a name="441" href="#441">441</a>                     foundDot = false;
+<a name="442" href="#442">442</a>                 }
+<a name="443" href="#443">443</a>                 ch = instream.read();
+<a name="444" href="#444">444</a>             }
+<a name="445" href="#445">445</a>         } <strong>catch</strong>(IOException e){
+<a name="446" href="#446">446</a>             <em class="comment">//TODO: Handle this exception.</em>
+<a name="447" href="#447">447</a>             e.printStackTrace();
+<a name="448" href="#448">448</a>         } <strong>catch</strong> (AttributeNotFoundException e) {
+<a name="449" href="#449">449</a>             <em class="comment">// TODO Auto-generated catch block</em>
+<a name="450" href="#450">450</a>             e.printStackTrace();
+<a name="451" href="#451">451</a>         } <strong>finally</strong> {
+<a name="452" href="#452">452</a>             IOUtils.closeQuietly(instream);
+<a name="453" href="#453">453</a>         }
+<a name="454" href="#454">454</a>         <em class="comment">// Set flag to indicate that link extraction is completed.</em>
+<a name="455" href="#455">455</a>         curi.linkExtractorFinished();
+<a name="456" href="#456">456</a>     }
+<a name="457" href="#457">457</a> 
+<a name="458" href="#458">458</a>     <em>/**<em>*</em></em>
+<a name="459" href="#459">459</a> <em>     * This method takes a look at a string and determines if it could be a URL.</em>
+<a name="460" href="#460">460</a> <em>     * To qualify the string must either begin with "<a href="http://" target="alexandria_uri">http://</a>" (https would also</em>
+<a name="461" href="#461">461</a> <em>     * work) followed by something that looks like an IP address or contain</em>
+<a name="462" href="#462">462</a> <em>     * within the string (possible at the end but not at the beginning) a TLD</em>
+<a name="463" href="#463">463</a> <em>     * (Top Level Domain) preceded by a dot.</em>
+<a name="464" href="#464">464</a> <em>     *</em>
+<a name="465" href="#465">465</a> <em>     * @param lookat The string to examine in an effort to determine if it</em>
+<a name="466" href="#466">466</a> <em>     * could be a URL</em>
+<a name="467" href="#467">467</a> <em>     * @return True if the string matches the above criteria for a URL.</em>
+<a name="468" href="#468">468</a> <em>     */</em>
+<a name="469" href="#469">469</a>     <strong>private</strong> <strong>boolean</strong> looksLikeAnURL(String lookat) {
+<a name="470" href="#470">470</a>         <strong>if</strong>(lookat.indexOf(<span class="string">"http://"</span>)==0 || lookat.indexOf(<span class="string">"https://"</span>)==0){
+<a name="471" href="#471">471</a>             <em class="comment">//Check if the rest of the string looks like an IP address.</em>
+<a name="472" href="#472">472</a>             <em class="comment">//if so return true. Otherwise continue on.</em>
+<a name="473" href="#473">473</a>             Matcher ip = TextUtils.getMatcher(IP_ADDRESS, lookat);
+<a name="474" href="#474">474</a>             <strong>boolean</strong> testVal = ip.matches();
+<a name="475" href="#475">475</a>             TextUtils.recycleMatcher(ip);
+<a name="476" href="#476">476</a>             <strong>if</strong>(testVal){
+<a name="477" href="#477">477</a>                 <strong>return</strong> <strong>true</strong>;
+<a name="478" href="#478">478</a>             }
+<a name="479" href="#479">479</a>         }
+<a name="480" href="#480">480</a> 
+<a name="481" href="#481">481</a>         <strong>int</strong> dot = lookat.indexOf(<span class="string">"."</span>);
+<a name="482" href="#482">482</a>         <strong>if</strong>(dot!=0){<em class="comment">//An URL can't start with a .tld.</em>
+<a name="483" href="#483">483</a>             <strong>while</strong>(dot != -1 &amp;&amp; dot &lt; lookat.length()){
+<a name="484" href="#484">484</a>                 lookat = lookat.substring(dot+1);
+<a name="485" href="#485">485</a>                 <strong>if</strong> (isTLD(lookat.substring(0, lookat.length() &lt;= 6?
+<a name="486" href="#486">486</a>                     lookat.length(): 6)))
+<a name="487" href="#487">487</a>                 {
+<a name="488" href="#488">488</a>                     <strong>return</strong> <strong>true</strong>;
+<a name="489" href="#489">489</a>                 }
+<a name="490" href="#490">490</a>                 dot = lookat.indexOf(<span class="string">"."</span>);
+<a name="491" href="#491">491</a>             }
+<a name="492" href="#492">492</a>         }
+<a name="493" href="#493">493</a> 
+<a name="494" href="#494">494</a>         <strong>return</strong> false;
+<a name="495" href="#495">495</a>     }
+<a name="496" href="#496">496</a> 
+<a name="497" href="#497">497</a>     <em>/**<em>*</em></em>
+<a name="498" href="#498">498</a> <em>     * Checks if a string is equal to known Top Level Domain. The string may</em>
+<a name="499" href="#499">499</a> <em>     * contain additional characters &lt;i>after&lt;/i> the TLD but not before.</em>
+<a name="500" href="#500">500</a> <em>     * @param potentialTLD The string (usually 2-6 chars) to check if it starts</em>
+<a name="501" href="#501">501</a> <em>     * with a TLD.</em>
+<a name="502" href="#502">502</a> <em>     * @return True if the given string starts with the name of a known TLD</em>
+<a name="503" href="#503">503</a> <em>     *</em>
+<a name="504" href="#504">504</a> <em>     * @see #TLDs</em>
+<a name="505" href="#505">505</a> <em>     */</em>
+<a name="506" href="#506">506</a>     <strong>private</strong> <strong>boolean</strong> isTLD(String potentialTLD) {
+<a name="507" href="#507">507</a>         <strong>if</strong>(potentialTLD.length()&lt;2){
+<a name="508" href="#508">508</a>             <strong>return</strong> false;
+<a name="509" href="#509">509</a>         }
+<a name="510" href="#510">510</a> 
+<a name="511" href="#511">511</a>         potentialTLD.toLowerCase();
+<a name="512" href="#512">512</a>         Matcher uri = TextUtils.getMatcher(TLDs, potentialTLD);
+<a name="513" href="#513">513</a>         <strong>boolean</strong> ret = uri.matches();
+<a name="514" href="#514">514</a>         TextUtils.recycleMatcher(uri);
+<a name="515" href="#515">515</a>         <strong>return</strong> ret;
+<a name="516" href="#516">516</a>     }
+<a name="517" href="#517">517</a> 
+<a name="518" href="#518">518</a>     <em>/**<em>*</em></em>
+<a name="519" href="#519">519</a> <em>     * Determines if a char (as represented by an int in the range of 0-255) is</em>
+<a name="520" href="#520">520</a> <em>     * a character (in the Ansi character set) that can be present in a URL.</em>
+<a name="521" href="#521">521</a> <em>     * This method takes a &lt;b>strict&lt;/b> approach to what characters can be in</em>
+<a name="522" href="#522">522</a> <em>     * a URL.</em>
+<a name="523" href="#523">523</a> <em>     * &lt;p></em>
+<a name="524" href="#524">524</a> <em>     * The following are considered to be 'URLable'&lt;br></em>
+<a name="525" href="#525">525</a> <em>     * &lt;ul></em>
+<a name="526" href="#526">526</a> <em>     *  &lt;li> &lt;code># $ % &amp; + , - . /&lt;/code> values 35-38,43-47</em>
+<a name="527" href="#527">527</a> <em>     *  &lt;li> &lt;code>[0-9]&lt;/code> values 48-57</em>
+<a name="528" href="#528">528</a> <em>     *  &lt;li> &lt;code>: ; = ? @&lt;/code> value 58-59,61,63-64</em>
+<a name="529" href="#529">529</a> <em>     *  &lt;li> &lt;code>[A-Z]&lt;/code> values 65-90</em>
+<a name="530" href="#530">530</a> <em>     *  &lt;li> &lt;code>_&lt;/code> value 95</em>
+<a name="531" href="#531">531</a> <em>     *  &lt;li> &lt;code>[a-z]&lt;/code> values 97-122</em>
+<a name="532" href="#532">532</a> <em>     *  &lt;li> &lt;code>~&lt;/code> value 126</em>
+<a name="533" href="#533">533</a> <em>     * &lt;/ul></em>
+<a name="534" href="#534">534</a> <em>     * &lt;p></em>
+<a name="535" href="#535">535</a> <em>     * To summerize, the following ranges are considered URLable:&lt;br></em>
+<a name="536" href="#536">536</a> <em>     * 35-38,43-59,61,63-90,95,97-122,126</em>
+<a name="537" href="#537">537</a> <em>     *</em>
+<a name="538" href="#538">538</a> <em>     * @param ch The character (represented by an int) to test.</em>
+<a name="539" href="#539">539</a> <em>     * @return True if it is a URLable character, false otherwise.</em>
+<a name="540" href="#540">540</a> <em>     */</em>
+<a name="541" href="#541">541</a>     <strong>private</strong> <strong>boolean</strong> isURLableChar(<strong>int</strong> ch) {
+<a name="542" href="#542">542</a>         <strong>return</strong> (ch>=35 &amp;&amp; ch&lt;=38)
+<a name="543" href="#543">543</a>             || (ch>=43 &amp;&amp; ch&lt;=59)
+<a name="544" href="#544">544</a>             || (ch==61)
+<a name="545" href="#545">545</a>             || (ch>=63 &amp;&amp; ch&lt;=90)
+<a name="546" href="#546">546</a>             || (ch==95)
+<a name="547" href="#547">547</a>             || (ch>=97 &amp;&amp; ch&lt;=122)
+<a name="548" href="#548">548</a>             || (ch==126);
+<a name="549" href="#549">549</a>     }
+<a name="550" href="#550">550</a> 
+<a name="551" href="#551">551</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="552" href="#552">552</a> <em class="comment">     * @see org.archive.crawler.framework.Processor#report()</em>
+<a name="553" href="#553">553</a> <em class="comment">     */</em>
+<a name="554" href="#554">554</a>     <strong>public</strong> String report() {
+<a name="555" href="#555">555</a>         StringBuffer ret = <strong>new</strong> StringBuffer();
+<a name="556" href="#556">556</a>         ret.append(<span class="string">"Processor: org.archive.crawler.extractor."</span> +
+<a name="557" href="#557">557</a>             <span class="string">"ExtractorUniversal\n"</span>);
+<a name="558" href="#558">558</a>         ret.append(<span class="string">"  Function:          Link extraction on unknown file"</span> +
+<a name="559" href="#559">559</a>             <span class="string">" types.\n"</span>);
+<a name="560" href="#560">560</a>         ret.append(<span class="string">"  CrawlURIs handled: "</span> + numberOfCURIsHandled + <span class="string">"\n"</span>);
+<a name="561" href="#561">561</a>         ret.append(<span class="string">"  Links extracted:   "</span> + numberOfLinksExtracted + <span class="string">"\n\n"</span>);
+<a name="562" href="#562">562</a> 
+<a name="563" href="#563">563</a>         <strong>return</strong> ret.toString();
+<a name="564" href="#564">564</a>     }
+<a name="565" href="#565">565</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

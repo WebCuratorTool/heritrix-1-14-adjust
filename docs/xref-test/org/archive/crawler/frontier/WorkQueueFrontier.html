@@ -1,0 +1,1411 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" /><title>WorkQueueFrontier xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> $Id: WorkQueueFrontier.java 5439 2007-08-28 05:15:25Z gojomo $</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> * Created on Sep 24, 2004</em>
+<a name="3" href="#3">3</a>   <em class="comment"> *</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *  Copyright (C) 2004 Internet Archive.</em>
+<a name="5" href="#5">5</a>   <em class="comment"> *</em>
+<a name="6" href="#6">6</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="7" href="#7">7</a>   <em class="comment"> *</em>
+<a name="8" href="#8">8</a>   <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="9" href="#9">9</a>   <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="10" href="#10">10</a>  <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * any later version.</em>
+<a name="12" href="#12">12</a>  <em class="comment"> *</em>
+<a name="13" href="#13">13</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="14" href="#14">14</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="15" href="#15">15</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="17" href="#17">17</a>  <em class="comment"> *</em>
+<a name="18" href="#18">18</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="20" href="#20">20</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="21" href="#21">21</a>  <em class="comment"> *</em>
+<a name="22" href="#22">22</a>  <em class="comment">  */</em>
+<a name="23" href="#23">23</a>  <strong>package</strong> <a href="../../../../org/archive/crawler/frontier/package-summary.html">org.archive.crawler.frontier</a>;
+<a name="24" href="#24">24</a>  
+<a name="25" href="#25">25</a>  <strong>import</strong> java.io.IOException;
+<a name="26" href="#26">26</a>  <strong>import</strong> java.io.PrintWriter;
+<a name="27" href="#27">27</a>  <strong>import</strong> java.io.Serializable;
+<a name="28" href="#28">28</a>  <strong>import</strong> java.util.ArrayList;
+<a name="29" href="#29">29</a>  <strong>import</strong> java.util.Collection;
+<a name="30" href="#30">30</a>  <strong>import</strong> java.util.Collections;
+<a name="31" href="#31">31</a>  <strong>import</strong> java.util.HashMap;
+<a name="32" href="#32">32</a>  <strong>import</strong> java.util.Iterator;
+<a name="33" href="#33">33</a>  <strong>import</strong> java.util.Map;
+<a name="34" href="#34">34</a>  <strong>import</strong> java.util.Queue;
+<a name="35" href="#35">35</a>  <strong>import</strong> java.util.SortedSet;
+<a name="36" href="#36">36</a>  <strong>import</strong> java.util.Timer;
+<a name="37" href="#37">37</a>  <strong>import</strong> java.util.TimerTask;
+<a name="38" href="#38">38</a>  <strong>import</strong> java.util.TreeSet;
+<a name="39" href="#39">39</a>  <strong>import</strong> java.util.concurrent.BlockingQueue;
+<a name="40" href="#40">40</a>  <strong>import</strong> java.util.concurrent.LinkedBlockingQueue;
+<a name="41" href="#41">41</a>  <strong>import</strong> java.util.concurrent.Semaphore;
+<a name="42" href="#42">42</a>  <strong>import</strong> java.util.concurrent.TimeUnit;
+<a name="43" href="#43">43</a>  <strong>import</strong> java.util.logging.Level;
+<a name="44" href="#44">44</a>  <strong>import</strong> java.util.logging.Logger;
+<a name="45" href="#45">45</a>  
+<a name="46" href="#46">46</a>  <strong>import</strong> org.apache.commons.collections.Bag;
+<a name="47" href="#47">47</a>  <strong>import</strong> org.apache.commons.collections.BagUtils;
+<a name="48" href="#48">48</a>  <strong>import</strong> org.apache.commons.collections.bag.HashBag;
+<a name="49" href="#49">49</a>  <strong>import</strong> org.apache.commons.lang.StringUtils;
+<a name="50" href="#50">50</a>  <strong>import</strong> org.archive.crawler.datamodel.CandidateURI;
+<a name="51" href="#51">51</a>  <strong>import</strong> org.archive.crawler.datamodel.CoreAttributeConstants;
+<a name="52" href="#52">52</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlURI;
+<a name="53" href="#53">53</a>  <strong>import</strong> org.archive.crawler.datamodel.FetchStatusCodes;
+<a name="54" href="#54">54</a>  <strong>import</strong> org.archive.crawler.datamodel.UriUniqFilter;
+<a name="55" href="#55">55</a>  <strong>import</strong> org.archive.crawler.datamodel.UriUniqFilter.HasUriReceiver;
+<a name="56" href="#56">56</a>  <strong>import</strong> org.archive.crawler.framework.CrawlController;
+<a name="57" href="#57">57</a>  <strong>import</strong> org.archive.crawler.framework.Frontier;
+<a name="58" href="#58">58</a>  <strong>import</strong> org.archive.crawler.framework.exceptions.EndedException;
+<a name="59" href="#59">59</a>  <strong>import</strong> org.archive.crawler.framework.exceptions.FatalConfigurationException;
+<a name="60" href="#60">60</a>  <strong>import</strong> org.archive.crawler.settings.SimpleType;
+<a name="61" href="#61">61</a>  <strong>import</strong> org.archive.crawler.settings.Type;
+<a name="62" href="#62">62</a>  <strong>import</strong> org.archive.net.UURI;
+<a name="63" href="#63">63</a>  <strong>import</strong> org.archive.util.ArchiveUtils;
+<a name="64" href="#64">64</a>  
+<a name="65" href="#65">65</a>  <strong>import</strong> com.sleepycat.collections.StoredIterator;
+<a name="66" href="#66">66</a>  
+<a name="67" href="#67">67</a>  <em>/**<em>*</em></em>
+<a name="68" href="#68">68</a>  <em> * A common Frontier base using several queues to hold pending URIs. </em>
+<a name="69" href="#69">69</a>  <em> * </em>
+<a name="70" href="#70">70</a>  <em> * Uses in-memory map of all known 'queues' inside a single database.</em>
+<a name="71" href="#71">71</a>  <em> * Round-robins between all queues.</em>
+<a name="72" href="#72">72</a>  <em> *</em>
+<a name="73" href="#73">73</a>  <em> * @author Gordon Mohr</em>
+<a name="74" href="#74">74</a>  <em> * @author Christian Kohlschuetter</em>
+<a name="75" href="#75">75</a>  <em> */</em>
+<a name="76" href="#76">76</a>  <strong>public</strong> <strong>abstract</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> <strong>extends</strong> <a href="../../../../org/archive/crawler/frontier/AbstractFrontier.html">AbstractFrontier</a>
+<a name="77" href="#77">77</a>  implements FetchStatusCodes, CoreAttributeConstants, HasUriReceiver,
+<a name="78" href="#78">78</a>          Serializable {
+<a name="79" href="#79">79</a>  	<strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = 570384305871965843L;
+<a name="80" href="#80">80</a>  	
+<a name="81" href="#81">81</a>      <strong>public</strong> <strong>class</strong> WakeTask <strong>extends</strong> TimerTask {
+<a name="82" href="#82">82</a>          @Override
+<a name="83" href="#83">83</a>          <strong>public</strong> <strong>void</strong> run() {
+<a name="84" href="#84">84</a>              <strong>synchronized</strong>(snoozedClassQueues) {
+<a name="85" href="#85">85</a>                  <strong>if</strong>(<strong>this</strong>!=nextWake) {
+<a name="86" href="#86">86</a>                      <em class="comment">// an intervening waketask was made</em>
+<a name="87" href="#87">87</a>                      <strong>return</strong>;
+<a name="88" href="#88">88</a>                  }
+<a name="89" href="#89">89</a>                  wakeQueues();
+<a name="90" href="#90">90</a>              }
+<a name="91" href="#91">91</a>          }
+<a name="92" href="#92">92</a>      }
+<a name="93" href="#93">93</a>  
+<a name="94" href="#94">94</a>      <em>/**<em>* truncate reporting of queues at some large but not unbounded number */</em></em>
+<a name="95" href="#95">95</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> REPORT_MAX_QUEUES = 2000;
+<a name="96" href="#96">96</a>      
+<a name="97" href="#97">97</a>      <em>/**<em>*</em></em>
+<a name="98" href="#98">98</a>  <em>     * If we know that only a small amount of queues is held in memory,</em>
+<a name="99" href="#99">99</a>  <em>     * we can avoid using a disk-based BigMap.</em>
+<a name="100" href="#100">100</a> <em>     * This only works efficiently if the WorkQueue does not hold its</em>
+<a name="101" href="#101">101</a> <em>     * entries in memory as well.</em>
+<a name="102" href="#102">102</a> <em>     */</em> 
+<a name="103" href="#103">103</a>     <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> MAX_QUEUES_TO_HOLD_ALLQUEUES_IN_MEMORY = 3000;
+<a name="104" href="#104">104</a> 
+<a name="105" href="#105">105</a>     <em>/**<em>*</em></em>
+<a name="106" href="#106">106</a> <em>     * When a snooze target for a queue is longer than this amount, and </em>
+<a name="107" href="#107">107</a> <em>     * there are already ready queues, deactivate rather than snooze </em>
+<a name="108" href="#108">108</a> <em>     * the current queue -- so other more responsive sites get a chance</em>
+<a name="109" href="#109">109</a> <em>     * in active rotation. (As a result, queue's next try may be much</em>
+<a name="110" href="#110">110</a> <em>     * further in the future than the snooze target delay.)</em>
+<a name="111" href="#111">111</a> <em>     */</em>
+<a name="112" href="#112">112</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_SNOOZE_DEACTIVATE_MS =
+<a name="113" href="#113">113</a>         <span class="string">"snooze-deactivate-ms"</span>;
+<a name="114" href="#114">114</a>     <strong>public</strong> <strong>static</strong> Long DEFAULT_SNOOZE_DEACTIVATE_MS = <strong>new</strong> Long(5*60*1000); <em class="comment">// 5 minutes</em>
+<a name="115" href="#115">115</a>     
+<a name="116" href="#116">116</a>     <strong>private</strong> <strong>static</strong> <strong>final</strong> Logger logger =
+<a name="117" href="#117">117</a>         Logger.getLogger(WorkQueueFrontier.<strong>class</strong>.getName());
+<a name="118" href="#118">118</a>     
+<a name="119" href="#119">119</a>     <em>/**<em>* whether to hold queues INACTIVE until needed for throughput */</em></em>
+<a name="120" href="#120">120</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_HOLD_QUEUES = <span class="string">"hold-queues"</span>;
+<a name="121" href="#121">121</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Boolean DEFAULT_HOLD_QUEUES = <strong>new</strong> Boolean(<strong>true</strong>); 
+<a name="122" href="#122">122</a> 
+<a name="123" href="#123">123</a>     <em>/**<em>* amount to replenish budget on each activation (duty cycle) */</em></em>
+<a name="124" href="#124">124</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_BALANCE_REPLENISH_AMOUNT =
+<a name="125" href="#125">125</a>         <span class="string">"balance-replenish-amount"</span>;
+<a name="126" href="#126">126</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_BALANCE_REPLENISH_AMOUNT =
+<a name="127" href="#127">127</a>         <strong>new</strong> Integer(3000);
+<a name="128" href="#128">128</a>     
+<a name="129" href="#129">129</a>     <em>/**<em>* whether to hold queues INACTIVE until needed for throughput */</em></em>
+<a name="130" href="#130">130</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_ERROR_PENALTY_AMOUNT =
+<a name="131" href="#131">131</a>         <span class="string">"error-penalty-amount"</span>;
+<a name="132" href="#132">132</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_ERROR_PENALTY_AMOUNT =
+<a name="133" href="#133">133</a>         <strong>new</strong> Integer(100);
+<a name="134" href="#134">134</a> 
+<a name="135" href="#135">135</a> 
+<a name="136" href="#136">136</a>     <em>/**<em>* total expenditure to allow a queue before 'retiring' it  */</em></em>
+<a name="137" href="#137">137</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_QUEUE_TOTAL_BUDGET = <span class="string">"queue-total-budget"</span>;
+<a name="138" href="#138">138</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Long DEFAULT_QUEUE_TOTAL_BUDGET = <strong>new</strong> Long(-1);
+<a name="139" href="#139">139</a> 
+<a name="140" href="#140">140</a>     <em>/**<em>* cost assignment policy to use (by class name) */</em></em>
+<a name="141" href="#141">141</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_COST_POLICY = <span class="string">"cost-policy"</span>;
+<a name="142" href="#142">142</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> String DEFAULT_COST_POLICY =
+<a name="143" href="#143">143</a>         UnitCostAssignmentPolicy.<strong>class</strong>.getName();
+<a name="144" href="#144">144</a> 
+<a name="145" href="#145">145</a>     <em>/**<em>* target size of ready queues backlog */</em></em>
+<a name="146" href="#146">146</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_TARGET_READY_QUEUES_BACKLOG =
+<a name="147" href="#147">147</a>         <span class="string">"target-ready-backlog"</span>;
+<a name="148" href="#148">148</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_TARGET_READY_QUEUES_BACKLOG =
+<a name="149" href="#149">149</a>         <strong>new</strong> Integer(50);
+<a name="150" href="#150">150</a>     
+<a name="151" href="#151">151</a>     <em>/**<em>* those UURIs which are already in-process (or processed), and</em></em>
+<a name="152" href="#152">152</a> <em>     thus should not be rescheduled */</em>
+<a name="153" href="#153">153</a>     <strong>protected</strong> <strong>transient</strong> <a href="../../../../org/archive/crawler/datamodel/UriUniqFilter.html">UriUniqFilter</a> alreadyIncluded;
+<a name="154" href="#154">154</a> 
+<a name="155" href="#155">155</a>     <em>/**<em>* All known queues.</em></em>
+<a name="156" href="#156">156</a> <em>     */</em>
+<a name="157" href="#157">157</a>     <strong>protected</strong> <strong>transient</strong> Map&lt;String,WorkQueue> allQueues = <strong>null</strong>; 
+<a name="158" href="#158">158</a>     <em class="comment">// of classKey -> ClassKeyQueue</em>
+<a name="159" href="#159">159</a> 
+<a name="160" href="#160">160</a>     <em>/**<em>*</em></em>
+<a name="161" href="#161">161</a> <em>     * All per-class queues whose first item may be handed out.</em>
+<a name="162" href="#162">162</a> <em>     * Linked-list of keys for the queues.</em>
+<a name="163" href="#163">163</a> <em>     */</em>
+<a name="164" href="#164">164</a>     <strong>protected</strong> BlockingQueue&lt;String> readyClassQueues;
+<a name="165" href="#165">165</a>     
+<a name="166" href="#166">166</a>     <em>/**<em>* Target (minimum) size to keep readyClassQueues */</em></em>
+<a name="167" href="#167">167</a>     <strong>protected</strong> <strong>int</strong> targetSizeForReadyQueues;
+<a name="168" href="#168">168</a>     
+<a name="169" href="#169">169</a>     <em>/**<em>* single-thread access to ready-filling code */</em></em>
+<a name="170" href="#170">170</a>     <strong>protected</strong> <strong>transient</strong> Semaphore readyFiller = <strong>new</strong> Semaphore(1);
+<a name="171" href="#171">171</a>     
+<a name="172" href="#172">172</a>     <em>/**<em>* </em></em>
+<a name="173" href="#173">173</a> <em>     * All 'inactive' queues, not yet in active rotation.</em>
+<a name="174" href="#174">174</a> <em>     * Linked-list of keys for the queues.</em>
+<a name="175" href="#175">175</a> <em>     */</em>
+<a name="176" href="#176">176</a>     <strong>protected</strong> Queue&lt;String> inactiveQueues;
+<a name="177" href="#177">177</a> 
+<a name="178" href="#178">178</a>     <em>/**<em>*</em></em>
+<a name="179" href="#179">179</a> <em>     * 'retired' queues, no longer considered for activation.</em>
+<a name="180" href="#180">180</a> <em>     * Linked-list of keys for queues.</em>
+<a name="181" href="#181">181</a> <em>     */</em>
+<a name="182" href="#182">182</a>     <strong>protected</strong> Queue&lt;String> retiredQueues;
+<a name="183" href="#183">183</a>     
+<a name="184" href="#184">184</a>     <em>/**<em>* all per-class queues from whom a URI is outstanding */</em></em>
+<a name="185" href="#185">185</a>     <strong>protected</strong> Bag inProcessQueues = 
+<a name="186" href="#186">186</a>         BagUtils.synchronizedBag(<strong>new</strong> HashBag()); <em class="comment">// of ClassKeyQueue</em>
+<a name="187" href="#187">187</a>     
+<a name="188" href="#188">188</a>     <em>/**<em>*</em></em>
+<a name="189" href="#189">189</a> <em>     * All per-class queues held in snoozed state, sorted by wake time.</em>
+<a name="190" href="#190">190</a> <em>     */</em>
+<a name="191" href="#191">191</a>     <strong>protected</strong> SortedSet&lt;WorkQueue> snoozedClassQueues;
+<a name="192" href="#192">192</a>     
+<a name="193" href="#193">193</a>     <em>/**<em>* Timer for tasks which wake head item of snoozedClassQueues */</em></em>
+<a name="194" href="#194">194</a>     <strong>protected</strong> <strong>transient</strong> Timer wakeTimer;
+<a name="195" href="#195">195</a>     
+<a name="196" href="#196">196</a>     <em>/**<em>* Task for next wake */</em> </em>
+<a name="197" href="#197">197</a>     <strong>protected</strong> <strong>transient</strong> WakeTask nextWake; 
+<a name="198" href="#198">198</a>     
+<a name="199" href="#199">199</a>     <strong>protected</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> longestActiveQueue = <strong>null</strong>;
+<a name="200" href="#200">200</a>     
+<a name="201" href="#201">201</a>     <em>/**<em>* how long to wait for a ready queue when there's nothing snoozed */</em></em>
+<a name="202" href="#202">202</a>     <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> DEFAULT_WAIT = 1000; <em class="comment">// 1 second</em>
+<a name="203" href="#203">203</a> 
+<a name="204" href="#204">204</a>     <em>/**<em>* a policy for assigning 'cost' values to CrawlURIs */</em></em>
+<a name="205" href="#205">205</a>     <strong>private</strong> <strong>transient</strong> <a href="../../../../org/archive/crawler/frontier/CostAssignmentPolicy.html">CostAssignmentPolicy</a> costAssignmentPolicy;
+<a name="206" href="#206">206</a>     
+<a name="207" href="#207">207</a>     <em>/**<em>* all policies available to be chosen */</em></em>
+<a name="208" href="#208">208</a>     String[] AVAILABLE_COST_POLICIES = <strong>new</strong> String[] {
+<a name="209" href="#209">209</a>             ZeroCostAssignmentPolicy.<strong>class</strong>.getName(),
+<a name="210" href="#210">210</a>             UnitCostAssignmentPolicy.<strong>class</strong>.getName(),
+<a name="211" href="#211">211</a>             WagCostAssignmentPolicy.<strong>class</strong>.getName(),
+<a name="212" href="#212">212</a>             AntiCalendarCostAssignmentPolicy.<strong>class</strong>.getName()};
+<a name="213" href="#213">213</a> 
+<a name="214" href="#214">214</a>     <em>/**<em>*</em></em>
+<a name="215" href="#215">215</a> <em>     * Create the CommonFrontier</em>
+<a name="216" href="#216">216</a> <em>     * </em>
+<a name="217" href="#217">217</a> <em>     * @param name</em>
+<a name="218" href="#218">218</a> <em>     * @param description</em>
+<a name="219" href="#219">219</a> <em>     */</em>
+<a name="220" href="#220">220</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a>(String name, String description) {
+<a name="221" href="#221">221</a>         <em class="comment">// The 'name' of all frontiers should be the same (URIFrontier.ATTR_NAME)</em>
+<a name="222" href="#222">222</a>         <em class="comment">// therefore we'll ignore the supplied parameter.</em>
+<a name="223" href="#223">223</a>         <strong>super</strong>(Frontier.ATTR_NAME, description);
+<a name="224" href="#224">224</a>         <a href="../../../../org/archive/crawler/settings/Type.html">Type</a> t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_HOLD_QUEUES,
+<a name="225" href="#225">225</a>             <span class="string">"Whether to hold newly-created per-host URI work"</span> +
+<a name="226" href="#226">226</a>             <span class="string">" queues until needed to stay busy. If false (default),"</span> +
+<a name="227" href="#227">227</a>             <span class="string">" all queues may contribute URIs for crawling at all"</span> +
+<a name="228" href="#228">228</a>             <span class="string">" times. If true, queues begin (and collect URIs) in"</span> +
+<a name="229" href="#229">229</a>             <span class="string">" an 'inactive' state, and only when the Frontier needs"</span> +
+<a name="230" href="#230">230</a>             <span class="string">" another queue to keep all ToeThreads busy will new"</span> +
+<a name="231" href="#231">231</a>             <span class="string">" queues be activated."</span>, DEFAULT_HOLD_QUEUES));
+<a name="232" href="#232">232</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="233" href="#233">233</a>         t.setOverrideable(false);
+<a name="234" href="#234">234</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_BALANCE_REPLENISH_AMOUNT,
+<a name="235" href="#235">235</a>             <span class="string">"Amount to replenish a queue's activity balance when it becomes "</span> +
+<a name="236" href="#236">236</a>             <span class="string">"active. Larger amounts mean more URIs will be tried from the "</span> +
+<a name="237" href="#237">237</a>             <span class="string">"queue before it is deactivated in favor of waiting queues. "</span> +
+<a name="238" href="#238">238</a>             <span class="string">"Default is 3000"</span>, DEFAULT_BALANCE_REPLENISH_AMOUNT));
+<a name="239" href="#239">239</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="240" href="#240">240</a>         t.setOverrideable(<strong>true</strong>);
+<a name="241" href="#241">241</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_ERROR_PENALTY_AMOUNT,
+<a name="242" href="#242">242</a>                 <span class="string">"Amount to additionally penalize a queue when one of"</span> +
+<a name="243" href="#243">243</a>                 <span class="string">"its URIs fails completely. Accelerates deactivation or "</span> +
+<a name="244" href="#244">244</a>                 <span class="string">"full retirement of problem queues and unresponsive sites. "</span> +
+<a name="245" href="#245">245</a>                 <span class="string">"Default is 100"</span>, DEFAULT_ERROR_PENALTY_AMOUNT));
+<a name="246" href="#246">246</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="247" href="#247">247</a>         t.setOverrideable(<strong>true</strong>);
+<a name="248" href="#248">248</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_QUEUE_TOTAL_BUDGET,
+<a name="249" href="#249">249</a>             <span class="string">"Total activity expenditure allowable to a single queue; queues "</span> +
+<a name="250" href="#250">250</a>             <span class="string">"over this expenditure will be 'retired' and crawled no more. "</span> +
+<a name="251" href="#251">251</a>             <span class="string">"Default of -1 means no ceiling on activity expenditures is "</span> +
+<a name="252" href="#252">252</a>             <span class="string">"enforced."</span>, DEFAULT_QUEUE_TOTAL_BUDGET));
+<a name="253" href="#253">253</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="254" href="#254">254</a>         t.setOverrideable(<strong>true</strong>);
+<a name="255" href="#255">255</a> 
+<a name="256" href="#256">256</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_COST_POLICY,
+<a name="257" href="#257">257</a>                 <span class="string">"Policy for calculating the cost of each URI attempted. "</span> +
+<a name="258" href="#258">258</a>                 <span class="string">"The default UnitCostAssignmentPolicy considers the cost of "</span> +
+<a name="259" href="#259">259</a>                 <span class="string">"each URI to be '1'."</span>, DEFAULT_COST_POLICY, AVAILABLE_COST_POLICIES));
+<a name="260" href="#260">260</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="261" href="#261">261</a>         
+<a name="262" href="#262">262</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_SNOOZE_DEACTIVATE_MS,
+<a name="263" href="#263">263</a>                 <span class="string">"Threshold above which any 'snooze' delay will cause the "</span> +
+<a name="264" href="#264">264</a>                 <span class="string">"affected queue to go inactive, allowing other queues a "</span> +
+<a name="265" href="#265">265</a>                 <span class="string">"chance to rotate into active state. Typically set to be "</span> +
+<a name="266" href="#266">266</a>                 <span class="string">"longer than the politeness pauses between successful "</span> +
+<a name="267" href="#267">267</a>                 <span class="string">"fetches, but shorter than the connection-failed "</span> +
+<a name="268" href="#268">268</a>                 <span class="string">"'retry-delay-seconds'. (Default is 5 minutes.)"</span>, 
+<a name="269" href="#269">269</a>                 DEFAULT_SNOOZE_DEACTIVATE_MS));
+<a name="270" href="#270">270</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="271" href="#271">271</a>         t.setOverrideable(false);
+<a name="272" href="#272">272</a>         t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_TARGET_READY_QUEUES_BACKLOG,
+<a name="273" href="#273">273</a>                 <span class="string">"Target size for backlog of ready queues. This many queues "</span> +
+<a name="274" href="#274">274</a>                 <span class="string">"will be brought into 'ready' state even if a thread is "</span> +
+<a name="275" href="#275">275</a>                 <span class="string">"not waiting. Only has effect if 'hold-queues' is true. "</span> +
+<a name="276" href="#276">276</a>                 <span class="string">"Default is 50."</span>, DEFAULT_TARGET_READY_QUEUES_BACKLOG));
+<a name="277" href="#277">277</a>         t.setExpertSetting(<strong>true</strong>);
+<a name="278" href="#278">278</a>         t.setOverrideable(false);
+<a name="279" href="#279">279</a>     }
+<a name="280" href="#280">280</a> 
+<a name="281" href="#281">281</a>     <em>/**<em>*</em></em>
+<a name="282" href="#282">282</a> <em>     * Initializes the Frontier, given the supplied CrawlController.</em>
+<a name="283" href="#283">283</a> <em>     *</em>
+<a name="284" href="#284">284</a> <em>     * @see org.archive.crawler.framework.Frontier#initialize(org.archive.crawler.framework.CrawlController)</em>
+<a name="285" href="#285">285</a> <em>     */</em>
+<a name="286" href="#286">286</a>     <strong>public</strong> <strong>void</strong> initialize(<a href="../../../../org/archive/crawler/framework/CrawlController.html">CrawlController</a> c)
+<a name="287" href="#287">287</a>             throws FatalConfigurationException, IOException {
+<a name="288" href="#288">288</a>         <em class="comment">// Call the super method. It sets up frontier journalling.</em>
+<a name="289" href="#289">289</a>         <strong>super</strong>.initialize(c);
+<a name="290" href="#290">290</a>         <strong>this</strong>.controller = c;
+<a name="291" href="#291">291</a>         
+<a name="292" href="#292">292</a>         initQueuesOfQueues();
+<a name="293" href="#293">293</a>         
+<a name="294" href="#294">294</a>         <strong>this</strong>.targetSizeForReadyQueues = (Integer)getUncheckedAttribute(<strong>null</strong>,
+<a name="295" href="#295">295</a>             ATTR_TARGET_READY_QUEUES_BACKLOG);
+<a name="296" href="#296">296</a>         <strong>if</strong> (<strong>this</strong>.targetSizeForReadyQueues &lt; 1) {
+<a name="297" href="#297">297</a>             <strong>this</strong>.targetSizeForReadyQueues = 1;
+<a name="298" href="#298">298</a>         }
+<a name="299" href="#299">299</a>         <strong>this</strong>.wakeTimer = <strong>new</strong> Timer(<span class="string">"waker for "</span> + c.toString());
+<a name="300" href="#300">300</a>         
+<a name="301" href="#301">301</a>         <strong>try</strong> {
+<a name="302" href="#302">302</a>             <strong>if</strong> (workQueueDataOnDisk()
+<a name="303" href="#303">303</a>                     &amp;&amp; getQueueAssignmentPolicy(<strong>null</strong>).maximumNumberOfKeys() >= 0
+<a name="304" href="#304">304</a>                     &amp;&amp; getQueueAssignmentPolicy(<strong>null</strong>).maximumNumberOfKeys() &lt;= 
+<a name="305" href="#305">305</a>                         MAX_QUEUES_TO_HOLD_ALLQUEUES_IN_MEMORY) {
+<a name="306" href="#306">306</a>                 <strong>this</strong>.allQueues = Collections.synchronizedMap(
+<a name="307" href="#307">307</a>                         <strong>new</strong> HashMap&lt;String,WorkQueue>());
+<a name="308" href="#308">308</a>             } <strong>else</strong> {
+<a name="309" href="#309">309</a>                 <strong>this</strong>.allQueues = c.getBigMap(<span class="string">"allqueues"</span>,
+<a name="310" href="#310">310</a>                         String.<strong>class</strong>, WorkQueue.<strong>class</strong>);
+<a name="311" href="#311">311</a>                 <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="312" href="#312">312</a>                     Iterator i = <strong>this</strong>.allQueues.keySet().iterator();
+<a name="313" href="#313">313</a>                     <strong>try</strong> {
+<a name="314" href="#314">314</a>                         <strong>for</strong> (; i.hasNext();) {
+<a name="315" href="#315">315</a>                             logger.fine((String) i.next());
+<a name="316" href="#316">316</a>                         }
+<a name="317" href="#317">317</a>                     } <strong>finally</strong> {
+<a name="318" href="#318">318</a>                         StoredIterator.close(i);
+<a name="319" href="#319">319</a>                     }
+<a name="320" href="#320">320</a>                 }
+<a name="321" href="#321">321</a>             }
+<a name="322" href="#322">322</a>             <strong>this</strong>.alreadyIncluded = createAlreadyIncluded();
+<a name="323" href="#323">323</a>             initQueue();
+<a name="324" href="#324">324</a>         } <strong>catch</strong> (IOException e) {
+<a name="325" href="#325">325</a>             e.printStackTrace();
+<a name="326" href="#326">326</a>             <strong>throw</strong> (FatalConfigurationException)
+<a name="327" href="#327">327</a>                 <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/FatalConfigurationException.html">FatalConfigurationException</a>(e.getMessage()).initCause(e);
+<a name="328" href="#328">328</a>         } <strong>catch</strong> (Exception e) {
+<a name="329" href="#329">329</a>             e.printStackTrace();
+<a name="330" href="#330">330</a>             <strong>throw</strong> (FatalConfigurationException)
+<a name="331" href="#331">331</a>                 <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/FatalConfigurationException.html">FatalConfigurationException</a>(e.getMessage()).initCause(e);
+<a name="332" href="#332">332</a>         }
+<a name="333" href="#333">333</a>         
+<a name="334" href="#334">334</a>         initCostPolicy();
+<a name="335" href="#335">335</a>         
+<a name="336" href="#336">336</a>         loadSeeds();
+<a name="337" href="#337">337</a>     }
+<a name="338" href="#338">338</a>     
+<a name="339" href="#339">339</a>     <em>/**<em>*</em></em>
+<a name="340" href="#340">340</a> <em>     * Set up the various queues-of-queues used by the frontier. Override</em>
+<a name="341" href="#341">341</a> <em>     * in implementing subclasses to reduce or eliminate risk of queues</em>
+<a name="342" href="#342">342</a> <em>     * growing without bound. </em>
+<a name="343" href="#343">343</a> <em>     */</em>
+<a name="344" href="#344">344</a>     <strong>protected</strong> <strong>void</strong> initQueuesOfQueues() {
+<a name="345" href="#345">345</a>         <em class="comment">// small risk of OutOfMemoryError: if 'hold-queues' is false,</em>
+<a name="346" href="#346">346</a>         <em class="comment">// readyClassQueues may grow in size without bound</em>
+<a name="347" href="#347">347</a>         readyClassQueues = <strong>new</strong> LinkedBlockingQueue&lt;String>();
+<a name="348" href="#348">348</a>         <em class="comment">// risk of OutOfMemoryError: in large crawls, </em>
+<a name="349" href="#349">349</a>         <em class="comment">// inactiveQueues may grow in size without bound</em>
+<a name="350" href="#350">350</a>         inactiveQueues = <strong>new</strong> LinkedBlockingQueue&lt;String>();
+<a name="351" href="#351">351</a>         <em class="comment">// risk of OutOfMemoryError: in large crawls with queue max-budgets, </em>
+<a name="352" href="#352">352</a>         <em class="comment">// inactiveQueues may grow in size without bound</em>
+<a name="353" href="#353">353</a>         retiredQueues = <strong>new</strong> LinkedBlockingQueue&lt;String>();
+<a name="354" href="#354">354</a>         <em class="comment">// small risk of OutOfMemoryError: in large crawls with many </em>
+<a name="355" href="#355">355</a>         <em class="comment">// unresponsive queues, an unbounded number of snoozed queues </em>
+<a name="356" href="#356">356</a>         <em class="comment">// may exist</em>
+<a name="357" href="#357">357</a>         snoozedClassQueues = Collections.synchronizedSortedSet(<strong>new</strong> TreeSet&lt;WorkQueue>());
+<a name="358" href="#358">358</a>     }
+<a name="359" href="#359">359</a> 
+<a name="360" href="#360">360</a>     <em>/**<em>*</em></em>
+<a name="361" href="#361">361</a> <em>     * Set (or reset after configuration change) the cost policy in effect.</em>
+<a name="362" href="#362">362</a> <em>     * </em>
+<a name="363" href="#363">363</a> <em>     * @throws FatalConfigurationException</em>
+<a name="364" href="#364">364</a> <em>     */</em>
+<a name="365" href="#365">365</a>     <strong>private</strong> <strong>void</strong> initCostPolicy() throws FatalConfigurationException {
+<a name="366" href="#366">366</a>         <strong>try</strong> {
+<a name="367" href="#367">367</a>             costAssignmentPolicy = (CostAssignmentPolicy) Class.forName(
+<a name="368" href="#368">368</a>                     (String) getUncheckedAttribute(<strong>null</strong>, ATTR_COST_POLICY))
+<a name="369" href="#369">369</a>                     .newInstance();
+<a name="370" href="#370">370</a>         } <strong>catch</strong> (Exception e) {
+<a name="371" href="#371">371</a>             e.printStackTrace();
+<a name="372" href="#372">372</a>             <strong>throw</strong> <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/FatalConfigurationException.html">FatalConfigurationException</a>(e.getMessage());
+<a name="373" href="#373">373</a>         }
+<a name="374" href="#374">374</a>     }
+<a name="375" href="#375">375</a> 
+<a name="376" href="#376">376</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="377" href="#377">377</a> <em class="comment">     * @see org.archive.crawler.frontier.AbstractFrontier#crawlEnded(java.lang.String)</em>
+<a name="378" href="#378">378</a> <em class="comment">     */</em>
+<a name="379" href="#379">379</a>     <strong>public</strong> <strong>void</strong> crawlEnded(String sExitMessage) {
+<a name="380" href="#380">380</a>         <em class="comment">// Cleanup.  CrawlJobs persist after crawl has finished so undo any</em>
+<a name="381" href="#381">381</a>         <em class="comment">// references.</em>
+<a name="382" href="#382">382</a>         <strong>if</strong> (<strong>this</strong>.alreadyIncluded != <strong>null</strong>) {
+<a name="383" href="#383">383</a>             <strong>this</strong>.alreadyIncluded.close();
+<a name="384" href="#384">384</a>             <strong>this</strong>.alreadyIncluded = <strong>null</strong>;
+<a name="385" href="#385">385</a>         }
+<a name="386" href="#386">386</a>         
+<a name="387" href="#387">387</a>         <strong>try</strong> {
+<a name="388" href="#388">388</a>             closeQueue();
+<a name="389" href="#389">389</a>         } <strong>catch</strong> (IOException e) {
+<a name="390" href="#390">390</a>             <em class="comment">// FIXME exception handling</em>
+<a name="391" href="#391">391</a>             e.printStackTrace();
+<a name="392" href="#392">392</a>         }
+<a name="393" href="#393">393</a>         <strong>this</strong>.wakeTimer.cancel();
+<a name="394" href="#394">394</a>         
+<a name="395" href="#395">395</a>         <strong>this</strong>.allQueues.clear();
+<a name="396" href="#396">396</a>         <strong>this</strong>.allQueues = <strong>null</strong>;
+<a name="397" href="#397">397</a>         <strong>this</strong>.inProcessQueues = <strong>null</strong>;
+<a name="398" href="#398">398</a>         <strong>this</strong>.readyClassQueues = <strong>null</strong>;
+<a name="399" href="#399">399</a>         <strong>this</strong>.snoozedClassQueues = <strong>null</strong>;
+<a name="400" href="#400">400</a>         <strong>this</strong>.inactiveQueues = <strong>null</strong>;
+<a name="401" href="#401">401</a>         <strong>this</strong>.retiredQueues = <strong>null</strong>;
+<a name="402" href="#402">402</a>         
+<a name="403" href="#403">403</a>         <strong>this</strong>.costAssignmentPolicy = <strong>null</strong>;
+<a name="404" href="#404">404</a>         
+<a name="405" href="#405">405</a>         <em class="comment">// Clearing controller is a problem. We get NPEs in #preNext.</em>
+<a name="406" href="#406">406</a>         <strong>super</strong>.crawlEnded(sExitMessage);
+<a name="407" href="#407">407</a>         <strong>this</strong>.controller = <strong>null</strong>;
+<a name="408" href="#408">408</a>     }
+<a name="409" href="#409">409</a> 
+<a name="410" href="#410">410</a>     <em>/**<em>*</em></em>
+<a name="411" href="#411">411</a> <em>     * Create a UriUniqFilter that will serve as record </em>
+<a name="412" href="#412">412</a> <em>     * of already seen URIs.</em>
+<a name="413" href="#413">413</a> <em>     *</em>
+<a name="414" href="#414">414</a> <em>     * @return A UURISet that will serve as a record of already seen URIs</em>
+<a name="415" href="#415">415</a> <em>     * @throws IOException</em>
+<a name="416" href="#416">416</a> <em>     */</em>
+<a name="417" href="#417">417</a>     <strong>protected</strong> <strong>abstract</strong> <a href="../../../../org/archive/crawler/datamodel/UriUniqFilter.html">UriUniqFilter</a> createAlreadyIncluded() throws IOException;
+<a name="418" href="#418">418</a> 
+<a name="419" href="#419">419</a>     <em>/**<em>*</em></em>
+<a name="420" href="#420">420</a> <em>     * Arrange for the given CandidateURI to be visited, if it is not</em>
+<a name="421" href="#421">421</a> <em>     * already scheduled/completed.</em>
+<a name="422" href="#422">422</a> <em>     *</em>
+<a name="423" href="#423">423</a> <em>     * @see org.archive.crawler.framework.Frontier#schedule(org.archive.crawler.datamodel.CandidateURI)</em>
+<a name="424" href="#424">424</a> <em>     */</em>
+<a name="425" href="#425">425</a>     <strong>public</strong> <strong>void</strong> schedule(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri) {
+<a name="426" href="#426">426</a>         <em class="comment">// Canonicalization may set forceFetch flag.  See</em>
+<a name="427" href="#427">427</a>         <em class="comment">// #canonicalization(CandidateURI) javadoc for circumstance.</em>
+<a name="428" href="#428">428</a>         String canon = canonicalize(caUri);
+<a name="429" href="#429">429</a>         <strong>if</strong> (caUri.forceFetch()) {
+<a name="430" href="#430">430</a>             alreadyIncluded.addForce(canon, caUri);
+<a name="431" href="#431">431</a>         } <strong>else</strong> {
+<a name="432" href="#432">432</a>             alreadyIncluded.add(canon, caUri);
+<a name="433" href="#433">433</a>         }
+<a name="434" href="#434">434</a>     }
+<a name="435" href="#435">435</a> 
+<a name="436" href="#436">436</a>     <em>/**<em>*</em></em>
+<a name="437" href="#437">437</a> <em>     * Accept the given CandidateURI for scheduling, as it has</em>
+<a name="438" href="#438">438</a> <em>     * passed the alreadyIncluded filter. </em>
+<a name="439" href="#439">439</a> <em>     * </em>
+<a name="440" href="#440">440</a> <em>     * Choose a per-classKey queue and enqueue it. If this</em>
+<a name="441" href="#441">441</a> <em>     * item has made an unready queue ready, place that </em>
+<a name="442" href="#442">442</a> <em>     * queue on the readyClassQueues queue. </em>
+<a name="443" href="#443">443</a> <em>     * @param caUri CandidateURI.</em>
+<a name="444" href="#444">444</a> <em>     */</em>
+<a name="445" href="#445">445</a>     <strong>public</strong> <strong>void</strong> receive(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri) {
+<a name="446" href="#446">446</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi = asCrawlUri(caUri);
+<a name="447" href="#447">447</a>         applySpecialHandling(curi);
+<a name="448" href="#448">448</a>         sendToQueue(curi);
+<a name="449" href="#449">449</a>         <em class="comment">// Update recovery log.</em>
+<a name="450" href="#450">450</a>         doJournalAdded(curi);
+<a name="451" href="#451">451</a>     }
+<a name="452" href="#452">452</a> 
+<a name="453" href="#453">453</a> 	<em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="454" href="#454">454</a> <em class="comment">	 * @see org.archive.crawler.frontier.AbstractFrontier#asCrawlUri(org.archive.crawler.datamodel.CandidateURI)</em>
+<a name="455" href="#455">455</a> <em class="comment">	 */</em>
+<a name="456" href="#456">456</a> 	<strong>protected</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> asCrawlUri(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri) {
+<a name="457" href="#457">457</a> 		CrawlURI curi = <strong>super</strong>.asCrawlUri(caUri);
+<a name="458" href="#458">458</a> 		<em class="comment">// force cost to be calculated, pre-insert</em>
+<a name="459" href="#459">459</a> 		getCost(curi);
+<a name="460" href="#460">460</a> 		<strong>return</strong> curi;
+<a name="461" href="#461">461</a> 	}
+<a name="462" href="#462">462</a> 	
+<a name="463" href="#463">463</a>     <em>/**<em>*</em></em>
+<a name="464" href="#464">464</a> <em>     * Send a CrawlURI to the appropriate subqueue.</em>
+<a name="465" href="#465">465</a> <em>     * </em>
+<a name="466" href="#466">466</a> <em>     * @param curi</em>
+<a name="467" href="#467">467</a> <em>     */</em>
+<a name="468" href="#468">468</a>     <strong>protected</strong> <strong>void</strong> sendToQueue(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="469" href="#469">469</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq = getQueueFor(curi);
+<a name="470" href="#470">470</a>         <strong>synchronized</strong> (wq) {
+<a name="471" href="#471">471</a>             wq.enqueue(<strong>this</strong>, curi);
+<a name="472" href="#472">472</a>             <strong>if</strong>(!wq.isRetired()) {
+<a name="473" href="#473">473</a>                 incrementQueuedUriCount();
+<a name="474" href="#474">474</a>             }
+<a name="475" href="#475">475</a>             <strong>if</strong>(!wq.isHeld()) {
+<a name="476" href="#476">476</a>                 wq.setHeld();
+<a name="477" href="#477">477</a>                 <strong>if</strong>(holdQueues() &amp;&amp; readyClassQueues.size()>=targetSizeForReadyQueues()) {
+<a name="478" href="#478">478</a>                     deactivateQueue(wq);
+<a name="479" href="#479">479</a>                 } <strong>else</strong> {
+<a name="480" href="#480">480</a>                     replenishSessionBalance(wq);
+<a name="481" href="#481">481</a>                     readyQueue(wq);
+<a name="482" href="#482">482</a>                 }
+<a name="483" href="#483">483</a>             }
+<a name="484" href="#484">484</a>             <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> laq = longestActiveQueue;
+<a name="485" href="#485">485</a>             <strong>if</strong>(!wq.isRetired()&amp;&amp;((laq==<strong>null</strong>) || wq.getCount() > laq.getCount())) {
+<a name="486" href="#486">486</a>                 longestActiveQueue = wq; 
+<a name="487" href="#487">487</a>             }
+<a name="488" href="#488">488</a>         }
+<a name="489" href="#489">489</a>     }
+<a name="490" href="#490">490</a> 
+<a name="491" href="#491">491</a>     <em>/**<em>*</em></em>
+<a name="492" href="#492">492</a> <em>     * Whether queues should start inactive (only becoming active when needed</em>
+<a name="493" href="#493">493</a> <em>     * to keep the crawler busy), or if queues should start out ready.</em>
+<a name="494" href="#494">494</a> <em>     * </em>
+<a name="495" href="#495">495</a> <em>     * @return true if new queues should held inactive</em>
+<a name="496" href="#496">496</a> <em>     */</em>
+<a name="497" href="#497">497</a>     <strong>private</strong> <strong>boolean</strong> holdQueues() {
+<a name="498" href="#498">498</a>         <strong>return</strong> ((Boolean) getUncheckedAttribute(<strong>null</strong>, ATTR_HOLD_QUEUES))
+<a name="499" href="#499">499</a>                 .booleanValue();
+<a name="500" href="#500">500</a>     }
+<a name="501" href="#501">501</a> 
+<a name="502" href="#502">502</a>     <em>/**<em>*</em></em>
+<a name="503" href="#503">503</a> <em>     * Put the given queue on the readyClassQueues queue</em>
+<a name="504" href="#504">504</a> <em>     * @param wq</em>
+<a name="505" href="#505">505</a> <em>     */</em>
+<a name="506" href="#506">506</a>     <strong>private</strong> <strong>void</strong> readyQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq) {
+<a name="507" href="#507">507</a>         <strong>try</strong> {
+<a name="508" href="#508">508</a>             wq.setActive(<strong>this</strong>, <strong>true</strong>);
+<a name="509" href="#509">509</a>             readyClassQueues.put(wq.getClassKey());
+<a name="510" href="#510">510</a>         } <strong>catch</strong> (InterruptedException e) {
+<a name="511" href="#511">511</a>             e.printStackTrace();
+<a name="512" href="#512">512</a>             System.err.println(<span class="string">"unable to ready queue "</span>+wq);
+<a name="513" href="#513">513</a>             <em class="comment">// propagate interrupt up </em>
+<a name="514" href="#514">514</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="515" href="#515">515</a>         }
+<a name="516" href="#516">516</a>     }
+<a name="517" href="#517">517</a> 
+<a name="518" href="#518">518</a>     <em>/**<em>*</em></em>
+<a name="519" href="#519">519</a> <em>     * Put the given queue on the inactiveQueues queue</em>
+<a name="520" href="#520">520</a> <em>     * @param wq</em>
+<a name="521" href="#521">521</a> <em>     */</em>
+<a name="522" href="#522">522</a>     <strong>private</strong> <strong>void</strong> deactivateQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq) {
+<a name="523" href="#523">523</a> <em class="comment">//        try {</em>
+<a name="524" href="#524">524</a>             wq.setSessionBalance(0); <em class="comment">// zero out session balance</em>
+<a name="525" href="#525">525</a>             inactiveQueues.add(wq.getClassKey());
+<a name="526" href="#526">526</a>             wq.setActive(<strong>this</strong>, false);
+<a name="527" href="#527">527</a> <em class="comment">//        } catch (InterruptedException e) {</em>
+<a name="528" href="#528">528</a> <em class="comment">//            e.printStackTrace();</em>
+<a name="529" href="#529">529</a> <em class="comment">//            System.err.println("unable to deactivate queue "+wq);</em>
+<a name="530" href="#530">530</a> <em class="comment">//            // propagate interrupt up </em>
+<a name="531" href="#531">531</a> <em class="comment">//            throw new RuntimeException(e);</em>
+<a name="532" href="#532">532</a> <em class="comment">//        }</em>
+<a name="533" href="#533">533</a>     }
+<a name="534" href="#534">534</a>     
+<a name="535" href="#535">535</a>     <em>/**<em>*</em></em>
+<a name="536" href="#536">536</a> <em>     * Put the given queue on the retiredQueues queue</em>
+<a name="537" href="#537">537</a> <em>     * @param wq</em>
+<a name="538" href="#538">538</a> <em>     */</em>
+<a name="539" href="#539">539</a>     <strong>private</strong> <strong>void</strong> retireQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq) {
+<a name="540" href="#540">540</a> <em class="comment">//        try {</em>
+<a name="541" href="#541">541</a>             retiredQueues.add(wq.getClassKey());
+<a name="542" href="#542">542</a>             decrementQueuedCount(wq.getCount());
+<a name="543" href="#543">543</a>             wq.setRetired(<strong>true</strong>);
+<a name="544" href="#544">544</a>             wq.setActive(<strong>this</strong>, false);
+<a name="545" href="#545">545</a> <em class="comment">//        } catch (InterruptedException e) {</em>
+<a name="546" href="#546">546</a> <em class="comment">//            e.printStackTrace();</em>
+<a name="547" href="#547">547</a> <em class="comment">//            System.err.println("unable to retire queue "+wq);</em>
+<a name="548" href="#548">548</a> <em class="comment">//            // propagate interrupt up </em>
+<a name="549" href="#549">549</a> <em class="comment">//            throw new RuntimeException(e);</em>
+<a name="550" href="#550">550</a> <em class="comment">//        }</em>
+<a name="551" href="#551">551</a>     }
+<a name="552" href="#552">552</a>     
+<a name="553" href="#553">553</a>     <em>/**<em>* </em></em>
+<a name="554" href="#554">554</a> <em>     * Accomodate any changes in settings.</em>
+<a name="555" href="#555">555</a> <em>     * </em>
+<a name="556" href="#556">556</a> <em>     * @see org.archive.crawler.framework.Frontier#kickUpdate()</em>
+<a name="557" href="#557">557</a> <em>     */</em>
+<a name="558" href="#558">558</a>     <strong>public</strong> <strong>void</strong> kickUpdate() {
+<a name="559" href="#559">559</a>         <strong>super</strong>.kickUpdate();
+<a name="560" href="#560">560</a>         <strong>int</strong> target = (Integer)getUncheckedAttribute(<strong>null</strong>,
+<a name="561" href="#561">561</a>                 ATTR_TARGET_READY_QUEUES_BACKLOG);
+<a name="562" href="#562">562</a>         <strong>if</strong> (target &lt; 1) {
+<a name="563" href="#563">563</a>             target = 1;
+<a name="564" href="#564">564</a>         }
+<a name="565" href="#565">565</a>         <strong>this</strong>.targetSizeForReadyQueues = target; 
+<a name="566" href="#566">566</a>         <strong>try</strong> {
+<a name="567" href="#567">567</a>             initCostPolicy();
+<a name="568" href="#568">568</a>         } <strong>catch</strong> (FatalConfigurationException fce) {
+<a name="569" href="#569">569</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(fce);
+<a name="570" href="#570">570</a>         }
+<a name="571" href="#571">571</a>         <em class="comment">// The rules for a 'retired' queue may have changed; so,</em>
+<a name="572" href="#572">572</a>         <em class="comment">// unretire all queues to 'inactive'. If they still qualify</em>
+<a name="573" href="#573">573</a>         <em class="comment">// as retired/overbudget next time they come up, they'll</em>
+<a name="574" href="#574">574</a>         <em class="comment">// be re-retired; if not, they'll get a chance to become</em>
+<a name="575" href="#575">575</a>         <em class="comment">// active under the new rules.</em>
+<a name="576" href="#576">576</a>         Object key = <strong>this</strong>.retiredQueues.poll();
+<a name="577" href="#577">577</a>         <strong>while</strong> (key != <strong>null</strong>) {
+<a name="578" href="#578">578</a>             <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> q = (WorkQueue)<strong>this</strong>.allQueues.get(key);
+<a name="579" href="#579">579</a>             <strong>if</strong>(q != <strong>null</strong>) {
+<a name="580" href="#580">580</a>                 unretireQueue(q);
+<a name="581" href="#581">581</a>             }
+<a name="582" href="#582">582</a>             key = <strong>this</strong>.retiredQueues.poll();
+<a name="583" href="#583">583</a>         }
+<a name="584" href="#584">584</a>     }
+<a name="585" href="#585">585</a>     <em>/**<em>*</em></em>
+<a name="586" href="#586">586</a> <em>     * Restore a retired queue to the 'inactive' state. </em>
+<a name="587" href="#587">587</a> <em>     * </em>
+<a name="588" href="#588">588</a> <em>     * @param q</em>
+<a name="589" href="#589">589</a> <em>     */</em>
+<a name="590" href="#590">590</a>     <strong>private</strong> <strong>void</strong> unretireQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> q) {
+<a name="591" href="#591">591</a>         deactivateQueue(q);
+<a name="592" href="#592">592</a>         q.setRetired(false); 
+<a name="593" href="#593">593</a>         incrementQueuedUriCount(q.getCount());
+<a name="594" href="#594">594</a>     }
+<a name="595" href="#595">595</a> 
+<a name="596" href="#596">596</a>     <em>/**<em>*</em></em>
+<a name="597" href="#597">597</a> <em>     * Return the work queue for the given CrawlURI's classKey. URIs</em>
+<a name="598" href="#598">598</a> <em>     * are ordered and politeness-delayed within their 'class'.</em>
+<a name="599" href="#599">599</a> <em>     * If the requested queue is not found, a new instance is created.</em>
+<a name="600" href="#600">600</a> <em>     * </em>
+<a name="601" href="#601">601</a> <em>     * @param curi CrawlURI to base queue on</em>
+<a name="602" href="#602">602</a> <em>     * @return the found or created ClassKeyQueue</em>
+<a name="603" href="#603">603</a> <em>     */</em>
+<a name="604" href="#604">604</a>     <strong>protected</strong> <strong>abstract</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> getQueueFor(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi);
+<a name="605" href="#605">605</a> 
+<a name="606" href="#606">606</a>     <em>/**<em>*</em></em>
+<a name="607" href="#607">607</a> <em>     * Return the work queue for the given classKey, or null</em>
+<a name="608" href="#608">608</a> <em>     * if no such queue exists.</em>
+<a name="609" href="#609">609</a> <em>     * </em>
+<a name="610" href="#610">610</a> <em>     * @param classKey key to look for</em>
+<a name="611" href="#611">611</a> <em>     * @return the found WorkQueue</em>
+<a name="612" href="#612">612</a> <em>     */</em>
+<a name="613" href="#613">613</a>     <strong>protected</strong> <strong>abstract</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> getQueueFor(String classKey);
+<a name="614" href="#614">614</a>     
+<a name="615" href="#615">615</a>     <em>/**<em>*</em></em>
+<a name="616" href="#616">616</a> <em>     * Return the next CrawlURI to be processed (and presumably</em>
+<a name="617" href="#617">617</a> <em>     * visited/fetched) by a a worker thread.</em>
+<a name="618" href="#618">618</a> <em>     *</em>
+<a name="619" href="#619">619</a> <em>     * Relies on the readyClassQueues having been loaded with</em>
+<a name="620" href="#620">620</a> <em>     * any work queues that are eligible to provide a URI. </em>
+<a name="621" href="#621">621</a> <em>     *</em>
+<a name="622" href="#622">622</a> <em>     * @return next CrawlURI to be processed. Or null if none is available.</em>
+<a name="623" href="#623">623</a> <em>     *</em>
+<a name="624" href="#624">624</a> <em>     * @see org.archive.crawler.framework.Frontier#next()</em>
+<a name="625" href="#625">625</a> <em>     */</em>
+<a name="626" href="#626">626</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> next()
+<a name="627" href="#627">627</a>     throws InterruptedException, <a href="../../../../org/archive/crawler/framework/exceptions/EndedException.html">EndedException</a> {
+<a name="628" href="#628">628</a>         <strong>while</strong> (<strong>true</strong>) { <em class="comment">// loop left only by explicit return or exception</em>
+<a name="629" href="#629">629</a>             <strong>long</strong> now = System.currentTimeMillis();
+<a name="630" href="#630">630</a> 
+<a name="631" href="#631">631</a>             <em class="comment">// Do common checks for pause, terminate, bandwidth-hold</em>
+<a name="632" href="#632">632</a>             preNext(now);
+<a name="633" href="#633">633</a>             
+<a name="634" href="#634">634</a>             <em class="comment">// allow up-to-1 thread to fill readyClassQueues to target</em>
+<a name="635" href="#635">635</a>             <strong>if</strong>(readyFiller.tryAcquire()) {
+<a name="636" href="#636">636</a>                 <strong>try</strong> {
+<a name="637" href="#637">637</a>                     <strong>int</strong> activationsNeeded = targetSizeForReadyQueues() - readyClassQueues.size();
+<a name="638" href="#638">638</a>                     <strong>while</strong>(activationsNeeded > 0 &amp;&amp; !inactiveQueues.isEmpty()) {
+<a name="639" href="#639">639</a>                         activateInactiveQueue();
+<a name="640" href="#640">640</a>                         activationsNeeded--;
+<a name="641" href="#641">641</a>                     }
+<a name="642" href="#642">642</a>                 } <strong>finally</strong> {
+<a name="643" href="#643">643</a>                     readyFiller.release();
+<a name="644" href="#644">644</a>                 }
+<a name="645" href="#645">645</a>             }
+<a name="646" href="#646">646</a>                    
+<a name="647" href="#647">647</a>             <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> readyQ = <strong>null</strong>;
+<a name="648" href="#648">648</a>             Object key = readyClassQueues.poll(DEFAULT_WAIT,TimeUnit.MILLISECONDS);
+<a name="649" href="#649">649</a>             <strong>if</strong> (key != <strong>null</strong>) {
+<a name="650" href="#650">650</a>                 readyQ = (WorkQueue)<strong>this</strong>.allQueues.get(key);
+<a name="651" href="#651">651</a>             }
+<a name="652" href="#652">652</a>             <strong>if</strong> (readyQ != <strong>null</strong>) {
+<a name="653" href="#653">653</a>                 <strong>while</strong>(<strong>true</strong>) { <em class="comment">// loop left by explicit return or break on empty</em>
+<a name="654" href="#654">654</a>                     <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi = <strong>null</strong>;
+<a name="655" href="#655">655</a>                     <strong>synchronized</strong>(readyQ) {
+<a name="656" href="#656">656</a>                         curi = readyQ.peek(<strong>this</strong>);                     
+<a name="657" href="#657">657</a>                         <strong>if</strong> (curi != <strong>null</strong>) {
+<a name="658" href="#658">658</a>                             <em class="comment">// check if curi belongs in different queue</em>
+<a name="659" href="#659">659</a>                             String currentQueueKey = getClassKey(curi);
+<a name="660" href="#660">660</a>                             <strong>if</strong> (currentQueueKey.equals(curi.getClassKey())) {
+<a name="661" href="#661">661</a>                                 <em class="comment">// curi was in right queue, emit</em>
+<a name="662" href="#662">662</a>                                 noteAboutToEmit(curi, readyQ);
+<a name="663" href="#663">663</a>                                 inProcessQueues.add(readyQ);
+<a name="664" href="#664">664</a>                                 <strong>return</strong> curi;
+<a name="665" href="#665">665</a>                             }
+<a name="666" href="#666">666</a>                             <em class="comment">// URI's assigned queue has changed since it</em>
+<a name="667" href="#667">667</a>                             <em class="comment">// was queued (eg because its IP has become</em>
+<a name="668" href="#668">668</a>                             <em class="comment">// known). Requeue to new queue.</em>
+<a name="669" href="#669">669</a>                             curi.setClassKey(currentQueueKey);
+<a name="670" href="#670">670</a>                             readyQ.dequeue(<strong>this</strong>);
+<a name="671" href="#671">671</a>                             decrementQueuedCount(1);
+<a name="672" href="#672">672</a>                             curi.setHolderKey(<strong>null</strong>);
+<a name="673" href="#673">673</a>                             <em class="comment">// curi will be requeued to true queue after lock</em>
+<a name="674" href="#674">674</a>                             <em class="comment">//  on readyQ is released, to prevent deadlock</em>
+<a name="675" href="#675">675</a>                         } <strong>else</strong> {
+<a name="676" href="#676">676</a>                             <em class="comment">// readyQ is empty and ready: it's exhausted</em>
+<a name="677" href="#677">677</a>                             <em class="comment">// release held status, allowing any subsequent </em>
+<a name="678" href="#678">678</a>                             <em class="comment">// enqueues to again put queue in ready</em>
+<a name="679" href="#679">679</a>                             readyQ.clearHeld();
+<a name="680" href="#680">680</a>                             <strong>break</strong>;
+<a name="681" href="#681">681</a>                         }
+<a name="682" href="#682">682</a>                     }
+<a name="683" href="#683">683</a>                     <strong>if</strong>(curi!=<strong>null</strong>) {
+<a name="684" href="#684">684</a>                         <em class="comment">// complete the requeuing begun earlier</em>
+<a name="685" href="#685">685</a>                         sendToQueue(curi);
+<a name="686" href="#686">686</a>                     }
+<a name="687" href="#687">687</a>                 }
+<a name="688" href="#688">688</a>             } <strong>else</strong> {
+<a name="689" href="#689">689</a>                 <em class="comment">// ReadyQ key wasn't in all queues: unexpected</em>
+<a name="690" href="#690">690</a>                 <strong>if</strong> (key != <strong>null</strong>) {
+<a name="691" href="#691">691</a>                     logger.severe(<span class="string">"Key "</span>+ key +
+<a name="692" href="#692">692</a>                         <span class="string">" in readyClassQueues but not allQueues"</span>);
+<a name="693" href="#693">693</a>                 }
+<a name="694" href="#694">694</a>             }
+<a name="695" href="#695">695</a> 
+<a name="696" href="#696">696</a>             <strong>if</strong>(shouldTerminate) {
+<a name="697" href="#697">697</a>                 <em class="comment">// skip subsequent steps if already on last legs</em>
+<a name="698" href="#698">698</a>                 <strong>throw</strong> <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/EndedException.html">EndedException</a>(<span class="string">"shouldTerminate is true"</span>);
+<a name="699" href="#699">699</a>             }
+<a name="700" href="#700">700</a>                 
+<a name="701" href="#701">701</a>             <strong>if</strong>(inProcessQueues.size()==0) {
+<a name="702" href="#702">702</a>                 <em class="comment">// Nothing was ready or in progress or imminent to wake; ensure </em>
+<a name="703" href="#703">703</a>                 <em class="comment">// any piled-up pending-scheduled URIs are considered</em>
+<a name="704" href="#704">704</a>                 <strong>this</strong>.alreadyIncluded.requestFlush();
+<a name="705" href="#705">705</a>             }    
+<a name="706" href="#706">706</a>         }
+<a name="707" href="#707">707</a>     }
+<a name="708" href="#708">708</a> 
+<a name="709" href="#709">709</a>     <strong>private</strong> <strong>int</strong> targetSizeForReadyQueues() {
+<a name="710" href="#710">710</a>         <strong>return</strong> targetSizeForReadyQueues;
+<a name="711" href="#711">711</a>     }
+<a name="712" href="#712">712</a> 
+<a name="713" href="#713">713</a>     <em>/**<em>*</em></em>
+<a name="714" href="#714">714</a> <em>     * Return the 'cost' of a CrawlURI (how much of its associated</em>
+<a name="715" href="#715">715</a> <em>     * queue's budget it depletes upon attempted processing)</em>
+<a name="716" href="#716">716</a> <em>     * </em>
+<a name="717" href="#717">717</a> <em>     * @param curi</em>
+<a name="718" href="#718">718</a> <em>     * @return the associated cost</em>
+<a name="719" href="#719">719</a> <em>     */</em>
+<a name="720" href="#720">720</a>     <strong>private</strong> <strong>int</strong> getCost(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="721" href="#721">721</a>         <strong>int</strong> cost = curi.getHolderCost();
+<a name="722" href="#722">722</a>         <strong>if</strong> (cost == CrawlURI.UNCALCULATED) {
+<a name="723" href="#723">723</a>             cost = costAssignmentPolicy.costOf(curi);
+<a name="724" href="#724">724</a>             curi.setHolderCost(cost);
+<a name="725" href="#725">725</a>         }
+<a name="726" href="#726">726</a>         <strong>return</strong> cost;
+<a name="727" href="#727">727</a>     }
+<a name="728" href="#728">728</a>     
+<a name="729" href="#729">729</a>     <em>/**<em>*</em></em>
+<a name="730" href="#730">730</a> <em>     * Activate an inactive queue, if any are available. </em>
+<a name="731" href="#731">731</a> <em>     */</em>
+<a name="732" href="#732">732</a>     <strong>private</strong> <strong>void</strong> activateInactiveQueue() {
+<a name="733" href="#733">733</a>         Object key = <strong>this</strong>.inactiveQueues.poll();
+<a name="734" href="#734">734</a>         <strong>if</strong> (key == <strong>null</strong>) {
+<a name="735" href="#735">735</a>             <strong>return</strong>;
+<a name="736" href="#736">736</a>         }
+<a name="737" href="#737">737</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> candidateQ = (WorkQueue)<strong>this</strong>.allQueues.get(key);
+<a name="738" href="#738">738</a>         <strong>if</strong>(candidateQ != <strong>null</strong>) {
+<a name="739" href="#739">739</a>             <strong>synchronized</strong>(candidateQ) {
+<a name="740" href="#740">740</a>                 replenishSessionBalance(candidateQ);
+<a name="741" href="#741">741</a>                 <strong>if</strong>(candidateQ.isOverBudget()){
+<a name="742" href="#742">742</a>                     <em class="comment">// if still over-budget after an activation &amp; replenishing,</em>
+<a name="743" href="#743">743</a>                     <em class="comment">// retire</em>
+<a name="744" href="#744">744</a>                     retireQueue(candidateQ);
+<a name="745" href="#745">745</a>                     <strong>return</strong>;
+<a name="746" href="#746">746</a>                 } 
+<a name="747" href="#747">747</a>                 <strong>long</strong> now = System.currentTimeMillis();
+<a name="748" href="#748">748</a>                 <strong>long</strong> delay_ms = candidateQ.getWakeTime() - now;
+<a name="749" href="#749">749</a>                 <strong>if</strong>(delay_ms>0) {
+<a name="750" href="#750">750</a>                     <em class="comment">// queue still due for snoozing</em>
+<a name="751" href="#751">751</a>                     snoozeQueue(candidateQ,now,delay_ms);
+<a name="752" href="#752">752</a>                     <strong>return</strong>;
+<a name="753" href="#753">753</a>                 }
+<a name="754" href="#754">754</a>                 candidateQ.setWakeTime(0); <em class="comment">// clear obsolete wake time, if any</em>
+<a name="755" href="#755">755</a>                 readyQueue(candidateQ);
+<a name="756" href="#756">756</a>                 <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="757" href="#757">757</a>                     logger.fine(<span class="string">"ACTIVATED queue: "</span> +
+<a name="758" href="#758">758</a>                         candidateQ.getClassKey());
+<a name="759" href="#759">759</a>                    
+<a name="760" href="#760">760</a>                 }
+<a name="761" href="#761">761</a>             }
+<a name="762" href="#762">762</a>         }
+<a name="763" href="#763">763</a>     }
+<a name="764" href="#764">764</a> 
+<a name="765" href="#765">765</a>     <em>/**<em>*</em></em>
+<a name="766" href="#766">766</a> <em>     * Replenish the budget of the given queue by the appropriate amount.</em>
+<a name="767" href="#767">767</a> <em>     * </em>
+<a name="768" href="#768">768</a> <em>     * @param queue queue to replenish</em>
+<a name="769" href="#769">769</a> <em>     */</em>
+<a name="770" href="#770">770</a>     <strong>private</strong> <strong>void</strong> replenishSessionBalance(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> queue) {
+<a name="771" href="#771">771</a>         <a href="../../../../org/archive/net/UURI.html">UURI</a> contextUri = queue.getContextUURI(<strong>this</strong>); 
+<a name="772" href="#772">772</a>         
+<a name="773" href="#773">773</a>         <em class="comment">// TODO: consider confusing cross-effects of this and IP-based politeness</em>
+<a name="774" href="#774">774</a>         queue.setSessionBalance(((Integer) getUncheckedAttribute(contextUri,
+<a name="775" href="#775">775</a>                 ATTR_BALANCE_REPLENISH_AMOUNT)).intValue());
+<a name="776" href="#776">776</a>         <em class="comment">// reset total budget (it may have changed)</em>
+<a name="777" href="#777">777</a>         <em class="comment">// TODO: is this the best way to be sensitive to potential mid-crawl changes</em>
+<a name="778" href="#778">778</a>         <strong>long</strong> totalBudget = ((Long)getUncheckedAttribute(contextUri,ATTR_QUEUE_TOTAL_BUDGET)).<strong>long</strong>Value();
+<a name="779" href="#779">779</a>         queue.setTotalBudget(totalBudget);
+<a name="780" href="#780">780</a>     }
+<a name="781" href="#781">781</a> 
+<a name="782" href="#782">782</a>     <em>/**<em>*</em></em>
+<a name="783" href="#783">783</a> <em>     * Enqueue the given queue to either readyClassQueues or inactiveQueues,</em>
+<a name="784" href="#784">784</a> <em>     * as appropriate.</em>
+<a name="785" href="#785">785</a> <em>     * </em>
+<a name="786" href="#786">786</a> <em>     * @param wq</em>
+<a name="787" href="#787">787</a> <em>     */</em>
+<a name="788" href="#788">788</a>     <strong>private</strong> <strong>void</strong> reenqueueQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq) {
+<a name="789" href="#789">789</a>         <strong>if</strong>(wq.isOverBudget()) {
+<a name="790" href="#790">790</a>             <em class="comment">// if still over budget, deactivate</em>
+<a name="791" href="#791">791</a>             <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="792" href="#792">792</a>                 logger.fine(<span class="string">"DEACTIVATED queue: "</span> +
+<a name="793" href="#793">793</a>                     wq.getClassKey());
+<a name="794" href="#794">794</a>             }
+<a name="795" href="#795">795</a>             deactivateQueue(wq);
+<a name="796" href="#796">796</a>         } <strong>else</strong> {
+<a name="797" href="#797">797</a>             readyQueue(wq);
+<a name="798" href="#798">798</a>         }
+<a name="799" href="#799">799</a>     }
+<a name="800" href="#800">800</a>     
+<a name="801" href="#801">801</a>     <em>/**<em>*</em></em>
+<a name="802" href="#802">802</a> <em>     * Wake any queues sitting in the snoozed queue whose time has come.</em>
+<a name="803" href="#803">803</a> <em>     */</em>
+<a name="804" href="#804">804</a>     <strong>void</strong> wakeQueues() {
+<a name="805" href="#805">805</a>         <strong>synchronized</strong> (snoozedClassQueues) {
+<a name="806" href="#806">806</a>             <strong>long</strong> now = System.currentTimeMillis();
+<a name="807" href="#807">807</a>             <strong>long</strong> nextWakeDelay = 0;
+<a name="808" href="#808">808</a>             <strong>int</strong> wokenQueuesCount = 0;
+<a name="809" href="#809">809</a>             <strong>while</strong> (<strong>true</strong>) {
+<a name="810" href="#810">810</a>                 <strong>if</strong> (snoozedClassQueues.isEmpty()) {
+<a name="811" href="#811">811</a>                     <strong>return</strong>;
+<a name="812" href="#812">812</a>                 }
+<a name="813" href="#813">813</a>                 <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> peek = (WorkQueue) snoozedClassQueues.first();
+<a name="814" href="#814">814</a>                 nextWakeDelay = peek.getWakeTime() - now;
+<a name="815" href="#815">815</a>                 <strong>if</strong> (nextWakeDelay &lt;= 0) {
+<a name="816" href="#816">816</a>                     snoozedClassQueues.remove(peek);
+<a name="817" href="#817">817</a>                     peek.setWakeTime(0);
+<a name="818" href="#818">818</a>                     reenqueueQueue(peek);
+<a name="819" href="#819">819</a>                     wokenQueuesCount++;
+<a name="820" href="#820">820</a>                 } <strong>else</strong> {
+<a name="821" href="#821">821</a>                     <strong>break</strong>;
+<a name="822" href="#822">822</a>                 }
+<a name="823" href="#823">823</a>             }
+<a name="824" href="#824">824</a>             <strong>this</strong>.nextWake = <strong>new</strong> WakeTask();
+<a name="825" href="#825">825</a>             <strong>this</strong>.wakeTimer.schedule(nextWake,nextWakeDelay);
+<a name="826" href="#826">826</a>         }
+<a name="827" href="#827">827</a>     }
+<a name="828" href="#828">828</a> 
+<a name="829" href="#829">829</a>     <em>/**<em>*</em></em>
+<a name="830" href="#830">830</a> <em>     * Note that the previously emitted CrawlURI has completed</em>
+<a name="831" href="#831">831</a> <em>     * its processing (for now).</em>
+<a name="832" href="#832">832</a> <em>     *</em>
+<a name="833" href="#833">833</a> <em>     * The CrawlURI may be scheduled to retry, if appropriate,</em>
+<a name="834" href="#834">834</a> <em>     * and other related URIs may become eligible for release</em>
+<a name="835" href="#835">835</a> <em>     * via the next next() call, as a result of finished().</em>
+<a name="836" href="#836">836</a> <em>     *</em>
+<a name="837" href="#837">837</a> <em>     *  (non-Javadoc)</em>
+<a name="838" href="#838">838</a> <em>     * @see org.archive.crawler.framework.Frontier#finished(org.archive.crawler.datamodel.CrawlURI)</em>
+<a name="839" href="#839">839</a> <em>     */</em>
+<a name="840" href="#840">840</a>     <strong>public</strong> <strong>void</strong> finished(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="841" href="#841">841</a>         <strong>long</strong> now = System.currentTimeMillis();
+<a name="842" href="#842">842</a> 
+<a name="843" href="#843">843</a>         curi.incrementFetchAttempts();
+<a name="844" href="#844">844</a>         logLocalizedErrors(curi);
+<a name="845" href="#845">845</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq = (WorkQueue) curi.getHolder();
+<a name="846" href="#846">846</a>         assert (wq.peek(<strong>this</strong>) == curi) : <span class="string">"unexpected peek "</span> + wq;
+<a name="847" href="#847">847</a>         inProcessQueues.remove(wq, 1);
+<a name="848" href="#848">848</a> 
+<a name="849" href="#849">849</a>         <strong>if</strong>(includesRetireDirective(curi)) {
+<a name="850" href="#850">850</a>             <em class="comment">// CrawlURI is marked to trigger retirement of its queue</em>
+<a name="851" href="#851">851</a>             curi.processingCleanup();
+<a name="852" href="#852">852</a>             wq.unpeek();
+<a name="853" href="#853">853</a>             wq.update(<strong>this</strong>, curi); <em class="comment">// rewrite any changes</em>
+<a name="854" href="#854">854</a>             retireQueue(wq);
+<a name="855" href="#855">855</a>             <strong>return</strong>;
+<a name="856" href="#856">856</a>         }
+<a name="857" href="#857">857</a>         
+<a name="858" href="#858">858</a>         <strong>if</strong> (needsRetrying(curi)) {
+<a name="859" href="#859">859</a>             <em class="comment">// Consider errors which can be retried, leaving uri atop queue</em>
+<a name="860" href="#860">860</a>             <strong>if</strong>(curi.getFetchStatus()!=S_DEFERRED) {
+<a name="861" href="#861">861</a>                 wq.expend(getCost(curi)); <em class="comment">// all retries but DEFERRED cost</em>
+<a name="862" href="#862">862</a>             }
+<a name="863" href="#863">863</a>             <strong>long</strong> delay_sec = retryDelayFor(curi);
+<a name="864" href="#864">864</a>             curi.processingCleanup(); <em class="comment">// lose state that shouldn't burden retry</em>
+<a name="865" href="#865">865</a>             <strong>synchronized</strong>(wq) {
+<a name="866" href="#866">866</a>                 wq.unpeek();
+<a name="867" href="#867">867</a>                 <em class="comment">// TODO: consider if this should happen automatically inside unpeek()</em>
+<a name="868" href="#868">868</a>                 wq.update(<strong>this</strong>, curi); <em class="comment">// rewrite any changes</em>
+<a name="869" href="#869">869</a>                 <strong>if</strong> (delay_sec > 0) {
+<a name="870" href="#870">870</a>                     <strong>long</strong> delay_ms = delay_sec * 1000;
+<a name="871" href="#871">871</a>                     snoozeQueue(wq, now, delay_ms);
+<a name="872" href="#872">872</a>                 } <strong>else</strong> {
+<a name="873" href="#873">873</a>                     reenqueueQueue(wq);
+<a name="874" href="#874">874</a>                 }
+<a name="875" href="#875">875</a>             }
+<a name="876" href="#876">876</a>             <em class="comment">// Let everyone interested know that it will be retried.</em>
+<a name="877" href="#877">877</a>             controller.fireCrawledURINeedRetryEvent(curi);
+<a name="878" href="#878">878</a>             doJournalRescheduled(curi);
+<a name="879" href="#879">879</a>             <strong>return</strong>;
+<a name="880" href="#880">880</a>         }
+<a name="881" href="#881">881</a> 
+<a name="882" href="#882">882</a>         <em class="comment">// Curi will definitely be disposed of without retry, so remove from queue</em>
+<a name="883" href="#883">883</a>         wq.dequeue(<strong>this</strong>);
+<a name="884" href="#884">884</a>         decrementQueuedCount(1);
+<a name="885" href="#885">885</a>         log(curi);
+<a name="886" href="#886">886</a> 
+<a name="887" href="#887">887</a>         <strong>if</strong> (curi.isSuccess()) {
+<a name="888" href="#888">888</a>             totalProcessedBytes += curi.getRecordedSize();
+<a name="889" href="#889">889</a>             incrementSucceededFetchCount();
+<a name="890" href="#890">890</a>             <em class="comment">// Let everyone know in case they want to do something before we strip the curi.</em>
+<a name="891" href="#891">891</a>             controller.fireCrawledURISuccessfulEvent(curi);
+<a name="892" href="#892">892</a>             doJournalFinishedSuccess(curi);
+<a name="893" href="#893">893</a>             wq.expend(getCost(curi)); <em class="comment">// successes cost</em>
+<a name="894" href="#894">894</a>         } <strong>else</strong> <strong>if</strong> (isDisregarded(curi)) {
+<a name="895" href="#895">895</a>             <em class="comment">// Check for codes that mean that while we the crawler did</em>
+<a name="896" href="#896">896</a>             <em class="comment">// manage to schedule it, it must be disregarded for some reason.</em>
+<a name="897" href="#897">897</a>             incrementDisregardedUriCount();
+<a name="898" href="#898">898</a>             <em class="comment">// Let interested listeners know of disregard disposition.</em>
+<a name="899" href="#899">899</a>             controller.fireCrawledURIDisregardEvent(curi);
+<a name="900" href="#900">900</a>             doJournalDisregarded(curi);
+<a name="901" href="#901">901</a>             <em class="comment">// if exception, also send to crawlErrors</em>
+<a name="902" href="#902">902</a>             <strong>if</strong> (curi.getFetchStatus() == S_RUNTIME_EXCEPTION) {
+<a name="903" href="#903">903</a>                 Object[] array = { curi };
+<a name="904" href="#904">904</a>                 controller.runtimeErrors.log(Level.WARNING, curi.getUURI()
+<a name="905" href="#905">905</a>                         .toString(), array);
+<a name="906" href="#906">906</a>             }
+<a name="907" href="#907">907</a>             <em class="comment">// TODO: consider reinstating forget-uri</em>
+<a name="908" href="#908">908</a>         } <strong>else</strong> {
+<a name="909" href="#909">909</a>             <em class="comment">// In that case FAILURE, note &amp; log</em>
+<a name="910" href="#910">910</a>             <em class="comment">//Let interested listeners know of failed disposition.</em>
+<a name="911" href="#911">911</a>             <strong>this</strong>.controller.fireCrawledURIFailureEvent(curi);
+<a name="912" href="#912">912</a>             <em class="comment">// if exception, also send to crawlErrors</em>
+<a name="913" href="#913">913</a>             <strong>if</strong> (curi.getFetchStatus() == S_RUNTIME_EXCEPTION) {
+<a name="914" href="#914">914</a>                 Object[] array = { curi };
+<a name="915" href="#915">915</a>                 <strong>this</strong>.controller.runtimeErrors.log(Level.WARNING, curi.getUURI()
+<a name="916" href="#916">916</a>                         .toString(), array);
+<a name="917" href="#917">917</a>             }
+<a name="918" href="#918">918</a>             incrementFailedFetchCount();
+<a name="919" href="#919">919</a>             <em class="comment">// let queue note error</em>
+<a name="920" href="#920">920</a>             wq.noteError(((Integer) getUncheckedAttribute(curi,
+<a name="921" href="#921">921</a>                     ATTR_ERROR_PENALTY_AMOUNT)).intValue()); 
+<a name="922" href="#922">922</a>             doJournalFinishedFailure(curi);
+<a name="923" href="#923">923</a>             wq.expend(getCost(curi)); <em class="comment">// failures cost</em>
+<a name="924" href="#924">924</a>         }
+<a name="925" href="#925">925</a> 
+<a name="926" href="#926">926</a>         <strong>long</strong> delay_ms = politenessDelayFor(curi);
+<a name="927" href="#927">927</a>         <strong>synchronized</strong>(wq) {
+<a name="928" href="#928">928</a>             <strong>if</strong> (delay_ms > 0) {
+<a name="929" href="#929">929</a>                 snoozeQueue(wq,now,delay_ms);
+<a name="930" href="#930">930</a>             } <strong>else</strong> {
+<a name="931" href="#931">931</a>                 reenqueueQueue(wq);
+<a name="932" href="#932">932</a>             }
+<a name="933" href="#933">933</a>         }
+<a name="934" href="#934">934</a> 
+<a name="935" href="#935">935</a>         curi.stripToMinimal();
+<a name="936" href="#936">936</a>         curi.processingCleanup();
+<a name="937" href="#937">937</a> 
+<a name="938" href="#938">938</a>     }
+<a name="939" href="#939">939</a> 
+<a name="940" href="#940">940</a>     <strong>private</strong> <strong>boolean</strong> includesRetireDirective(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="941" href="#941">941</a>         <strong>return</strong> curi.containsKey(A_FORCE_RETIRE) &amp;&amp; (Boolean)curi.getObject(A_FORCE_RETIRE);
+<a name="942" href="#942">942</a>     }
+<a name="943" href="#943">943</a> 
+<a name="944" href="#944">944</a>     <em>/**<em>*</em></em>
+<a name="945" href="#945">945</a> <em>     * Place the given queue into 'snoozed' state, ineligible to</em>
+<a name="946" href="#946">946</a> <em>     * supply any URIs for crawling, for the given amount of time. </em>
+<a name="947" href="#947">947</a> <em>     * </em>
+<a name="948" href="#948">948</a> <em>     * @param wq queue to snooze </em>
+<a name="949" href="#949">949</a> <em>     * @param now time now in ms </em>
+<a name="950" href="#950">950</a> <em>     * @param delay_ms time to snooze in ms</em>
+<a name="951" href="#951">951</a> <em>     */</em>
+<a name="952" href="#952">952</a>     <strong>private</strong> <strong>void</strong> snoozeQueue(<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq, <strong>long</strong> now, <strong>long</strong> delay_ms) {
+<a name="953" href="#953">953</a>         <strong>long</strong> nextTime = now + delay_ms;
+<a name="954" href="#954">954</a>         wq.setWakeTime(nextTime);
+<a name="955" href="#955">955</a>         <strong>long</strong> snoozeToInactiveDelayMs = ((Long)getUncheckedAttribute(<strong>null</strong>,
+<a name="956" href="#956">956</a>                 ATTR_SNOOZE_DEACTIVATE_MS)).longValue();
+<a name="957" href="#957">957</a>         <strong>if</strong> (delay_ms > snoozeToInactiveDelayMs &amp;&amp; !inactiveQueues.isEmpty()) {
+<a name="958" href="#958">958</a>             deactivateQueue(wq);
+<a name="959" href="#959">959</a>         } <strong>else</strong> {
+<a name="960" href="#960">960</a>             <strong>synchronized</strong>(snoozedClassQueues) {
+<a name="961" href="#961">961</a>                 snoozedClassQueues.add(wq);
+<a name="962" href="#962">962</a>                 <strong>if</strong>(wq == snoozedClassQueues.first()) {
+<a name="963" href="#963">963</a>                     <strong>this</strong>.nextWake = <strong>new</strong> WakeTask();
+<a name="964" href="#964">964</a>                     <strong>this</strong>.wakeTimer.schedule(nextWake, delay_ms);
+<a name="965" href="#965">965</a>                 }
+<a name="966" href="#966">966</a>             }
+<a name="967" href="#967">967</a>         }
+<a name="968" href="#968">968</a>     }
+<a name="969" href="#969">969</a> 
+<a name="970" href="#970">970</a>     <em>/**<em>*</em></em>
+<a name="971" href="#971">971</a> <em>     * Forget the given CrawlURI. This allows a new instance</em>
+<a name="972" href="#972">972</a> <em>     * to be created in the future, if it is reencountered under</em>
+<a name="973" href="#973">973</a> <em>     * different circumstances.</em>
+<a name="974" href="#974">974</a> <em>     *</em>
+<a name="975" href="#975">975</a> <em>     * @param curi The CrawlURI to forget</em>
+<a name="976" href="#976">976</a> <em>     */</em>
+<a name="977" href="#977">977</a>     <strong>protected</strong> <strong>void</strong> forget(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="978" href="#978">978</a>         logger.finer(<span class="string">"Forgetting "</span> + curi);
+<a name="979" href="#979">979</a>         alreadyIncluded.forget(canonicalize(curi.getUURI()), curi);
+<a name="980" href="#980">980</a>     }
+<a name="981" href="#981">981</a> 
+<a name="982" href="#982">982</a>     <em>/**<em>*  (non-Javadoc)</em></em>
+<a name="983" href="#983">983</a> <em>     * @see org.archive.crawler.framework.Frontier#discoveredUriCount()</em>
+<a name="984" href="#984">984</a> <em>     */</em>
+<a name="985" href="#985">985</a>     <strong>public</strong> <strong>long</strong> discoveredUriCount() {
+<a name="986" href="#986">986</a>         <strong>return</strong> (<strong>this</strong>.alreadyIncluded != <strong>null</strong>)? <strong>this</strong>.alreadyIncluded.count(): 0;
+<a name="987" href="#987">987</a>     }
+<a name="988" href="#988">988</a> 
+<a name="989" href="#989">989</a>     <em>/**<em>*</em></em>
+<a name="990" href="#990">990</a> <em>     * Delete all scheduled URIs matching the given regex. </em>
+<a name="991" href="#991">991</a> <em>     * </em>
+<a name="992" href="#992">992</a> <em>     * @param match regex of URIs to delete</em>
+<a name="993" href="#993">993</a> <em>     * @return Number of items deleted.</em>
+<a name="994" href="#994">994</a> <em>     */</em>
+<a name="995" href="#995">995</a>     <strong>public</strong> <strong>long</strong> deleteURIs(String uriMatch) {
+<a name="996" href="#996">996</a>         <strong>return</strong> deleteURIs(uriMatch,<strong>null</strong>);
+<a name="997" href="#997">997</a>     }
+<a name="998" href="#998">998</a> 
+<a name="999" href="#999">999</a>     <em>/**<em>*</em></em>
+<a name="1000" href="#1000">1000</a> <em>     * Delete all scheduled URIs matching the given regex, in queues with</em>
+<a name="1001" href="#1001">1001</a> <em>     * names matching the second given regex. </em>
+<a name="1002" href="#1002">1002</a> <em>     * </em>
+<a name="1003" href="#1003">1003</a> <em>     * @param uriMatch regex of URIs to delete</em>
+<a name="1004" href="#1004">1004</a> <em>     * @param queueMatch regex of queues to affect, or null for all</em>
+<a name="1005" href="#1005">1005</a> <em>     * @return Number of items deleted.</em>
+<a name="1006" href="#1006">1006</a> <em>     */</em>
+<a name="1007" href="#1007">1007</a>     <strong>public</strong> <strong>long</strong> deleteURIs(String uriMatch, String queueMatch) {
+<a name="1008" href="#1008">1008</a>         <strong>long</strong> count = 0;
+<a name="1009" href="#1009">1009</a>         <em class="comment">// TODO: DANGER/ values() may not work right from CachedBdbMap</em>
+<a name="1010" href="#1010">1010</a>         Iterator iter = allQueues.keySet().iterator(); 
+<a name="1011" href="#1011">1011</a>         <strong>while</strong>(iter.hasNext()) {
+<a name="1012" href="#1012">1012</a>             String queueKey = ((String)iter.next());
+<a name="1013" href="#1013">1013</a>             <strong>if</strong>(StringUtils.isNotEmpty(queueMatch) &amp;&amp; !queueKey.matches(queueMatch)) {
+<a name="1014" href="#1014">1014</a>                 <em class="comment">// skip this queue</em>
+<a name="1015" href="#1015">1015</a>                 <strong>continue</strong>; 
+<a name="1016" href="#1016">1016</a>             }
+<a name="1017" href="#1017">1017</a>             <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> wq = getQueueFor(queueKey);
+<a name="1018" href="#1018">1018</a>             wq.unpeek();
+<a name="1019" href="#1019">1019</a>             count += wq.deleteMatching(<strong>this</strong>, uriMatch);
+<a name="1020" href="#1020">1020</a>         }
+<a name="1021" href="#1021">1021</a>         decrementQueuedCount(count);
+<a name="1022" href="#1022">1022</a>         <strong>return</strong> count;
+<a name="1023" href="#1023">1023</a>     }
+<a name="1024" href="#1024">1024</a>     
+<a name="1025" href="#1025">1025</a>     <em class="comment">//</em>
+<a name="1026" href="#1026">1026</a>     <em class="comment">// Reporter implementation</em>
+<a name="1027" href="#1027">1027</a>     <em class="comment">//</em>
+<a name="1028" href="#1028">1028</a>     
+<a name="1029" href="#1029">1029</a>     <strong>public</strong> <strong>static</strong> String STANDARD_REPORT = <span class="string">"standard"</span>;
+<a name="1030" href="#1030">1030</a>     <strong>public</strong> <strong>static</strong> String ALL_NONEMPTY = <span class="string">"nonempty"</span>;
+<a name="1031" href="#1031">1031</a>     <strong>public</strong> <strong>static</strong> String ALL_QUEUES = <span class="string">"all"</span>;
+<a name="1032" href="#1032">1032</a>     <strong>protected</strong> <strong>static</strong> String[] REPORTS = {STANDARD_REPORT,ALL_NONEMPTY,ALL_QUEUES};
+<a name="1033" href="#1033">1033</a>     
+<a name="1034" href="#1034">1034</a>     <strong>public</strong> String[] getReports() {
+<a name="1035" href="#1035">1035</a>         <strong>return</strong> REPORTS;
+<a name="1036" href="#1036">1036</a>     }
+<a name="1037" href="#1037">1037</a>     
+<a name="1038" href="#1038">1038</a>     <em>/**<em>*</em></em>
+<a name="1039" href="#1039">1039</a> <em>     * @param w Where to write to.</em>
+<a name="1040" href="#1040">1040</a> <em>     */</em>
+<a name="1041" href="#1041">1041</a>     <strong>public</strong> <strong>void</strong> singleLineReportTo(PrintWriter w) {
+<a name="1042" href="#1042">1042</a>         <strong>if</strong> (<strong>this</strong>.allQueues == <strong>null</strong>) {
+<a name="1043" href="#1043">1043</a>             <strong>return</strong>;
+<a name="1044" href="#1044">1044</a>         }
+<a name="1045" href="#1045">1045</a>         <strong>int</strong> allCount = allQueues.size();
+<a name="1046" href="#1046">1046</a>         <strong>int</strong> inProcessCount = inProcessQueues.uniqueSet().size();
+<a name="1047" href="#1047">1047</a>         <strong>int</strong> readyCount = readyClassQueues.size();
+<a name="1048" href="#1048">1048</a>         <strong>int</strong> snoozedCount = snoozedClassQueues.size();
+<a name="1049" href="#1049">1049</a>         <strong>int</strong> activeCount = inProcessCount + readyCount + snoozedCount;
+<a name="1050" href="#1050">1050</a>         <strong>int</strong> inactiveCount = inactiveQueues.size();
+<a name="1051" href="#1051">1051</a>         <strong>int</strong> retiredCount = retiredQueues.size();
+<a name="1052" href="#1052">1052</a>         <strong>int</strong> exhaustedCount = 
+<a name="1053" href="#1053">1053</a>             allCount - activeCount - inactiveCount - retiredCount;
+<a name="1054" href="#1054">1054</a>         w.print(allCount);
+<a name="1055" href="#1055">1055</a>         w.print(<span class="string">" queues: "</span>);
+<a name="1056" href="#1056">1056</a>         w.print(activeCount);
+<a name="1057" href="#1057">1057</a>         w.print(<span class="string">" active ("</span>);
+<a name="1058" href="#1058">1058</a>         w.print(inProcessCount);
+<a name="1059" href="#1059">1059</a>         w.print(<span class="string">" in-process; "</span>);
+<a name="1060" href="#1060">1060</a>         w.print(readyCount);
+<a name="1061" href="#1061">1061</a>         w.print(<span class="string">" ready; "</span>);
+<a name="1062" href="#1062">1062</a>         w.print(snoozedCount);
+<a name="1063" href="#1063">1063</a>         w.print(<span class="string">" snoozed); "</span>);
+<a name="1064" href="#1064">1064</a>         w.print(inactiveCount);
+<a name="1065" href="#1065">1065</a>         w.print(<span class="string">" inactive; "</span>);
+<a name="1066" href="#1066">1066</a>         w.print(retiredCount);
+<a name="1067" href="#1067">1067</a>         w.print(<span class="string">" retired; "</span>);
+<a name="1068" href="#1068">1068</a>         w.print(exhaustedCount);
+<a name="1069" href="#1069">1069</a>         w.print(<span class="string">" exhausted"</span>);
+<a name="1070" href="#1070">1070</a>         w.flush();
+<a name="1071" href="#1071">1071</a>     }
+<a name="1072" href="#1072">1072</a>     
+<a name="1073" href="#1073">1073</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1074" href="#1074">1074</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineLegend()</em>
+<a name="1075" href="#1075">1075</a> <em class="comment">     */</em>
+<a name="1076" href="#1076">1076</a>     <strong>public</strong> String singleLineLegend() {
+<a name="1077" href="#1077">1077</a>         <strong>return</strong> <span class="string">"total active in-process ready snoozed inactive retired exhausted"</span>;
+<a name="1078" href="#1078">1078</a>     }
+<a name="1079" href="#1079">1079</a> 
+<a name="1080" href="#1080">1080</a>     <em>/**<em>*</em></em>
+<a name="1081" href="#1081">1081</a> <em>     * This method compiles a human readable report on the status of the frontier</em>
+<a name="1082" href="#1082">1082</a> <em>     * at the time of the call.</em>
+<a name="1083" href="#1083">1083</a> <em>     * @param name Name of report.</em>
+<a name="1084" href="#1084">1084</a> <em>     * @param writer Where to write to.</em>
+<a name="1085" href="#1085">1085</a> <em>     */</em>
+<a name="1086" href="#1086">1086</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> reportTo(String name, PrintWriter writer) {
+<a name="1087" href="#1087">1087</a>         <strong>if</strong>(ALL_NONEMPTY.equals(name)) {
+<a name="1088" href="#1088">1088</a>             allNonemptyReportTo(writer);
+<a name="1089" href="#1089">1089</a>             <strong>return</strong>;
+<a name="1090" href="#1090">1090</a>         }
+<a name="1091" href="#1091">1091</a>         <strong>if</strong>(ALL_QUEUES.equals(name)) {
+<a name="1092" href="#1092">1092</a>             allQueuesReportTo(writer);
+<a name="1093" href="#1093">1093</a>             <strong>return</strong>;
+<a name="1094" href="#1094">1094</a>         }
+<a name="1095" href="#1095">1095</a>         <strong>if</strong>(name!=<strong>null</strong> &amp;&amp; !STANDARD_REPORT.equals(name)) {
+<a name="1096" href="#1096">1096</a>             writer.print(name);
+<a name="1097" href="#1097">1097</a>             writer.print(<span class="string">" unavailable; standard report:\n"</span>);
+<a name="1098" href="#1098">1098</a>         }
+<a name="1099" href="#1099">1099</a>         standardReportTo(writer);
+<a name="1100" href="#1100">1100</a>     }   
+<a name="1101" href="#1101">1101</a>     
+<a name="1102" href="#1102">1102</a>     <em>/**<em>* Compact report of all nonempty queues (one queue per line)</em></em>
+<a name="1103" href="#1103">1103</a> <em>     * </em>
+<a name="1104" href="#1104">1104</a> <em>     * @param writer</em>
+<a name="1105" href="#1105">1105</a> <em>     */</em>
+<a name="1106" href="#1106">1106</a>     <strong>private</strong> <strong>void</strong> allNonemptyReportTo(PrintWriter writer) {
+<a name="1107" href="#1107">1107</a>         ArrayList&lt;WorkQueue> inProcessQueuesCopy;
+<a name="1108" href="#1108">1108</a>         <strong>synchronized</strong>(<strong>this</strong>.inProcessQueues) {
+<a name="1109" href="#1109">1109</a>             <em class="comment">// grab a copy that will be stable against mods for report duration </em>
+<a name="1110" href="#1110">1110</a>             @SuppressWarnings(<span class="string">"unchecked"</span>)
+<a name="1111" href="#1111">1111</a>             Collection&lt;WorkQueue> inProcess = <strong>this</strong>.inProcessQueues;
+<a name="1112" href="#1112">1112</a>             inProcessQueuesCopy = <strong>new</strong> ArrayList&lt;WorkQueue>(inProcess);
+<a name="1113" href="#1113">1113</a>         }
+<a name="1114" href="#1114">1114</a>         writer.print(<span class="string">"\n -----===== IN-PROCESS QUEUES =====-----\n"</span>);
+<a name="1115" href="#1115">1115</a>         queueSingleLinesTo(writer, inProcessQueuesCopy.iterator());
+<a name="1116" href="#1116">1116</a> 
+<a name="1117" href="#1117">1117</a>         writer.print(<span class="string">"\n -----===== READY QUEUES =====-----\n"</span>);
+<a name="1118" href="#1118">1118</a>         queueSingleLinesTo(writer, <strong>this</strong>.readyClassQueues.iterator());
+<a name="1119" href="#1119">1119</a> 
+<a name="1120" href="#1120">1120</a>         writer.print(<span class="string">"\n -----===== SNOOZED QUEUES =====-----\n"</span>);
+<a name="1121" href="#1121">1121</a>         queueSingleLinesTo(writer, <strong>this</strong>.snoozedClassQueues.iterator());
+<a name="1122" href="#1122">1122</a>         
+<a name="1123" href="#1123">1123</a>         writer.print(<span class="string">"\n -----===== INACTIVE QUEUES =====-----\n"</span>);
+<a name="1124" href="#1124">1124</a>         queueSingleLinesTo(writer, <strong>this</strong>.inactiveQueues.iterator());
+<a name="1125" href="#1125">1125</a>         
+<a name="1126" href="#1126">1126</a>         writer.print(<span class="string">"\n -----===== RETIRED QUEUES =====-----\n"</span>);
+<a name="1127" href="#1127">1127</a>         queueSingleLinesTo(writer, <strong>this</strong>.retiredQueues.iterator());
+<a name="1128" href="#1128">1128</a>     }
+<a name="1129" href="#1129">1129</a> 
+<a name="1130" href="#1130">1130</a>     <em>/**<em>* Compact report of all nonempty queues (one queue per line)</em></em>
+<a name="1131" href="#1131">1131</a> <em>     * </em>
+<a name="1132" href="#1132">1132</a> <em>     * @param writer</em>
+<a name="1133" href="#1133">1133</a> <em>     */</em>
+<a name="1134" href="#1134">1134</a>     <strong>private</strong> <strong>void</strong> allQueuesReportTo(PrintWriter writer) {
+<a name="1135" href="#1135">1135</a>         queueSingleLinesTo(writer, allQueues.keySet().iterator());
+<a name="1136" href="#1136">1136</a>     }
+<a name="1137" href="#1137">1137</a>     
+<a name="1138" href="#1138">1138</a>     <em>/**<em>*</em></em>
+<a name="1139" href="#1139">1139</a> <em>     * Writer the single-line reports of all queues in the</em>
+<a name="1140" href="#1140">1140</a> <em>     * iterator to the writer </em>
+<a name="1141" href="#1141">1141</a> <em>     * </em>
+<a name="1142" href="#1142">1142</a> <em>     * @param writer to receive report</em>
+<a name="1143" href="#1143">1143</a> <em>     * @param iterator over queues of interest.</em>
+<a name="1144" href="#1144">1144</a> <em>     */</em>
+<a name="1145" href="#1145">1145</a>     <strong>private</strong> <strong>void</strong> queueSingleLinesTo(PrintWriter writer, Iterator iterator) {
+<a name="1146" href="#1146">1146</a>         Object obj;
+<a name="1147" href="#1147">1147</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> q;
+<a name="1148" href="#1148">1148</a>         <strong>boolean</strong> legendWritten = false;
+<a name="1149" href="#1149">1149</a>         <strong>while</strong>( iterator.hasNext()) {
+<a name="1150" href="#1150">1150</a>             obj = iterator.next();
+<a name="1151" href="#1151">1151</a>             <strong>if</strong> (obj ==  <strong>null</strong>) {
+<a name="1152" href="#1152">1152</a>                 <strong>continue</strong>;
+<a name="1153" href="#1153">1153</a>             }
+<a name="1154" href="#1154">1154</a>             q = (obj instanceof WorkQueue)?
+<a name="1155" href="#1155">1155</a>                 (<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a>)obj:
+<a name="1156" href="#1156">1156</a>                 (<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a>)<strong>this</strong>.allQueues.get(obj);
+<a name="1157" href="#1157">1157</a>             <strong>if</strong>(q == <strong>null</strong>) {
+<a name="1158" href="#1158">1158</a>                 writer.print(<span class="string">" ERROR: "</span>+obj);
+<a name="1159" href="#1159">1159</a>             }
+<a name="1160" href="#1160">1160</a>             <strong>if</strong>(!legendWritten) {
+<a name="1161" href="#1161">1161</a>                 writer.println(q.singleLineLegend());
+<a name="1162" href="#1162">1162</a>                 legendWritten = <strong>true</strong>;
+<a name="1163" href="#1163">1163</a>             }
+<a name="1164" href="#1164">1164</a>             q.singleLineReportTo(writer);
+<a name="1165" href="#1165">1165</a>         }       
+<a name="1166" href="#1166">1166</a>     }
+<a name="1167" href="#1167">1167</a> 
+<a name="1168" href="#1168">1168</a>     <em>/**<em>*</em></em>
+<a name="1169" href="#1169">1169</a> <em>     * @param w Writer to print to.</em>
+<a name="1170" href="#1170">1170</a> <em>     */</em>
+<a name="1171" href="#1171">1171</a>     <strong>private</strong> <strong>void</strong> standardReportTo(PrintWriter w) {
+<a name="1172" href="#1172">1172</a>         <strong>int</strong> allCount = allQueues.size();
+<a name="1173" href="#1173">1173</a>         <strong>int</strong> inProcessCount = inProcessQueues.uniqueSet().size();
+<a name="1174" href="#1174">1174</a>         <strong>int</strong> readyCount = readyClassQueues.size();
+<a name="1175" href="#1175">1175</a>         <strong>int</strong> snoozedCount = snoozedClassQueues.size();
+<a name="1176" href="#1176">1176</a>         <strong>int</strong> activeCount = inProcessCount + readyCount + snoozedCount;
+<a name="1177" href="#1177">1177</a>         <strong>int</strong> inactiveCount = inactiveQueues.size();
+<a name="1178" href="#1178">1178</a>         <strong>int</strong> retiredCount = retiredQueues.size();
+<a name="1179" href="#1179">1179</a>         <strong>int</strong> exhaustedCount = 
+<a name="1180" href="#1180">1180</a>             allCount - activeCount - inactiveCount - retiredCount;
+<a name="1181" href="#1181">1181</a> 
+<a name="1182" href="#1182">1182</a>         w.print(<span class="string">"Frontier report - "</span>);
+<a name="1183" href="#1183">1183</a>         w.print(ArchiveUtils.get12DigitDate());
+<a name="1184" href="#1184">1184</a>         w.print(<span class="string">"\n"</span>);
+<a name="1185" href="#1185">1185</a>         w.print(<span class="string">" Job being crawled: "</span>);
+<a name="1186" href="#1186">1186</a>         w.print(controller.getOrder().getCrawlOrderName());
+<a name="1187" href="#1187">1187</a>         w.print(<span class="string">"\n"</span>);
+<a name="1188" href="#1188">1188</a>         w.print(<span class="string">"\n -----===== STATS =====-----\n"</span>);
+<a name="1189" href="#1189">1189</a>         w.print(<span class="string">" Discovered:    "</span>);
+<a name="1190" href="#1190">1190</a>         w.print(Long.toString(discoveredUriCount()));
+<a name="1191" href="#1191">1191</a>         w.print(<span class="string">"\n"</span>);
+<a name="1192" href="#1192">1192</a>         w.print(<span class="string">" Queued:        "</span>);
+<a name="1193" href="#1193">1193</a>         w.print(Long.toString(queuedUriCount()));
+<a name="1194" href="#1194">1194</a>         w.print(<span class="string">"\n"</span>);
+<a name="1195" href="#1195">1195</a>         w.print(<span class="string">" Finished:      "</span>);
+<a name="1196" href="#1196">1196</a>         w.print(Long.toString(finishedUriCount()));
+<a name="1197" href="#1197">1197</a>         w.print(<span class="string">"\n"</span>);
+<a name="1198" href="#1198">1198</a>         w.print(<span class="string">"  Successfully: "</span>);
+<a name="1199" href="#1199">1199</a>         w.print(Long.toString(succeededFetchCount()));
+<a name="1200" href="#1200">1200</a>         w.print(<span class="string">"\n"</span>);
+<a name="1201" href="#1201">1201</a>         w.print(<span class="string">"  Failed:       "</span>);
+<a name="1202" href="#1202">1202</a>         w.print(Long.toString(failedFetchCount()));
+<a name="1203" href="#1203">1203</a>         w.print(<span class="string">"\n"</span>);
+<a name="1204" href="#1204">1204</a>         w.print(<span class="string">"  Disregarded:  "</span>);
+<a name="1205" href="#1205">1205</a>         w.print(Long.toString(disregardedUriCount()));
+<a name="1206" href="#1206">1206</a>         w.print(<span class="string">"\n"</span>);
+<a name="1207" href="#1207">1207</a>         w.print(<span class="string">"\n -----===== QUEUES =====-----\n"</span>);
+<a name="1208" href="#1208">1208</a>         w.print(<span class="string">" Already included size:     "</span>);
+<a name="1209" href="#1209">1209</a>         w.print(Long.toString(alreadyIncluded.count()));
+<a name="1210" href="#1210">1210</a>         w.print(<span class="string">"\n"</span>);
+<a name="1211" href="#1211">1211</a>         w.print(<span class="string">"               pending:     "</span>);
+<a name="1212" href="#1212">1212</a>         w.print(Long.toString(alreadyIncluded.pending()));
+<a name="1213" href="#1213">1213</a>         w.print(<span class="string">"\n"</span>);
+<a name="1214" href="#1214">1214</a>         w.print(<span class="string">"\n All class queues map size: "</span>);
+<a name="1215" href="#1215">1215</a>         w.print(Long.toString(allCount));
+<a name="1216" href="#1216">1216</a>         w.print(<span class="string">"\n"</span>);
+<a name="1217" href="#1217">1217</a>         w.print( <span class="string">"             Active queues: "</span>);
+<a name="1218" href="#1218">1218</a>         w.print(activeCount);
+<a name="1219" href="#1219">1219</a>         w.print(<span class="string">"\n"</span>);
+<a name="1220" href="#1220">1220</a>         w.print(<span class="string">"                    In-process: "</span>);
+<a name="1221" href="#1221">1221</a>         w.print(inProcessCount);
+<a name="1222" href="#1222">1222</a>         w.print(<span class="string">"\n"</span>);
+<a name="1223" href="#1223">1223</a>         w.print(<span class="string">"                         Ready: "</span>);
+<a name="1224" href="#1224">1224</a>         w.print(readyCount);
+<a name="1225" href="#1225">1225</a>         w.print(<span class="string">"\n"</span>);
+<a name="1226" href="#1226">1226</a>         w.print(<span class="string">"                       Snoozed: "</span>);
+<a name="1227" href="#1227">1227</a>         w.print(snoozedCount);
+<a name="1228" href="#1228">1228</a>         w.print(<span class="string">"\n"</span>);
+<a name="1229" href="#1229">1229</a>         w.print(<span class="string">"           Inactive queues: "</span>);
+<a name="1230" href="#1230">1230</a>         w.print(inactiveCount);
+<a name="1231" href="#1231">1231</a>         w.print(<span class="string">"\n"</span>);
+<a name="1232" href="#1232">1232</a>         w.print(<span class="string">"            Retired queues: "</span>);
+<a name="1233" href="#1233">1233</a>         w.print(retiredCount);
+<a name="1234" href="#1234">1234</a>         w.print(<span class="string">"\n"</span>);
+<a name="1235" href="#1235">1235</a>         w.print(<span class="string">"          Exhausted queues: "</span>);
+<a name="1236" href="#1236">1236</a>         w.print(exhaustedCount);
+<a name="1237" href="#1237">1237</a>         w.print(<span class="string">"\n"</span>);
+<a name="1238" href="#1238">1238</a>         
+<a name="1239" href="#1239">1239</a>         w.print(<span class="string">"\n -----===== IN-PROCESS QUEUES =====-----\n"</span>);
+<a name="1240" href="#1240">1240</a>         @SuppressWarnings(<span class="string">"unchecked"</span>)
+<a name="1241" href="#1241">1241</a>         Collection&lt;WorkQueue> inProcess = inProcessQueues;
+<a name="1242" href="#1242">1242</a>         ArrayList&lt;WorkQueue> copy = extractSome(inProcess, REPORT_MAX_QUEUES);
+<a name="1243" href="#1243">1243</a>         appendQueueReports(w, copy.iterator(), copy.size(), REPORT_MAX_QUEUES);
+<a name="1244" href="#1244">1244</a>         
+<a name="1245" href="#1245">1245</a>         w.print(<span class="string">"\n -----===== READY QUEUES =====-----\n"</span>);
+<a name="1246" href="#1246">1246</a>         appendQueueReports(w, <strong>this</strong>.readyClassQueues.iterator(),
+<a name="1247" href="#1247">1247</a>             <strong>this</strong>.readyClassQueues.size(), REPORT_MAX_QUEUES);
+<a name="1248" href="#1248">1248</a> 
+<a name="1249" href="#1249">1249</a>         w.print(<span class="string">"\n -----===== SNOOZED QUEUES =====-----\n"</span>);
+<a name="1250" href="#1250">1250</a>         copy = extractSome(snoozedClassQueues, REPORT_MAX_QUEUES);
+<a name="1251" href="#1251">1251</a>         appendQueueReports(w, copy.iterator(), copy.size(), REPORT_MAX_QUEUES);
+<a name="1252" href="#1252">1252</a>         
+<a name="1253" href="#1253">1253</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> longest = longestActiveQueue;
+<a name="1254" href="#1254">1254</a>         <strong>if</strong> (longest != <strong>null</strong>) {
+<a name="1255" href="#1255">1255</a>             w.print(<span class="string">"\n -----===== LONGEST QUEUE =====-----\n"</span>);
+<a name="1256" href="#1256">1256</a>             longest.reportTo(w);
+<a name="1257" href="#1257">1257</a>         }
+<a name="1258" href="#1258">1258</a> 
+<a name="1259" href="#1259">1259</a>         w.print(<span class="string">"\n -----===== INACTIVE QUEUES =====-----\n"</span>);
+<a name="1260" href="#1260">1260</a>         appendQueueReports(w, <strong>this</strong>.inactiveQueues.iterator(),
+<a name="1261" href="#1261">1261</a>             <strong>this</strong>.inactiveQueues.size(), REPORT_MAX_QUEUES);
+<a name="1262" href="#1262">1262</a>         
+<a name="1263" href="#1263">1263</a>         w.print(<span class="string">"\n -----===== RETIRED QUEUES =====-----\n"</span>);
+<a name="1264" href="#1264">1264</a>         appendQueueReports(w, <strong>this</strong>.retiredQueues.iterator(),
+<a name="1265" href="#1265">1265</a>             <strong>this</strong>.retiredQueues.size(), REPORT_MAX_QUEUES);
+<a name="1266" href="#1266">1266</a> 
+<a name="1267" href="#1267">1267</a>         w.flush();
+<a name="1268" href="#1268">1268</a>     }
+<a name="1269" href="#1269">1269</a>     
+<a name="1270" href="#1270">1270</a>     
+<a name="1271" href="#1271">1271</a>     <em>/**<em>*</em></em>
+<a name="1272" href="#1272">1272</a> <em>     * Extract some of the elements in the given collection to an</em>
+<a name="1273" href="#1273">1273</a> <em>     * ArrayList.  This method synchronizes on the given collection's</em>
+<a name="1274" href="#1274">1274</a> <em>     * monitor.  The returned list will never contain more than the</em>
+<a name="1275" href="#1275">1275</a> <em>     * specified maximum number of elements.</em>
+<a name="1276" href="#1276">1276</a> <em>     * </em>
+<a name="1277" href="#1277">1277</a> <em>     * @param c    the collection whose elements to extract</em>
+<a name="1278" href="#1278">1278</a> <em>     * @param max  the maximum number of elements to extract</em>
+<a name="1279" href="#1279">1279</a> <em>     * @return  the extraction</em>
+<a name="1280" href="#1280">1280</a> <em>     */</em>
+<a name="1281" href="#1281">1281</a>     <strong>private</strong> <strong>static</strong> &lt;T> ArrayList&lt;T> extractSome(Collection&lt;T> c, <strong>int</strong> max) {
+<a name="1282" href="#1282">1282</a>         <em class="comment">// Try to guess a sane initial capacity for ArrayList</em>
+<a name="1283" href="#1283">1283</a>         <em class="comment">// Hopefully given collection won't grow more than 10 items</em>
+<a name="1284" href="#1284">1284</a>         <em class="comment">// between now and the synchronized block...</em>
+<a name="1285" href="#1285">1285</a>         <strong>int</strong> initial = Math.min(c.size() + 10, max);
+<a name="1286" href="#1286">1286</a>         <strong>int</strong> count = 0;
+<a name="1287" href="#1287">1287</a>         ArrayList&lt;T> list = <strong>new</strong> ArrayList&lt;T>(initial);
+<a name="1288" href="#1288">1288</a>         <strong>synchronized</strong> (c) {
+<a name="1289" href="#1289">1289</a>             Iterator&lt;T> iter = c.iterator();
+<a name="1290" href="#1290">1290</a>             <strong>while</strong> (iter.hasNext() &amp;&amp; (count &lt; max)) {
+<a name="1291" href="#1291">1291</a>                 list.add(iter.next());
+<a name="1292" href="#1292">1292</a>                 count++;
+<a name="1293" href="#1293">1293</a>             }
+<a name="1294" href="#1294">1294</a>         }
+<a name="1295" href="#1295">1295</a>         <strong>return</strong> list;
+<a name="1296" href="#1296">1296</a>     }
+<a name="1297" href="#1297">1297</a> 
+<a name="1298" href="#1298">1298</a>     <em>/**<em>*</em></em>
+<a name="1299" href="#1299">1299</a> <em>     * Append queue report to general Frontier report.</em>
+<a name="1300" href="#1300">1300</a> <em>     * @param w StringBuffer to append to.</em>
+<a name="1301" href="#1301">1301</a> <em>     * @param iterator An iterator over </em>
+<a name="1302" href="#1302">1302</a> <em>     * @param total</em>
+<a name="1303" href="#1303">1303</a> <em>     * @param max</em>
+<a name="1304" href="#1304">1304</a> <em>     */</em>
+<a name="1305" href="#1305">1305</a>     <strong>protected</strong> <strong>void</strong> appendQueueReports(PrintWriter w, Iterator iterator,
+<a name="1306" href="#1306">1306</a>             <strong>int</strong> total, <strong>int</strong> max) {
+<a name="1307" href="#1307">1307</a>         Object obj;
+<a name="1308" href="#1308">1308</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> q;
+<a name="1309" href="#1309">1309</a>         <strong>for</strong>(<strong>int</strong> count = 0; iterator.hasNext() &amp;&amp; (count &lt; max); count++) {
+<a name="1310" href="#1310">1310</a>             obj = iterator.next();
+<a name="1311" href="#1311">1311</a>             <strong>if</strong> (obj ==  <strong>null</strong>) {
+<a name="1312" href="#1312">1312</a>                 <strong>continue</strong>;
+<a name="1313" href="#1313">1313</a>             }
+<a name="1314" href="#1314">1314</a>             q = (obj instanceof WorkQueue)?
+<a name="1315" href="#1315">1315</a>                 (<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a>)obj:
+<a name="1316" href="#1316">1316</a>                 (<a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a>)<strong>this</strong>.allQueues.get(obj);
+<a name="1317" href="#1317">1317</a>             <strong>if</strong>(q == <strong>null</strong>) {
+<a name="1318" href="#1318">1318</a>                 w.print(<span class="string">"WARNING: No report for queue "</span>+obj);
+<a name="1319" href="#1319">1319</a>             }
+<a name="1320" href="#1320">1320</a>             q.reportTo(w);
+<a name="1321" href="#1321">1321</a>         }
+<a name="1322" href="#1322">1322</a>         <strong>if</strong>(total > max) {
+<a name="1323" href="#1323">1323</a>             w.print(<span class="string">"...and "</span> + (total - max) + <span class="string">" more.\n"</span>);
+<a name="1324" href="#1324">1324</a>         }
+<a name="1325" href="#1325">1325</a>     }
+<a name="1326" href="#1326">1326</a> 
+<a name="1327" href="#1327">1327</a>     <em>/**<em>*</em></em>
+<a name="1328" href="#1328">1328</a> <em>     * Force logging, etc. of operator- deleted CrawlURIs</em>
+<a name="1329" href="#1329">1329</a> <em>     * </em>
+<a name="1330" href="#1330">1330</a> <em>     * @see org.archive.crawler.framework.Frontier#deleted(org.archive.crawler.datamodel.CrawlURI)</em>
+<a name="1331" href="#1331">1331</a> <em>     */</em>
+<a name="1332" href="#1332">1332</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> deleted(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="1333" href="#1333">1333</a>         <em class="comment">//treat as disregarded</em>
+<a name="1334" href="#1334">1334</a>         controller.fireCrawledURIDisregardEvent(curi);
+<a name="1335" href="#1335">1335</a>         log(curi);
+<a name="1336" href="#1336">1336</a>         incrementDisregardedUriCount();
+<a name="1337" href="#1337">1337</a>         curi.stripToMinimal();
+<a name="1338" href="#1338">1338</a>         curi.processingCleanup();
+<a name="1339" href="#1339">1339</a>     }
+<a name="1340" href="#1340">1340</a> 
+<a name="1341" href="#1341">1341</a>     <strong>public</strong> <strong>void</strong> considerIncluded(<a href="../../../../org/archive/net/UURI.html">UURI</a> u) {
+<a name="1342" href="#1342">1342</a>         <strong>this</strong>.alreadyIncluded.note(canonicalize(u));
+<a name="1343" href="#1343">1343</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> temp = <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a>(u);
+<a name="1344" href="#1344">1344</a>         temp.setClassKey(getClassKey(temp));
+<a name="1345" href="#1345">1345</a>         getQueueFor(temp).expend(getCost(temp));
+<a name="1346" href="#1346">1346</a>     }
+<a name="1347" href="#1347">1347</a>     
+<a name="1348" href="#1348">1348</a>     <strong>protected</strong> <strong>abstract</strong> <strong>void</strong> initQueue() throws IOException;
+<a name="1349" href="#1349">1349</a>     <strong>protected</strong> <strong>abstract</strong> <strong>void</strong> closeQueue() throws IOException;
+<a name="1350" href="#1350">1350</a>     
+<a name="1351" href="#1351">1351</a>     <em>/**<em>*</em></em>
+<a name="1352" href="#1352">1352</a> <em>     * Returns &lt;code>true&lt;/code> if the WorkQueue implementation of this</em>
+<a name="1353" href="#1353">1353</a> <em>     * Frontier stores its workload on disk instead of relying</em>
+<a name="1354" href="#1354">1354</a> <em>     * on serialization mechanisms.</em>
+<a name="1355" href="#1355">1355</a> <em>     * </em>
+<a name="1356" href="#1356">1356</a> <em>     * TODO: rename! (this is a very misleading name) or kill (don't</em>
+<a name="1357" href="#1357">1357</a> <em>     * see any implementations that return false)</em>
+<a name="1358" href="#1358">1358</a> <em>     * </em>
+<a name="1359" href="#1359">1359</a> <em>     * @return a constant boolean value for this class/instance</em>
+<a name="1360" href="#1360">1360</a> <em>     */</em>
+<a name="1361" href="#1361">1361</a>     <strong>protected</strong> <strong>abstract</strong> <strong>boolean</strong> workQueueDataOnDisk();
+<a name="1362" href="#1362">1362</a>     
+<a name="1363" href="#1363">1363</a>     
+<a name="1364" href="#1364">1364</a>     <strong>public</strong> FrontierGroup getGroup(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="1365" href="#1365">1365</a>         <strong>return</strong> getQueueFor(curi);
+<a name="1366" href="#1366">1366</a>     }
+<a name="1367" href="#1367">1367</a>     
+<a name="1368" href="#1368">1368</a>     
+<a name="1369" href="#1369">1369</a>     <strong>public</strong> <strong>long</strong> averageDepth() {
+<a name="1370" href="#1370">1370</a>         <strong>int</strong> inProcessCount = inProcessQueues.uniqueSet().size();
+<a name="1371" href="#1371">1371</a>         <strong>int</strong> readyCount = readyClassQueues.size();
+<a name="1372" href="#1372">1372</a>         <strong>int</strong> snoozedCount = snoozedClassQueues.size();
+<a name="1373" href="#1373">1373</a>         <strong>int</strong> activeCount = inProcessCount + readyCount + snoozedCount;
+<a name="1374" href="#1374">1374</a>         <strong>int</strong> inactiveCount = inactiveQueues.size();
+<a name="1375" href="#1375">1375</a>         <strong>int</strong> totalQueueCount = (activeCount+inactiveCount);
+<a name="1376" href="#1376">1376</a>         <strong>return</strong> (totalQueueCount == 0) ? 0 : liveQueuedUriCount.get() / totalQueueCount;
+<a name="1377" href="#1377">1377</a>     }
+<a name="1378" href="#1378">1378</a>     <strong>public</strong> <strong>float</strong> congestionRatio() {
+<a name="1379" href="#1379">1379</a>         <strong>int</strong> inProcessCount = inProcessQueues.uniqueSet().size();
+<a name="1380" href="#1380">1380</a>         <strong>int</strong> readyCount = readyClassQueues.size();
+<a name="1381" href="#1381">1381</a>         <strong>int</strong> snoozedCount = snoozedClassQueues.size();
+<a name="1382" href="#1382">1382</a>         <strong>int</strong> activeCount = inProcessCount + readyCount + snoozedCount;
+<a name="1383" href="#1383">1383</a>         <strong>int</strong> inactiveCount = inactiveQueues.size();
+<a name="1384" href="#1384">1384</a>         <strong>return</strong> (<strong>float</strong>)(activeCount + inactiveCount) / (inProcessCount + snoozedCount);
+<a name="1385" href="#1385">1385</a>     }
+<a name="1386" href="#1386">1386</a>     <strong>public</strong> <strong>long</strong> deepestUri() {
+<a name="1387" href="#1387">1387</a>         <strong>return</strong> longestActiveQueue==<strong>null</strong> ? -1 : longestActiveQueue.getCount();
+<a name="1388" href="#1388">1388</a>     }
+<a name="1389" href="#1389">1389</a>     
+<a name="1390" href="#1390">1390</a>     
+<a name="1391" href="#1391">1391</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1392" href="#1392">1392</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#isEmpty()</em>
+<a name="1393" href="#1393">1393</a> <em class="comment">     */</em>
+<a name="1394" href="#1394">1394</a>     <strong>public</strong> <strong>synchronized</strong> <strong>boolean</strong> isEmpty() {
+<a name="1395" href="#1395">1395</a>         <strong>return</strong> liveQueuedUriCount.get() == 0 &amp;&amp; alreadyIncluded.pending() == 0;
+<a name="1396" href="#1396">1396</a>     }
+<a name="1397" href="#1397">1397</a> }
+<a name="1398" href="#1398">1398</a> 
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

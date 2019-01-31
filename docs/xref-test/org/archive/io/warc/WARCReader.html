@@ -1,0 +1,303 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" /><title>WARCReader xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> $Id: WARCReader.java 4754 2006-11-28 02:03:03Z stack-sf $</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> *</em>
+<a name="3" href="#3">3</a>   <em class="comment"> * Created Aug 23, 2006</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *</em>
+<a name="5" href="#5">5</a>   <em class="comment"> * Copyright (C) 2006 Internet Archive.</em>
+<a name="6" href="#6">6</a>   <em class="comment"> *</em>
+<a name="7" href="#7">7</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="8" href="#8">8</a>   <em class="comment"> *</em>
+<a name="9" href="#9">9</a>   <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="10" href="#10">10</a>  <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="12" href="#12">12</a>  <em class="comment"> * any later version.</em>
+<a name="13" href="#13">13</a>  <em class="comment"> *</em>
+<a name="14" href="#14">14</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="15" href="#15">15</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="17" href="#17">17</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="18" href="#18">18</a>  <em class="comment"> *</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="20" href="#20">20</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="21" href="#21">21</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="22" href="#22">22</a>  <em class="comment"> */</em>
+<a name="23" href="#23">23</a>  <strong>package</strong> <a href="../../../../org/archive/io/warc/package-summary.html">org.archive.io.warc</a>;
+<a name="24" href="#24">24</a>  
+<a name="25" href="#25">25</a>  <strong>import</strong> java.io.File;
+<a name="26" href="#26">26</a>  <strong>import</strong> java.io.IOException;
+<a name="27" href="#27">27</a>  <strong>import</strong> java.io.InputStream;
+<a name="28" href="#28">28</a>  <strong>import</strong> java.util.Iterator;
+<a name="29" href="#29">29</a>  <strong>import</strong> java.util.List;
+<a name="30" href="#30">30</a>  
+<a name="31" href="#31">31</a>  <strong>import</strong> org.apache.commons.cli.CommandLine;
+<a name="32" href="#32">32</a>  <strong>import</strong> org.apache.commons.cli.HelpFormatter;
+<a name="33" href="#33">33</a>  <strong>import</strong> org.apache.commons.cli.Option;
+<a name="34" href="#34">34</a>  <strong>import</strong> org.apache.commons.cli.Options;
+<a name="35" href="#35">35</a>  <strong>import</strong> org.apache.commons.cli.ParseException;
+<a name="36" href="#36">36</a>  <strong>import</strong> org.apache.commons.cli.PosixParser;
+<a name="37" href="#37">37</a>  <strong>import</strong> org.apache.commons.lang.NotImplementedException;
+<a name="38" href="#38">38</a>  <strong>import</strong> org.archive.io.ArchiveReader;
+<a name="39" href="#39">39</a>  <strong>import</strong> org.archive.io.ArchiveRecord;
+<a name="40" href="#40">40</a>  <strong>import</strong> org.archive.io.warc.WARCConstants;
+<a name="41" href="#41">41</a>  
+<a name="42" href="#42">42</a>  <em>/**<em>*</em></em>
+<a name="43" href="#43">43</a>  <em> * WARCReader.</em>
+<a name="44" href="#44">44</a>  <em> * Go via {@link WARCReaderFactory} to get instance.</em>
+<a name="45" href="#45">45</a>  <em> * @author stack</em>
+<a name="46" href="#46">46</a>  <em> * @version $Date: 2006-11-27 18:03:03 -0800 (Mon, 27 Nov 2006) $ $Version$</em>
+<a name="47" href="#47">47</a>  <em> */</em>
+<a name="48" href="#48">48</a>  <strong>public</strong> <strong>class</strong> <a href="../../../../org/archive/io/warc/WARCReader.html">WARCReader</a> <strong>extends</strong> <a href="../../../../org/archive/io/ArchiveReader.html">ArchiveReader</a> implements <a href="../../../../org/archive/io/warc/WARCConstants.html">WARCConstants</a> {
+<a name="49" href="#49">49</a>      <a href="../../../../org/archive/io/warc/WARCReader.html">WARCReader</a>() {
+<a name="50" href="#50">50</a>          <strong>super</strong>();
+<a name="51" href="#51">51</a>      }
+<a name="52" href="#52">52</a>      
+<a name="53" href="#53">53</a>      @Override
+<a name="54" href="#54">54</a>      <strong>protected</strong> <strong>void</strong> initialize(String i) {
+<a name="55" href="#55">55</a>          <strong>super</strong>.initialize(i);
+<a name="56" href="#56">56</a>          setVersion(WARC_VERSION);
+<a name="57" href="#57">57</a>      }
+<a name="58" href="#58">58</a>      
+<a name="59" href="#59">59</a>      <em>/**<em>*</em></em>
+<a name="60" href="#60">60</a>  <em>     * Skip over any trailing new lines at end of the record so we're lined up</em>
+<a name="61" href="#61">61</a>  <em>     * ready to read the next.</em>
+<a name="62" href="#62">62</a>  <em>     * @param record</em>
+<a name="63" href="#63">63</a>  <em>     * @throws IOException</em>
+<a name="64" href="#64">64</a>  <em>     */</em>
+<a name="65" href="#65">65</a>      <strong>protected</strong> <strong>void</strong> gotoEOR(<a href="../../../../org/archive/io/ArchiveRecord.html">ArchiveRecord</a> record) throws IOException {
+<a name="66" href="#66">66</a>          <strong>if</strong> (record.available() != 0) {
+<a name="67" href="#67">67</a>              <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Record should be exhausted before coming "</span> +
+<a name="68" href="#68">68</a>                  <span class="string">"in here"</span>);
+<a name="69" href="#69">69</a>          }
+<a name="70" href="#70">70</a>  
+<a name="71" href="#71">71</a>          <em class="comment">// Records end in 2*CRLF.  Suck it up.</em>
+<a name="72" href="#72">72</a>          readExpectedChar(getIn(), CRLF.charAt(0));
+<a name="73" href="#73">73</a>          readExpectedChar(getIn(), CRLF.charAt(1));
+<a name="74" href="#74">74</a>          readExpectedChar(getIn(), CRLF.charAt(0));
+<a name="75" href="#75">75</a>          readExpectedChar(getIn(), CRLF.charAt(1));
+<a name="76" href="#76">76</a>      }
+<a name="77" href="#77">77</a>      
+<a name="78" href="#78">78</a>      <strong>protected</strong> <strong>void</strong> readExpectedChar(<strong>final</strong> InputStream is, <strong>final</strong> <strong>int</strong> expected)
+<a name="79" href="#79">79</a>      throws IOException {
+<a name="80" href="#80">80</a>          <strong>int</strong> c = is.read();
+<a name="81" href="#81">81</a>          <strong>if</strong> (c != expected) {
+<a name="82" href="#82">82</a>              <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Unexpected character "</span> +
+<a name="83" href="#83">83</a>                  Integer.toHexString(c) + <span class="string">"(Expecting "</span> +
+<a name="84" href="#84">84</a>                  Integer.toHexString(expected) + <span class="string">")"</span>);
+<a name="85" href="#85">85</a>          }
+<a name="86" href="#86">86</a>      }
+<a name="87" href="#87">87</a>      
+<a name="88" href="#88">88</a>      <em>/**<em>*</em></em>
+<a name="89" href="#89">89</a>  <em>     * Create new WARC record.</em>
+<a name="90" href="#90">90</a>  <em>     * Encapsulate housekeeping that has to do w/ creating new Record.</em>
+<a name="91" href="#91">91</a>  <em>     * @param is InputStream to use.</em>
+<a name="92" href="#92">92</a>  <em>     * @param offset Absolute offset into WARC file.</em>
+<a name="93" href="#93">93</a>  <em>     * @return A WARCRecord.</em>
+<a name="94" href="#94">94</a>  <em>     * @throws IOException</em>
+<a name="95" href="#95">95</a>  <em>     */</em>
+<a name="96" href="#96">96</a>      <strong>protected</strong> <a href="../../../../org/archive/io/warc/WARCRecord.html">WARCRecord</a> createArchiveRecord(InputStream is, <strong>long</strong> offset)
+<a name="97" href="#97">97</a>      throws IOException {
+<a name="98" href="#98">98</a>          <strong>return</strong> (WARCRecord)currentRecord(<strong>new</strong> WARCRecord(is,
+<a name="99" href="#99">99</a>          	getReaderIdentifier(), offset, isDigest(), isStrict()));
+<a name="100" href="#100">100</a>     }
+<a name="101" href="#101">101</a>     
+<a name="102" href="#102">102</a> 	@Override
+<a name="103" href="#103">103</a> 	<strong>public</strong> <strong>void</strong> dump(<strong>boolean</strong> compress)
+<a name="104" href="#104">104</a> 	throws IOException, java.text.ParseException {
+<a name="105" href="#105">105</a> 	    <strong>for</strong> (<strong>final</strong> Iterator&lt;ArchiveRecord> i = iterator(); i.hasNext();) {
+<a name="106" href="#106">106</a>             <a href="../../../../org/archive/io/ArchiveRecord.html">ArchiveRecord</a> r = i.next();
+<a name="107" href="#107">107</a>             System.out.println(r.getHeader().toString());
+<a name="108" href="#108">108</a>             r.dump();
+<a name="109" href="#109">109</a>             System.out.println();
+<a name="110" href="#110">110</a>         }
+<a name="111" href="#111">111</a> 	}
+<a name="112" href="#112">112</a>     
+<a name="113" href="#113">113</a> 
+<a name="114" href="#114">114</a>     @Override
+<a name="115" href="#115">115</a>     <strong>public</strong> <a href="../../../../org/archive/io/ArchiveReader.html">ArchiveReader</a> getDeleteFileOnCloseReader(<strong>final</strong> File f) {
+<a name="116" href="#116">116</a>         <strong>throw</strong> <strong>new</strong> NotImplementedException(<span class="string">"TODO"</span>);
+<a name="117" href="#117">117</a>     }  
+<a name="118" href="#118">118</a> 
+<a name="119" href="#119">119</a> 	@Override
+<a name="120" href="#120">120</a> 	<strong>public</strong> String getDotFileExtension() {
+<a name="121" href="#121">121</a> 		<strong>return</strong> DOT_WARC_FILE_EXTENSION;
+<a name="122" href="#122">122</a> 	}
+<a name="123" href="#123">123</a> 
+<a name="124" href="#124">124</a> 	@Override
+<a name="125" href="#125">125</a> 	<strong>public</strong> String getFileExtension() {
+<a name="126" href="#126">126</a> 		<strong>return</strong> WARC_FILE_EXTENSION;
+<a name="127" href="#127">127</a> 	} 
+<a name="128" href="#128">128</a>     
+<a name="129" href="#129">129</a>     <em class="comment">// Static methods follow.  Mostly for command-line processing.</em>
+<a name="130" href="#130">130</a> 
+<a name="131" href="#131">131</a>     <em>/**<em>*</em></em>
+<a name="132" href="#132">132</a> <em>     *</em>
+<a name="133" href="#133">133</a> <em>     * @param formatter Help formatter instance.</em>
+<a name="134" href="#134">134</a> <em>     * @param options Usage options.</em>
+<a name="135" href="#135">135</a> <em>     * @param exitCode Exit code.</em>
+<a name="136" href="#136">136</a> <em>     */</em>
+<a name="137" href="#137">137</a>     <strong>private</strong> <strong>static</strong> <strong>void</strong> usage(HelpFormatter formatter, Options options,
+<a name="138" href="#138">138</a>             <strong>int</strong> exitCode) {
+<a name="139" href="#139">139</a>         formatter.printHelp(<span class="string">"java org.archive.io.arc.WARCReader"</span> +
+<a name="140" href="#140">140</a>             <span class="string">" [--digest=true|false] &#47;&#47;\n"</span> +
+<a name="141" href="#141">141</a>             <span class="string">" [--format=cdx|cdxfile|dump|gzipdump]"</span> +
+<a name="142" href="#142">142</a>             <span class="string">" [--offset=#] &#47;&#47;\n[--strict] [--parse] WARC_FILE|WARC_URL"</span>,
+<a name="143" href="#143">143</a>                 options);
+<a name="144" href="#144">144</a>         System.exit(exitCode);
+<a name="145" href="#145">145</a>     }
+<a name="146" href="#146">146</a> 
+<a name="147" href="#147">147</a>     <em>/**<em>*</em></em>
+<a name="148" href="#148">148</a> <em>     * Write out the arcfile.</em>
+<a name="149" href="#149">149</a> <em>     * </em>
+<a name="150" href="#150">150</a> <em>     * @param reader</em>
+<a name="151" href="#151">151</a> <em>     * @param format Format to use outputting.</em>
+<a name="152" href="#152">152</a> <em>     * @throws IOException</em>
+<a name="153" href="#153">153</a> <em>     * @throws java.text.ParseException</em>
+<a name="154" href="#154">154</a> <em>     */</em>
+<a name="155" href="#155">155</a>     <strong>protected</strong> <strong>static</strong> <strong>void</strong> output(<a href="../../../../org/archive/io/warc/WARCReader.html">WARCReader</a> reader, String format)
+<a name="156" href="#156">156</a>     throws IOException, java.text.ParseException {
+<a name="157" href="#157">157</a>     	<strong>if</strong> (!reader.output(format)) {
+<a name="158" href="#158">158</a>             <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Unsupported format: "</span> + format);
+<a name="159" href="#159">159</a>     	}
+<a name="160" href="#160">160</a>     }
+<a name="161" href="#161">161</a> 
+<a name="162" href="#162">162</a>     <em>/**<em>*</em></em>
+<a name="163" href="#163">163</a> <em>     * Generate a CDX index file for an ARC file.</em>
+<a name="164" href="#164">164</a> <em>     *</em>
+<a name="165" href="#165">165</a> <em>     * @param urlOrPath The ARC file to generate a CDX index for</em>
+<a name="166" href="#166">166</a> <em>     * @throws IOException</em>
+<a name="167" href="#167">167</a> <em>     * @throws java.text.ParseException</em>
+<a name="168" href="#168">168</a> <em>     */</em>
+<a name="169" href="#169">169</a>     <strong>public</strong> <strong>static</strong> <strong>void</strong> createCDXIndexFile(String urlOrPath)
+<a name="170" href="#170">170</a>     throws IOException, java.text.ParseException {
+<a name="171" href="#171">171</a>     	WARCReader r = WARCReaderFactory.get(urlOrPath);
+<a name="172" href="#172">172</a>     	r.setStrict(false);
+<a name="173" href="#173">173</a>     	r.setDigest(<strong>true</strong>);
+<a name="174" href="#174">174</a>     	output(r, CDX_FILE);
+<a name="175" href="#175">175</a>     }
+<a name="176" href="#176">176</a> 
+<a name="177" href="#177">177</a>     <em>/**<em>*</em></em>
+<a name="178" href="#178">178</a> <em>     * Command-line interface to WARCReader.</em>
+<a name="179" href="#179">179</a> <em>     *</em>
+<a name="180" href="#180">180</a> <em>     * Here is the command-line interface:</em>
+<a name="181" href="#181">181</a> <em>     * &lt;pre></em>
+<a name="182" href="#182">182</a> <em>     * usage: java org.archive.io.arc.WARCReader [--offset=#] ARCFILE</em>
+<a name="183" href="#183">183</a> <em>     *  -h,--help      Prints this message and exits.</em>
+<a name="184" href="#184">184</a> <em>     *  -o,--offset    Outputs record at this offset into arc file.&lt;/pre></em>
+<a name="185" href="#185">185</a> <em>     *</em>
+<a name="186" href="#186">186</a> <em>     * &lt;p>Outputs using a pseudo-CDX format as described here:</em>
+<a name="187" href="#187">187</a> <em>     * &lt;a href="<a href="http://www.archive.org/web/researcher/cdx_legend.php" target="alexandria_uri">http://www.archive.org/web/researcher/cdx_legend.php</a>">CDX</em>
+<a name="188" href="#188">188</a> <em>     * Legent&lt;/a> and here</em>
+<a name="189" href="#189">189</a> <em>     * &lt;a href="<a href="http://www.archive.org/web/researcher/example_cdx.php" target="alexandria_uri">http://www.archive.org/web/researcher/example_cdx.php</a>">Example&lt;/a>.</em>
+<a name="190" href="#190">190</a> <em>     * Legend used in below is: 'CDX b e a m s c V (or v if uncompressed) n g'.</em>
+<a name="191" href="#191">191</a> <em>     * Hash is hard-coded straight SHA-1 hash of content.</em>
+<a name="192" href="#192">192</a> <em>     *</em>
+<a name="193" href="#193">193</a> <em>     * @param args Command-line arguments.</em>
+<a name="194" href="#194">194</a> <em>     * @throws ParseException Failed parse of the command line.</em>
+<a name="195" href="#195">195</a> <em>     * @throws IOException</em>
+<a name="196" href="#196">196</a> <em>     * @throws java.text.ParseException</em>
+<a name="197" href="#197">197</a> <em>     */</em>
+<a name="198" href="#198">198</a>     <strong>public</strong> <strong>static</strong> <strong>void</strong> main(String [] args)
+<a name="199" href="#199">199</a>     throws ParseException, IOException, java.text.ParseException {
+<a name="200" href="#200">200</a>         Options options = getOptions();
+<a name="201" href="#201">201</a>         PosixParser parser = <strong>new</strong> PosixParser();
+<a name="202" href="#202">202</a>         CommandLine cmdline = parser.parse(options, args, false);
+<a name="203" href="#203">203</a>         List cmdlineArgs = cmdline.getArgList();
+<a name="204" href="#204">204</a>         Option [] cmdlineOptions = cmdline.getOptions();
+<a name="205" href="#205">205</a>         HelpFormatter formatter = <strong>new</strong> HelpFormatter();
+<a name="206" href="#206">206</a> 
+<a name="207" href="#207">207</a>         <em class="comment">// If no args, print help.</em>
+<a name="208" href="#208">208</a>         <strong>if</strong> (cmdlineArgs.size() &lt;= 0) {
+<a name="209" href="#209">209</a>             usage(formatter, options, 0);
+<a name="210" href="#210">210</a>         }
+<a name="211" href="#211">211</a> 
+<a name="212" href="#212">212</a>         <em class="comment">// Now look at options passed.</em>
+<a name="213" href="#213">213</a>         <strong>long</strong> offset = -1;
+<a name="214" href="#214">214</a>         <strong>boolean</strong> digest = false;
+<a name="215" href="#215">215</a>         <strong>boolean</strong> strict = false;
+<a name="216" href="#216">216</a>         String format = CDX;
+<a name="217" href="#217">217</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; cmdlineOptions.length; i++) {
+<a name="218" href="#218">218</a>             <strong>switch</strong>(cmdlineOptions[i].getId()) {
+<a name="219" href="#219">219</a>                 <strong>case</strong> 'h':
+<a name="220" href="#220">220</a>                     usage(formatter, options, 0);
+<a name="221" href="#221">221</a>                     <strong>break</strong>;
+<a name="222" href="#222">222</a> 
+<a name="223" href="#223">223</a>                 <strong>case</strong> 'o':
+<a name="224" href="#224">224</a>                     offset =
+<a name="225" href="#225">225</a>                         Long.parseLong(cmdlineOptions[i].getValue());
+<a name="226" href="#226">226</a>                     <strong>break</strong>;
+<a name="227" href="#227">227</a>                     
+<a name="228" href="#228">228</a>                 <strong>case</strong> 's':
+<a name="229" href="#229">229</a>                     strict = <strong>true</strong>;
+<a name="230" href="#230">230</a>                     <strong>break</strong>;
+<a name="231" href="#231">231</a>                     
+<a name="232" href="#232">232</a>                 <strong>case</strong> 'd':
+<a name="233" href="#233">233</a>                 	digest = getTrueOrFalse(cmdlineOptions[i].getValue());
+<a name="234" href="#234">234</a>                     <strong>break</strong>;
+<a name="235" href="#235">235</a>                     
+<a name="236" href="#236">236</a>                 <strong>case</strong> 'f':
+<a name="237" href="#237">237</a>                     format = cmdlineOptions[i].getValue().toLowerCase();
+<a name="238" href="#238">238</a>                     <strong>boolean</strong> match = false;
+<a name="239" href="#239">239</a>                     <em class="comment">// List of supported formats.</em>
+<a name="240" href="#240">240</a>                     <strong>final</strong> String [] supportedFormats =
+<a name="241" href="#241">241</a>                 		{CDX, DUMP, GZIP_DUMP, CDX_FILE};
+<a name="242" href="#242">242</a>                     <strong>for</strong> (<strong>int</strong> ii = 0; ii &lt; supportedFormats.length; ii++) {
+<a name="243" href="#243">243</a>                         <strong>if</strong> (supportedFormats[ii].equals(format)) {
+<a name="244" href="#244">244</a>                             match = <strong>true</strong>;
+<a name="245" href="#245">245</a>                             <strong>break</strong>;
+<a name="246" href="#246">246</a>                         }
+<a name="247" href="#247">247</a>                     }
+<a name="248" href="#248">248</a>                     <strong>if</strong> (!match) {
+<a name="249" href="#249">249</a>                         usage(formatter, options, 1);
+<a name="250" href="#250">250</a>                     }
+<a name="251" href="#251">251</a>                     <strong>break</strong>;
+<a name="252" href="#252">252</a> 
+<a name="253" href="#253">253</a>                 <strong>default</strong>:
+<a name="254" href="#254">254</a>                     <strong>throw</strong> <strong>new</strong> RuntimeException(<span class="string">"Unexpected option: "</span> +
+<a name="255" href="#255">255</a>                         + cmdlineOptions[i].getId());
+<a name="256" href="#256">256</a>             }
+<a name="257" href="#257">257</a>         }
+<a name="258" href="#258">258</a>         
+<a name="259" href="#259">259</a>         <strong>if</strong> (offset >= 0) {
+<a name="260" href="#260">260</a>             <strong>if</strong> (cmdlineArgs.size() != 1) {
+<a name="261" href="#261">261</a>                 System.out.println(<span class="string">"Error: Pass one arcfile only."</span>);
+<a name="262" href="#262">262</a>                 usage(formatter, options, 1);
+<a name="263" href="#263">263</a>             }
+<a name="264" href="#264">264</a>             <a href="../../../../org/archive/io/warc/WARCReader.html">WARCReader</a> r = WARCReaderFactory.get(
+<a name="265" href="#265">265</a>             	<strong>new</strong> File((String)cmdlineArgs.get(0)), offset);
+<a name="266" href="#266">266</a>             r.setStrict(strict);
+<a name="267" href="#267">267</a>             outputRecord(r, format);
+<a name="268" href="#268">268</a>         } <strong>else</strong> {
+<a name="269" href="#269">269</a>             <strong>for</strong> (Iterator i = cmdlineArgs.iterator(); i.hasNext();) {
+<a name="270" href="#270">270</a>                 String urlOrPath = (String)i.next();
+<a name="271" href="#271">271</a>                 <strong>try</strong> {
+<a name="272" href="#272">272</a>                 	WARCReader r = WARCReaderFactory.get(urlOrPath);
+<a name="273" href="#273">273</a>                 	r.setStrict(strict);
+<a name="274" href="#274">274</a>                 	r.setDigest(digest);
+<a name="275" href="#275">275</a>                     output(r, format);
+<a name="276" href="#276">276</a>                 } <strong>catch</strong> (RuntimeException e) {
+<a name="277" href="#277">277</a>                     <em class="comment">// Write out name of file we failed on to help with</em>
+<a name="278" href="#278">278</a>                     <em class="comment">// debugging.  Then print stack trace and try to keep</em>
+<a name="279" href="#279">279</a>                     <em class="comment">// going.  We do this for case where we're being fed</em>
+<a name="280" href="#280">280</a>                     <em class="comment">// a bunch of ARCs; just note the bad one and move</em>
+<a name="281" href="#281">281</a>                     <em class="comment">// on to the next.</em>
+<a name="282" href="#282">282</a>                     System.err.println(<span class="string">"Exception processing "</span> + urlOrPath +
+<a name="283" href="#283">283</a>                         <span class="string">": "</span> + e.getMessage());
+<a name="284" href="#284">284</a>                     e.printStackTrace(System.err);
+<a name="285" href="#285">285</a>                     System.exit(1);
+<a name="286" href="#286">286</a>                 }
+<a name="287" href="#287">287</a>             }
+<a name="288" href="#288">288</a>         }
+<a name="289" href="#289">289</a>     } 
+<a name="290" href="#290">290</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

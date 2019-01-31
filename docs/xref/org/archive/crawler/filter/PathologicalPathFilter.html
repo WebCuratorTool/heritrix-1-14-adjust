@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" /><title>PathologicalPathFilter xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../apidocs/org/archive/crawler/filter/PathologicalPathFilter.html">View Javadoc</a></div><pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> PathologicalFilter</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> *</em>
+<a name="3" href="#3">3</a>   <em class="comment"> * $Id: PathologicalPathFilter.java 4652 2006-09-25 18:41:10Z paul_jack $</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *</em>
+<a name="5" href="#5">5</a>   <em class="comment"> * Created on Feb 20, 2004</em>
+<a name="6" href="#6">6</a>   <em class="comment"> *</em>
+<a name="7" href="#7">7</a>   <em class="comment"> * Copyright (C) 2004 Internet Archive.</em>
+<a name="8" href="#8">8</a>   <em class="comment"> *</em>
+<a name="9" href="#9">9</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="10" href="#10">10</a>  <em class="comment"> *</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="12" href="#12">12</a>  <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="13" href="#13">13</a>  <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="14" href="#14">14</a>  <em class="comment"> * any later version.</em>
+<a name="15" href="#15">15</a>  <em class="comment"> *</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="17" href="#17">17</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="18" href="#18">18</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="20" href="#20">20</a>  <em class="comment"> *</em>
+<a name="21" href="#21">21</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="22" href="#22">22</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="23" href="#23">23</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="24" href="#24">24</a>  <em class="comment"> */</em>
+<a name="25" href="#25">25</a>  <strong>package</strong> <a href="../../../../org/archive/crawler/filter/package-summary.html">org.archive.crawler.filter</a>;
+<a name="26" href="#26">26</a>  
+<a name="27" href="#27">27</a>  <strong>import</strong> java.util.logging.Logger;
+<a name="28" href="#28">28</a>  
+<a name="29" href="#29">29</a>  <strong>import</strong> javax.management.AttributeNotFoundException;
+<a name="30" href="#30">30</a>  
+<a name="31" href="#31">31</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlURI;
+<a name="32" href="#32">32</a>  <strong>import</strong> org.archive.crawler.deciderules.DecideRule;
+<a name="33" href="#33">33</a>  <strong>import</strong> org.archive.crawler.deciderules.DecidingFilter;
+<a name="34" href="#34">34</a>  <strong>import</strong> org.archive.crawler.settings.SimpleType;
+<a name="35" href="#35">35</a>  <strong>import</strong> org.archive.crawler.settings.Type;
+<a name="36" href="#36">36</a>  
+<a name="37" href="#37">37</a>  <em>/**<em>* </em></em>
+<a name="38" href="#38">38</a>  <em> * Checks if a URI contains a repeated pattern.</em>
+<a name="39" href="#39">39</a>  <em> *</em>
+<a name="40" href="#40">40</a>  <em> * This filter is checking if a pattern is repeated a specific number of times.</em>
+<a name="41" href="#41">41</a>  <em> * The use is to avoid crawler traps where the server adds the same pattern to</em>
+<a name="42" href="#42">42</a>  <em> * the requested URI like: &lt;code><a href="http://host/img/img/img/img....&lt;/code" target="alexandria_uri">http://host/img/img/img/img....&lt;/code</a>>. This</em>
+<a name="43" href="#43">43</a>  <em> * filter returns TRUE if the path is pathological.  FALSE otherwise.</em>
+<a name="44" href="#44">44</a>  <em> *</em>
+<a name="45" href="#45">45</a>  <em> * @author John Erik Halse</em>
+<a name="46" href="#46">46</a>  <em> * @deprecated As of release 1.10.0.  Replaced by {@link DecidingFilter} and</em>
+<a name="47" href="#47">47</a>  <em> * equivalent {@link DecideRule}.</em>
+<a name="48" href="#48">48</a>  <em> */</em>
+<a name="49" href="#49">49</a>  <strong>public</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/filter/PathologicalPathFilter.html">PathologicalPathFilter</a> <strong>extends</strong> <a href="../../../../org/archive/crawler/filter/URIRegExpFilter.html">URIRegExpFilter</a> {
+<a name="50" href="#50">50</a>  
+<a name="51" href="#51">51</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = 2797805167250054353L;
+<a name="52" href="#52">52</a>  
+<a name="53" href="#53">53</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> Logger logger =
+<a name="54" href="#54">54</a>          Logger.getLogger(PathologicalPathFilter.<strong>class</strong>.getName());
+<a name="55" href="#55">55</a>  
+<a name="56" href="#56">56</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> String ATTR_REPETITIONS = <span class="string">"repetitions"</span>;
+<a name="57" href="#57">57</a>  
+<a name="58" href="#58">58</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> Integer DEFAULT_REPETITIONS = <strong>new</strong> Integer(3);
+<a name="59" href="#59">59</a>      
+<a name="60" href="#60">60</a>      <strong>private</strong> <strong>final</strong> String REGEX_PREFIX = <span class="string">".*?/(.*?/)&#47;&#47;1{"</span>;
+<a name="61" href="#61">61</a>      <strong>private</strong> <strong>final</strong> String REGEX_SUFFIX = <span class="string">",}.*"</span>;
+<a name="62" href="#62">62</a>  
+<a name="63" href="#63">63</a>      <em>/**<em>* Constructs a new PathologicalPathFilter.</em></em>
+<a name="64" href="#64">64</a>  <em>     *</em>
+<a name="65" href="#65">65</a>  <em>     * @param name the name of the filter.</em>
+<a name="66" href="#66">66</a>  <em>     */</em>
+<a name="67" href="#67">67</a>      <strong>public</strong> <a href="../../../../org/archive/crawler/filter/PathologicalPathFilter.html">PathologicalPathFilter</a>(String name) {
+<a name="68" href="#68">68</a>          <strong>super</strong>(name);
+<a name="69" href="#69">69</a>          setDescription(<span class="string">"Pathological path filter *Deprecated* Use"</span> +
+<a name="70" href="#70">70</a>          		<span class="string">"DecidingFilter and equivalent DecideRule instead. "</span> +
+<a name="71" href="#71">71</a>          		<span class="string">"The Pathologicalpath filter"</span> +
+<a name="72" href="#72">72</a>                  <span class="string">" is used to avoid crawler traps by adding a constraint on"</span> +
+<a name="73" href="#73">73</a>                  <span class="string">" how many times a pattern in the URI could be repeated."</span> +
+<a name="74" href="#74">74</a>                  <span class="string">" Returns false if the path is NOT pathological (There"</span> +
+<a name="75" href="#75">75</a>                  <span class="string">" are no subpath reptitions or reptitions are less than"</span> +
+<a name="76" href="#76">76</a>                  <span class="string">" the '"</span> + ATTR_REPETITIONS + <span class="string">"' limit)."</span>);
+<a name="77" href="#77">77</a>  
+<a name="78" href="#78">78</a>          <a href="../../../../org/archive/crawler/settings/Type.html">Type</a> type = getElementFromDefinition(ATTR_MATCH_RETURN_VALUE);
+<a name="79" href="#79">79</a>          type.setTransient(<strong>true</strong>);
+<a name="80" href="#80">80</a>  
+<a name="81" href="#81">81</a>          type = getElementFromDefinition(ATTR_REGEXP);
+<a name="82" href="#82">82</a>          type.setTransient(<strong>true</strong>);
+<a name="83" href="#83">83</a>  
+<a name="84" href="#84">84</a>          addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_REPETITIONS,
+<a name="85" href="#85">85</a>                  <span class="string">"Number of times the pattern should be allowed to occur. \n"</span> +
+<a name="86" href="#86">86</a>                  <span class="string">"This filter returns true if number of repetitions of a"</span> +
+<a name="87" href="#87">87</a>                  <span class="string">" pattern exceeds this value"</span>,
+<a name="88" href="#88">88</a>                  DEFAULT_REPETITIONS));
+<a name="89" href="#89">89</a>      }
+<a name="90" href="#90">90</a>  
+<a name="91" href="#91">91</a>      <em>/**<em>* </em></em>
+<a name="92" href="#92">92</a>  <em>     * Construct the regexp string to be matched aginst the URI.</em>
+<a name="93" href="#93">93</a>  <em>     * @param o an object to extract a URI from.</em>
+<a name="94" href="#94">94</a>  <em>     * @return the regexp pattern.</em>
+<a name="95" href="#95">95</a>  <em>     */</em>
+<a name="96" href="#96">96</a>      <strong>protected</strong> String getRegexp(Object o) {
+<a name="97" href="#97">97</a>          <strong>int</strong> rep = 0;
+<a name="98" href="#98">98</a>          <strong>try</strong> {
+<a name="99" href="#99">99</a>              rep = ((Integer)getAttribute(o, ATTR_REPETITIONS)).intValue();
+<a name="100" href="#100">100</a>         } <strong>catch</strong> (AttributeNotFoundException e) {
+<a name="101" href="#101">101</a>             logger.severe(e.getMessage());
+<a name="102" href="#102">102</a>         }
+<a name="103" href="#103">103</a>         <strong>return</strong> rep == 0? <strong>null</strong>: REGEX_PREFIX + (rep - 1) + REGEX_SUFFIX;
+<a name="104" href="#104">104</a>     }
+<a name="105" href="#105">105</a>     
+<a name="106" href="#106">106</a>     <strong>protected</strong> <strong>boolean</strong> getFilterOffPosition(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="107" href="#107">107</a>         <strong>return</strong> false;
+<a name="108" href="#108">108</a>     }
+<a name="109" href="#109">109</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

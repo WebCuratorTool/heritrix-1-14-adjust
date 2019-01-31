@@ -1,0 +1,650 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" /><title>WorkQueue xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../apidocs/org/archive/crawler/frontier/WorkQueue.html">View Javadoc</a></div><pre>
+
+<a name="1" href="#1">1</a>   <strong>package</strong> <a href="../../../../org/archive/crawler/frontier/package-summary.html">org.archive.crawler.frontier</a>;
+<a name="2" href="#2">2</a>   
+<a name="3" href="#3">3</a>   <strong>import</strong> java.io.IOException;
+<a name="4" href="#4">4</a>   <strong>import</strong> java.io.PrintWriter;
+<a name="5" href="#5">5</a>   <strong>import</strong> java.io.Serializable;
+<a name="6" href="#6">6</a>   <strong>import</strong> java.util.logging.Level;
+<a name="7" href="#7">7</a>   <strong>import</strong> java.util.logging.Logger;
+<a name="8" href="#8">8</a>   
+<a name="9" href="#9">9</a>   <strong>import</strong> org.apache.commons.httpclient.URIException;
+<a name="10" href="#10">10</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlSubstats;
+<a name="11" href="#11">11</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlURI;
+<a name="12" href="#12">12</a>  <strong>import</strong> org.archive.crawler.framework.Frontier;
+<a name="13" href="#13">13</a>  <strong>import</strong> org.archive.net.UURI;
+<a name="14" href="#14">14</a>  <strong>import</strong> org.archive.net.UURIFactory;
+<a name="15" href="#15">15</a>  <strong>import</strong> org.archive.util.ArchiveUtils;
+<a name="16" href="#16">16</a>  <strong>import</strong> org.archive.util.Reporter;
+<a name="17" href="#17">17</a>  
+<a name="18" href="#18">18</a>  <em>/**<em>*</em></em>
+<a name="19" href="#19">19</a>  <em> * A single queue of related URIs to visit, grouped by a classKey</em>
+<a name="20" href="#20">20</a>  <em> * (typically "hostname:port" or similar) </em>
+<a name="21" href="#21">21</a>  <em> * </em>
+<a name="22" href="#22">22</a>  <em> * @author gojomo</em>
+<a name="23" href="#23">23</a>  <em> * @author Christian Kohlschuetter </em>
+<a name="24" href="#24">24</a>  <em> */</em>
+<a name="25" href="#25">25</a>  <strong>public</strong> <strong>abstract</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> implements Frontier.FrontierGroup, Comparable,
+<a name="26" href="#26">26</a>          Serializable, <a href="../../../../org/archive/util/Reporter.html">Reporter</a> {
+<a name="27" href="#27">27</a>      <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = -1939168792663316048L;
+<a name="28" href="#28">28</a>      
+<a name="29" href="#29">29</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> Logger logger =
+<a name="30" href="#30">30</a>          Logger.getLogger(WorkQueue.<strong>class</strong>.getName());
+<a name="31" href="#31">31</a>      
+<a name="32" href="#32">32</a>      <em>/**<em>* The classKey */</em></em>
+<a name="33" href="#33">33</a>      <strong>protected</strong> <strong>final</strong> String classKey;
+<a name="34" href="#34">34</a>  
+<a name="35" href="#35">35</a>      <strong>private</strong> <strong>boolean</strong> active = <strong>true</strong>;
+<a name="36" href="#36">36</a>  
+<a name="37" href="#37">37</a>      <em>/**<em>* Total number of stored items */</em></em>
+<a name="38" href="#38">38</a>      <strong>private</strong> <strong>long</strong> count = 0;
+<a name="39" href="#39">39</a>  
+<a name="40" href="#40">40</a>      <em>/**<em>* Total number of items ever enqueued */</em></em>
+<a name="41" href="#41">41</a>      <strong>private</strong> <strong>long</strong> enqueueCount = 0;
+<a name="42" href="#42">42</a>      
+<a name="43" href="#43">43</a>      <em>/**<em>* Whether queue is already in lifecycle stage */</em></em>
+<a name="44" href="#44">44</a>      <strong>private</strong> <strong>boolean</strong> isHeld = false;
+<a name="45" href="#45">45</a>  
+<a name="46" href="#46">46</a>      <em>/**<em>* Time to wake, if snoozed */</em></em>
+<a name="47" href="#47">47</a>      <strong>private</strong> <strong>long</strong> wakeTime = 0;
+<a name="48" href="#48">48</a>  
+<a name="49" href="#49">49</a>      <em>/**<em>* Running 'budget' indicating whether queue should stay active */</em></em>
+<a name="50" href="#50">50</a>      <strong>private</strong> <strong>int</strong> sessionBalance = 0;
+<a name="51" href="#51">51</a>  
+<a name="52" href="#52">52</a>      <em>/**<em>* Cost of the last item to be charged against queue */</em></em>
+<a name="53" href="#53">53</a>      <strong>private</strong> <strong>int</strong> lastCost = 0;
+<a name="54" href="#54">54</a>  
+<a name="55" href="#55">55</a>      <em>/**<em>* Total number of items charged against queue; with totalExpenditure</em></em>
+<a name="56" href="#56">56</a>  <em>     * can be used to calculate 'average cost'. */</em>
+<a name="57" href="#57">57</a>      <strong>private</strong> <strong>long</strong> costCount = 0;
+<a name="58" href="#58">58</a>  
+<a name="59" href="#59">59</a>      <em>/**<em>* Running tally of total expenditures out of this queue;</em></em>
+<a name="60" href="#60">60</a>  <em>     * tallied only as a URI is finished or retried */</em>
+<a name="61" href="#61">61</a>      <strong>private</strong> <strong>long</strong> totalExpenditure = 0;
+<a name="62" href="#62">62</a>  
+<a name="63" href="#63">63</a>      <em>/**<em>* Net cost of all currently-enqueued URIs. */</em></em>
+<a name="64" href="#64">64</a>      <strong>private</strong> <strong>long</strong> pendingExpenditure = 0;
+<a name="65" href="#65">65</a>      
+<a name="66" href="#66">66</a>      <em>/**<em>* Total to spend on this queue over its lifetime */</em></em>
+<a name="67" href="#67">67</a>      <strong>private</strong> <strong>long</strong> totalBudget = 0;
+<a name="68" href="#68">68</a>  
+<a name="69" href="#69">69</a>      <em>/**<em>* The next item to be returned */</em></em>
+<a name="70" href="#70">70</a>      <strong>private</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> peekItem = <strong>null</strong>;
+<a name="71" href="#71">71</a>  
+<a name="72" href="#72">72</a>      <em>/**<em>* Last URI enqueued */</em></em>
+<a name="73" href="#73">73</a>      <strong>private</strong> String lastQueued;
+<a name="74" href="#74">74</a>  
+<a name="75" href="#75">75</a>      <em>/**<em>* Last URI peeked */</em></em>
+<a name="76" href="#76">76</a>      <strong>private</strong> String lastPeeked;
+<a name="77" href="#77">77</a>  
+<a name="78" href="#78">78</a>      <em>/**<em>* time of last dequeue (disposition of some URI) **/</em> </em>
+<a name="79" href="#79">79</a>      <strong>private</strong> <strong>long</strong> lastDequeueTime;
+<a name="80" href="#80">80</a>      
+<a name="81" href="#81">81</a>      <em>/**<em>* count of errors encountered */</em></em>
+<a name="82" href="#82">82</a>      <strong>private</strong> <strong>long</strong> errorCount = 0;
+<a name="83" href="#83">83</a>      
+<a name="84" href="#84">84</a>      <em>/**<em>* Substats for all CrawlURIs in this group */</em></em>
+<a name="85" href="#85">85</a>      <strong>protected</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlSubstats.html">CrawlSubstats</a> substats = <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlSubstats.html">CrawlSubstats</a>();
+<a name="86" href="#86">86</a>  
+<a name="87" href="#87">87</a>      <strong>private</strong> <strong>boolean</strong> retired;
+<a name="88" href="#88">88</a>      
+<a name="89" href="#89">89</a>      <strong>public</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a>(<strong>final</strong> String pClassKey) {
+<a name="90" href="#90">90</a>          <strong>this</strong>.classKey = pClassKey;
+<a name="91" href="#91">91</a>      }
+<a name="92" href="#92">92</a>  
+<a name="93" href="#93">93</a>      <em>/**<em>*</em></em>
+<a name="94" href="#94">94</a>  <em>     * Delete URIs matching the given pattern from this queue. </em>
+<a name="95" href="#95">95</a>  <em>     * @param frontier</em>
+<a name="96" href="#96">96</a>  <em>     * @param match</em>
+<a name="97" href="#97">97</a>  <em>     * @return count of deleted URIs</em>
+<a name="98" href="#98">98</a>  <em>     */</em>
+<a name="99" href="#99">99</a>      <strong>public</strong> <strong>long</strong> deleteMatching(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier, String match) {
+<a name="100" href="#100">100</a>         <strong>try</strong> {
+<a name="101" href="#101">101</a>             <strong>final</strong> <strong>long</strong> deleteCount = deleteMatchingFromQueue(frontier, match);
+<a name="102" href="#102">102</a>             <strong>this</strong>.count -= deleteCount;
+<a name="103" href="#103">103</a>             <strong>return</strong> deleteCount;
+<a name="104" href="#104">104</a>         } <strong>catch</strong> (IOException e) {
+<a name="105" href="#105">105</a>             <em class="comment">//FIXME better exception handling</em>
+<a name="106" href="#106">106</a>             e.printStackTrace();
+<a name="107" href="#107">107</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="108" href="#108">108</a>         }
+<a name="109" href="#109">109</a>     }
+<a name="110" href="#110">110</a> 
+<a name="111" href="#111">111</a>     <em>/**<em>*</em></em>
+<a name="112" href="#112">112</a> <em>     * Add the given CrawlURI, noting its addition in running count. (It</em>
+<a name="113" href="#113">113</a> <em>     * should not already be present.)</em>
+<a name="114" href="#114">114</a> <em>     * </em>
+<a name="115" href="#115">115</a> <em>     * @param frontier Work queues manager.</em>
+<a name="116" href="#116">116</a> <em>     * @param curi CrawlURI to insert.</em>
+<a name="117" href="#117">117</a> <em>     */</em>
+<a name="118" href="#118">118</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> enqueue(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier,
+<a name="119" href="#119">119</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="120" href="#120">120</a>         <strong>try</strong> {
+<a name="121" href="#121">121</a>             insert(frontier, curi, false);
+<a name="122" href="#122">122</a>         } <strong>catch</strong> (IOException e) {
+<a name="123" href="#123">123</a>             <em class="comment">//FIXME better exception handling</em>
+<a name="124" href="#124">124</a>             e.printStackTrace();
+<a name="125" href="#125">125</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="126" href="#126">126</a>         }
+<a name="127" href="#127">127</a>         count++;
+<a name="128" href="#128">128</a>         enqueueCount++;
+<a name="129" href="#129">129</a>         pendingExpenditure += curi.getHolderCost();
+<a name="130" href="#130">130</a>     }
+<a name="131" href="#131">131</a> 
+<a name="132" href="#132">132</a>     <em>/**<em>*</em></em>
+<a name="133" href="#133">133</a> <em>     * Return the topmost queue item -- and remember it,</em>
+<a name="134" href="#134">134</a> <em>     * such that even later higher-priority inserts don't</em>
+<a name="135" href="#135">135</a> <em>     * change it. </em>
+<a name="136" href="#136">136</a> <em>     * </em>
+<a name="137" href="#137">137</a> <em>     * TODO: evaluate if this is really necessary</em>
+<a name="138" href="#138">138</a> <em>     * @param frontier Work queues manager</em>
+<a name="139" href="#139">139</a> <em>     * </em>
+<a name="140" href="#140">140</a> <em>     * @return topmost queue item, or null</em>
+<a name="141" href="#141">141</a> <em>     */</em>
+<a name="142" href="#142">142</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> peek(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier) {
+<a name="143" href="#143">143</a>         <strong>if</strong>(peekItem == <strong>null</strong> &amp;&amp; count > 0) {
+<a name="144" href="#144">144</a>             <strong>try</strong> {
+<a name="145" href="#145">145</a>                 peekItem = peekItem(frontier);
+<a name="146" href="#146">146</a>             } <strong>catch</strong> (IOException e) {
+<a name="147" href="#147">147</a>                 <em class="comment">//FIXME better exception handling</em>
+<a name="148" href="#148">148</a>                 logger.log(Level.SEVERE,<span class="string">"peek failure"</span>,e);
+<a name="149" href="#149">149</a>                 e.printStackTrace();
+<a name="150" href="#150">150</a>                 <em class="comment">// throw new RuntimeException(e);</em>
+<a name="151" href="#151">151</a>             }
+<a name="152" href="#152">152</a>             <strong>if</strong>(peekItem != <strong>null</strong>) {
+<a name="153" href="#153">153</a>                 lastPeeked = peekItem.toString();
+<a name="154" href="#154">154</a>             }
+<a name="155" href="#155">155</a>         }
+<a name="156" href="#156">156</a>         <strong>return</strong> peekItem;
+<a name="157" href="#157">157</a>     }
+<a name="158" href="#158">158</a> 
+<a name="159" href="#159">159</a>     <em>/**<em>*</em></em>
+<a name="160" href="#160">160</a> <em>     * Remove the peekItem from the queue and adjusts the count.</em>
+<a name="161" href="#161">161</a> <em>     * </em>
+<a name="162" href="#162">162</a> <em>     * @param frontier  Work queues manager.</em>
+<a name="163" href="#163">163</a> <em>     */</em>
+<a name="164" href="#164">164</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> dequeue(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier) {
+<a name="165" href="#165">165</a>         <strong>try</strong> {
+<a name="166" href="#166">166</a>             deleteItem(frontier, peekItem);
+<a name="167" href="#167">167</a>         } <strong>catch</strong> (IOException e) {
+<a name="168" href="#168">168</a>             <em class="comment">//FIXME better exception handling</em>
+<a name="169" href="#169">169</a>             e.printStackTrace();
+<a name="170" href="#170">170</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="171" href="#171">171</a>         }
+<a name="172" href="#172">172</a>         pendingExpenditure -= peekItem.getHolderCost();
+<a name="173" href="#173">173</a>         unpeek();
+<a name="174" href="#174">174</a>         count--;
+<a name="175" href="#175">175</a>         lastDequeueTime = System.currentTimeMillis();
+<a name="176" href="#176">176</a>     }
+<a name="177" href="#177">177</a> 
+<a name="178" href="#178">178</a>     <em>/**<em>*</em></em>
+<a name="179" href="#179">179</a> <em>     * Set the session 'activity budget balance' to the given value</em>
+<a name="180" href="#180">180</a> <em>     * </em>
+<a name="181" href="#181">181</a> <em>     * @param balance to use</em>
+<a name="182" href="#182">182</a> <em>     */</em>
+<a name="183" href="#183">183</a>     <strong>public</strong> <strong>void</strong> setSessionBalance(<strong>int</strong> balance) {
+<a name="184" href="#184">184</a>         <strong>this</strong>.sessionBalance = balance;
+<a name="185" href="#185">185</a>     }
+<a name="186" href="#186">186</a> 
+<a name="187" href="#187">187</a>     <em>/**<em>*</em></em>
+<a name="188" href="#188">188</a> <em>     * Return current session 'activity budget balance' </em>
+<a name="189" href="#189">189</a> <em>     * </em>
+<a name="190" href="#190">190</a> <em>     * @return session balance</em>
+<a name="191" href="#191">191</a> <em>     */</em>
+<a name="192" href="#192">192</a>     <strong>public</strong> <strong>int</strong> getSessionBalance() {
+<a name="193" href="#193">193</a>         <strong>return</strong> <strong>this</strong>.sessionBalance;
+<a name="194" href="#194">194</a>     }
+<a name="195" href="#195">195</a> 
+<a name="196" href="#196">196</a>     <em>/**<em>*</em></em>
+<a name="197" href="#197">197</a> <em>     * Set the total expenditure level allowable before queue is </em>
+<a name="198" href="#198">198</a> <em>     * considered inherently 'over-budget'. </em>
+<a name="199" href="#199">199</a> <em>     * </em>
+<a name="200" href="#200">200</a> <em>     * @param budget</em>
+<a name="201" href="#201">201</a> <em>     */</em>
+<a name="202" href="#202">202</a>     <strong>public</strong> <strong>void</strong> setTotalBudget(<strong>long</strong> budget) {
+<a name="203" href="#203">203</a>         <strong>this</strong>.totalBudget = budget;
+<a name="204" href="#204">204</a>     }
+<a name="205" href="#205">205</a> 
+<a name="206" href="#206">206</a>     <em>/**<em>*</em></em>
+<a name="207" href="#207">207</a> <em>     * Retrieve the total expenditure level allowed by this queue.</em>
+<a name="208" href="#208">208</a> <em>     * </em>
+<a name="209" href="#209">209</a> <em>     * @return the queues total budget</em>
+<a name="210" href="#210">210</a> <em>     */</em>
+<a name="211" href="#211">211</a>     <strong>public</strong> <strong>long</strong> getTotalBudget() {
+<a name="212" href="#212">212</a>         <strong>return</strong> <strong>this</strong>.totalBudget;
+<a name="213" href="#213">213</a>     }
+<a name="214" href="#214">214</a>     
+<a name="215" href="#215">215</a>     <em>/**<em>*</em></em>
+<a name="216" href="#216">216</a> <em>     * Check whether queue has temporarily or permanently exceeded</em>
+<a name="217" href="#217">217</a> <em>     * its budget. </em>
+<a name="218" href="#218">218</a> <em>     * </em>
+<a name="219" href="#219">219</a> <em>     * @return true if queue is over its set budget(s)</em>
+<a name="220" href="#220">220</a> <em>     */</em>
+<a name="221" href="#221">221</a>     <strong>public</strong> <strong>boolean</strong> isOverBudget() {
+<a name="222" href="#222">222</a>         <em class="comment">// check whether running balance is depleted </em>
+<a name="223" href="#223">223</a>         <em class="comment">// or totalExpenditure exceeds totalBudget</em>
+<a name="224" href="#224">224</a>         <strong>return</strong> <strong>this</strong>.sessionBalance &lt;= 0
+<a name="225" href="#225">225</a>             || (<strong>this</strong>.totalBudget >= 0 &amp;&amp; <strong>this</strong>.totalExpenditure >= <strong>this</strong>.totalBudget);
+<a name="226" href="#226">226</a>     }
+<a name="227" href="#227">227</a> 
+<a name="228" href="#228">228</a>     <em>/**<em>*</em></em>
+<a name="229" href="#229">229</a> <em>     * Return the tally of all expenditures from this queue (dequeued </em>
+<a name="230" href="#230">230</a> <em>     * items)</em>
+<a name="231" href="#231">231</a> <em>     * </em>
+<a name="232" href="#232">232</a> <em>     * @return total amount expended on this queue</em>
+<a name="233" href="#233">233</a> <em>     */</em>
+<a name="234" href="#234">234</a>     <strong>public</strong> <strong>long</strong> getTotalExpenditure() {
+<a name="235" href="#235">235</a>         <strong>return</strong> totalExpenditure;
+<a name="236" href="#236">236</a>     }
+<a name="237" href="#237">237</a>     
+<a name="238" href="#238">238</a>     <em>/**<em>*</em></em>
+<a name="239" href="#239">239</a> <em>     * Return the tally of all URI costs currently inside this queue</em>
+<a name="240" href="#240">240</a> <em>     * </em>
+<a name="241" href="#241">241</a> <em>     * @return total amount expended on this queue</em>
+<a name="242" href="#242">242</a> <em>     */</em>
+<a name="243" href="#243">243</a>     <strong>public</strong> <strong>long</strong> getPendingExpenditure() {
+<a name="244" href="#244">244</a>         <strong>return</strong> pendingExpenditure;
+<a name="245" href="#245">245</a>     }
+<a name="246" href="#246">246</a> 
+<a name="247" href="#247">247</a>     <em>/**<em>*</em></em>
+<a name="248" href="#248">248</a> <em>     * Increase the internal running budget to be used before </em>
+<a name="249" href="#249">249</a> <em>     * deactivating the queue</em>
+<a name="250" href="#250">250</a> <em>     * </em>
+<a name="251" href="#251">251</a> <em>     * @param amount amount to increment</em>
+<a name="252" href="#252">252</a> <em>     * @return updated budget value</em>
+<a name="253" href="#253">253</a> <em>     */</em>
+<a name="254" href="#254">254</a>     <strong>public</strong> <strong>int</strong> incrementSessionBalance(<strong>int</strong> amount) {
+<a name="255" href="#255">255</a>         <strong>this</strong>.sessionBalance = <strong>this</strong>.sessionBalance + amount;
+<a name="256" href="#256">256</a>         <strong>return</strong> <strong>this</strong>.sessionBalance;
+<a name="257" href="#257">257</a>     }
+<a name="258" href="#258">258</a> 
+<a name="259" href="#259">259</a>     <em>/**<em>*</em></em>
+<a name="260" href="#260">260</a> <em>     * Decrease the internal running budget by the given amount. </em>
+<a name="261" href="#261">261</a> <em>     * @param amount tp decrement</em>
+<a name="262" href="#262">262</a> <em>     * @return updated budget value</em>
+<a name="263" href="#263">263</a> <em>     */</em>
+<a name="264" href="#264">264</a>     <strong>public</strong> <strong>int</strong> expend(<strong>int</strong> amount) {
+<a name="265" href="#265">265</a>         <strong>this</strong>.sessionBalance = <strong>this</strong>.sessionBalance - amount;
+<a name="266" href="#266">266</a>         <strong>this</strong>.totalExpenditure = <strong>this</strong>.totalExpenditure + amount;
+<a name="267" href="#267">267</a>         <strong>this</strong>.lastCost = amount;
+<a name="268" href="#268">268</a>         <strong>this</strong>.costCount++;
+<a name="269" href="#269">269</a>         <strong>return</strong> <strong>this</strong>.sessionBalance;
+<a name="270" href="#270">270</a>     }
+<a name="271" href="#271">271</a> 
+<a name="272" href="#272">272</a>     <em>/**<em>*</em></em>
+<a name="273" href="#273">273</a> <em>     * A URI should not have been charged against queue (eg</em>
+<a name="274" href="#274">274</a> <em>     * it was disregarded); return the amount expended </em>
+<a name="275" href="#275">275</a> <em>     * @param amount to return</em>
+<a name="276" href="#276">276</a> <em>     * @return updated budget value</em>
+<a name="277" href="#277">277</a> <em>     */</em>
+<a name="278" href="#278">278</a>     <strong>public</strong> <strong>int</strong> refund(<strong>int</strong> amount) {
+<a name="279" href="#279">279</a>         <strong>this</strong>.sessionBalance = <strong>this</strong>.sessionBalance + amount;
+<a name="280" href="#280">280</a>         <strong>this</strong>.totalExpenditure = <strong>this</strong>.totalExpenditure - amount;
+<a name="281" href="#281">281</a>         <strong>this</strong>.costCount--;
+<a name="282" href="#282">282</a>         <strong>return</strong> <strong>this</strong>.sessionBalance;
+<a name="283" href="#283">283</a>     }
+<a name="284" href="#284">284</a>     
+<a name="285" href="#285">285</a>     <em>/**<em>*</em></em>
+<a name="286" href="#286">286</a> <em>     * Note an error and assess an extra penalty. </em>
+<a name="287" href="#287">287</a> <em>     * @param penalty additional amount to deduct</em>
+<a name="288" href="#288">288</a> <em>     */</em>
+<a name="289" href="#289">289</a>     <strong>public</strong> <strong>void</strong> noteError(<strong>int</strong> penalty) {
+<a name="290" href="#290">290</a>         <strong>this</strong>.sessionBalance = <strong>this</strong>.sessionBalance - penalty;
+<a name="291" href="#291">291</a>         <strong>this</strong>.totalExpenditure = <strong>this</strong>.totalExpenditure + penalty;
+<a name="292" href="#292">292</a>         errorCount++;
+<a name="293" href="#293">293</a>     }
+<a name="294" href="#294">294</a>     
+<a name="295" href="#295">295</a>     <em>/**<em>*</em></em>
+<a name="296" href="#296">296</a> <em>     * @param l</em>
+<a name="297" href="#297">297</a> <em>     */</em>
+<a name="298" href="#298">298</a>     <strong>public</strong> <strong>void</strong> setWakeTime(<strong>long</strong> l) {
+<a name="299" href="#299">299</a>         wakeTime = l;
+<a name="300" href="#300">300</a>     }
+<a name="301" href="#301">301</a> 
+<a name="302" href="#302">302</a>     <em>/**<em>*</em></em>
+<a name="303" href="#303">303</a> <em>     * @return wakeTime</em>
+<a name="304" href="#304">304</a> <em>     */</em>
+<a name="305" href="#305">305</a>     <strong>public</strong> <strong>long</strong> getWakeTime() {
+<a name="306" href="#306">306</a>         <strong>return</strong> wakeTime;
+<a name="307" href="#307">307</a>     }
+<a name="308" href="#308">308</a> 
+<a name="309" href="#309">309</a>     <em>/**<em>*</em></em>
+<a name="310" href="#310">310</a> <em>     * @return classKey, the 'identifier', for this queue.</em>
+<a name="311" href="#311">311</a> <em>     */</em>
+<a name="312" href="#312">312</a>     <strong>public</strong> String getClassKey() {
+<a name="313" href="#313">313</a>         <strong>return</strong> <strong>this</strong>.classKey;
+<a name="314" href="#314">314</a>     }
+<a name="315" href="#315">315</a> 
+<a name="316" href="#316">316</a>     <em>/**<em>*</em></em>
+<a name="317" href="#317">317</a> <em>     * Clear isHeld to false</em>
+<a name="318" href="#318">318</a> <em>     */</em>
+<a name="319" href="#319">319</a>     <strong>public</strong> <strong>void</strong> clearHeld() {
+<a name="320" href="#320">320</a>         isHeld = false;
+<a name="321" href="#321">321</a>     }
+<a name="322" href="#322">322</a> 
+<a name="323" href="#323">323</a>     <em>/**<em>*</em></em>
+<a name="324" href="#324">324</a> <em>     * Whether the queue is already in a lifecycle stage --</em>
+<a name="325" href="#325">325</a> <em>     * such as ready, in-progress, snoozed -- and thus should</em>
+<a name="326" href="#326">326</a> <em>     * not be redundantly inserted to readyClassQueues</em>
+<a name="327" href="#327">327</a> <em>     * </em>
+<a name="328" href="#328">328</a> <em>     * @return isHeld</em>
+<a name="329" href="#329">329</a> <em>     */</em>
+<a name="330" href="#330">330</a>     <strong>public</strong> <strong>boolean</strong> isHeld() {
+<a name="331" href="#331">331</a>         <strong>return</strong> isHeld;
+<a name="332" href="#332">332</a>     }
+<a name="333" href="#333">333</a> 
+<a name="334" href="#334">334</a>     <em>/**<em>*</em></em>
+<a name="335" href="#335">335</a> <em>     * Set isHeld to true</em>
+<a name="336" href="#336">336</a> <em>     */</em>
+<a name="337" href="#337">337</a>     <strong>public</strong> <strong>void</strong> setHeld() {
+<a name="338" href="#338">338</a>         isHeld = <strong>true</strong>;
+<a name="339" href="#339">339</a>     }
+<a name="340" href="#340">340</a> 
+<a name="341" href="#341">341</a>     <em>/**<em>*</em></em>
+<a name="342" href="#342">342</a> <em>     * Forgive the peek, allowing a subsequent peek to </em>
+<a name="343" href="#343">343</a> <em>     * return a different item. </em>
+<a name="344" href="#344">344</a> <em>     * </em>
+<a name="345" href="#345">345</a> <em>     */</em>
+<a name="346" href="#346">346</a>     <strong>public</strong> <strong>void</strong> unpeek() {
+<a name="347" href="#347">347</a>         peekItem = <strong>null</strong>;
+<a name="348" href="#348">348</a>     }
+<a name="349" href="#349">349</a> 
+<a name="350" href="#350">350</a>     <strong>public</strong> <strong>final</strong> <strong>int</strong> compareTo(Object obj) {
+<a name="351" href="#351">351</a>         <strong>if</strong>(<strong>this</strong> == obj) {
+<a name="352" href="#352">352</a>             <strong>return</strong> 0; <em class="comment">// for exact identity only</em>
+<a name="353" href="#353">353</a>         }
+<a name="354" href="#354">354</a>         <a href="../../../../org/archive/crawler/frontier/WorkQueue.html">WorkQueue</a> other = (WorkQueue) obj;
+<a name="355" href="#355">355</a>         <strong>if</strong>(getWakeTime() > other.getWakeTime()) {
+<a name="356" href="#356">356</a>             <strong>return</strong> 1;
+<a name="357" href="#357">357</a>         }
+<a name="358" href="#358">358</a>         <strong>if</strong>(getWakeTime() &lt; other.getWakeTime()) {
+<a name="359" href="#359">359</a>             <strong>return</strong> -1;
+<a name="360" href="#360">360</a>         }
+<a name="361" href="#361">361</a>         <em class="comment">// at this point, the ordering is arbitrary, but still</em>
+<a name="362" href="#362">362</a>         <em class="comment">// must be consistent/stable over time</em>
+<a name="363" href="#363">363</a>         <strong>return</strong> <strong>this</strong>.classKey.compareTo(other.getClassKey());
+<a name="364" href="#364">364</a>     }
+<a name="365" href="#365">365</a> 
+<a name="366" href="#366">366</a>     <em>/**<em>*</em></em>
+<a name="367" href="#367">367</a> <em>     * Update the given CrawlURI, which should already be present. (This</em>
+<a name="368" href="#368">368</a> <em>     * is not checked.) Equivalent to an enqueue without affecting the count.</em>
+<a name="369" href="#369">369</a> <em>     * </em>
+<a name="370" href="#370">370</a> <em>     * @param frontier Work queues manager.</em>
+<a name="371" href="#371">371</a> <em>     * @param curi CrawlURI to update.</em>
+<a name="372" href="#372">372</a> <em>     */</em>
+<a name="373" href="#373">373</a>     <strong>public</strong> <strong>void</strong> update(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier, <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="374" href="#374">374</a>         <strong>try</strong> {
+<a name="375" href="#375">375</a>             insert(frontier, curi, <strong>true</strong>);
+<a name="376" href="#376">376</a>         } <strong>catch</strong> (IOException e) {
+<a name="377" href="#377">377</a>             <em class="comment">//FIXME better exception handling</em>
+<a name="378" href="#378">378</a>             e.printStackTrace();
+<a name="379" href="#379">379</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="380" href="#380">380</a>         }
+<a name="381" href="#381">381</a>     }
+<a name="382" href="#382">382</a> 
+<a name="383" href="#383">383</a>     <em>/**<em>*</em></em>
+<a name="384" href="#384">384</a> <em>     * @return Returns the count.</em>
+<a name="385" href="#385">385</a> <em>     */</em>
+<a name="386" href="#386">386</a>     <strong>public</strong> <strong>synchronized</strong> <strong>long</strong> getCount() {
+<a name="387" href="#387">387</a>         <strong>return</strong> <strong>this</strong>.count;
+<a name="388" href="#388">388</a>     }
+<a name="389" href="#389">389</a> 
+<a name="390" href="#390">390</a>     <em>/**<em>*</em></em>
+<a name="391" href="#391">391</a> <em>     * Insert the given curi, whether it is already present or not. </em>
+<a name="392" href="#392">392</a> <em>     * @param frontier WorkQueueFrontier.</em>
+<a name="393" href="#393">393</a> <em>     * @param curi CrawlURI to insert.</em>
+<a name="394" href="#394">394</a> <em>     * @throws IOException</em>
+<a name="395" href="#395">395</a> <em>     */</em>
+<a name="396" href="#396">396</a>     <strong>private</strong> <strong>void</strong> insert(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier, <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi, 
+<a name="397" href="#397">397</a>             <strong>boolean</strong> overwriteIfPresent)
+<a name="398" href="#398">398</a>         throws IOException {
+<a name="399" href="#399">399</a>         insertItem(frontier, curi, overwriteIfPresent);
+<a name="400" href="#400">400</a>         lastQueued = curi.toString();
+<a name="401" href="#401">401</a>     }
+<a name="402" href="#402">402</a> 
+<a name="403" href="#403">403</a>     <em>/**<em>*</em></em>
+<a name="404" href="#404">404</a> <em>     * Insert the given curi, whether it is already present or not.</em>
+<a name="405" href="#405">405</a> <em>     * Hook for subclasses. </em>
+<a name="406" href="#406">406</a> <em>     * </em>
+<a name="407" href="#407">407</a> <em>     * @param frontier WorkQueueFrontier.</em>
+<a name="408" href="#408">408</a> <em>     * @param curi CrawlURI to insert.</em>
+<a name="409" href="#409">409</a> <em>     * @throws IOException  if there was a problem while inserting the item</em>
+<a name="410" href="#410">410</a> <em>     */</em>
+<a name="411" href="#411">411</a>     <strong>protected</strong> <strong>abstract</strong> <strong>void</strong> insertItem(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier,
+<a name="412" href="#412">412</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi, <strong>boolean</strong> expectedPresent) throws IOException;
+<a name="413" href="#413">413</a> 
+<a name="414" href="#414">414</a>     <em>/**<em>*</em></em>
+<a name="415" href="#415">415</a> <em>     * Delete URIs matching the given pattern from this queue. </em>
+<a name="416" href="#416">416</a> <em>     * @param frontier WorkQueues manager.</em>
+<a name="417" href="#417">417</a> <em>     * @param match  the pattern to match</em>
+<a name="418" href="#418">418</a> <em>     * @return count of deleted URIs</em>
+<a name="419" href="#419">419</a> <em>     * @throws IOException  if there was a problem while deleting</em>
+<a name="420" href="#420">420</a> <em>     */</em>
+<a name="421" href="#421">421</a>     <strong>protected</strong> <strong>abstract</strong> <strong>long</strong> deleteMatchingFromQueue(
+<a name="422" href="#422">422</a>         <strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier, <strong>final</strong> String match)
+<a name="423" href="#423">423</a>         throws IOException;
+<a name="424" href="#424">424</a> 
+<a name="425" href="#425">425</a>     <em>/**<em>*</em></em>
+<a name="426" href="#426">426</a> <em>     * Removes the given item from the queue.</em>
+<a name="427" href="#427">427</a> <em>     * </em>
+<a name="428" href="#428">428</a> <em>     * This is only used to remove the first item in the queue,</em>
+<a name="429" href="#429">429</a> <em>     * so it is not necessary to implement a random-access queue.</em>
+<a name="430" href="#430">430</a> <em>     * </em>
+<a name="431" href="#431">431</a> <em>     * @param frontier  Work queues manager.</em>
+<a name="432" href="#432">432</a> <em>     * @throws IOException  if there was a problem while deleting the item</em>
+<a name="433" href="#433">433</a> <em>     */</em>
+<a name="434" href="#434">434</a>     <strong>protected</strong> <strong>abstract</strong> <strong>void</strong> deleteItem(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier,
+<a name="435" href="#435">435</a>         <strong>final</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> item) throws IOException;
+<a name="436" href="#436">436</a> 
+<a name="437" href="#437">437</a>     <em>/**<em>*</em></em>
+<a name="438" href="#438">438</a> <em>     * Returns first item from queue (does not delete)</em>
+<a name="439" href="#439">439</a> <em>     * </em>
+<a name="440" href="#440">440</a> <em>     * @return The peeked item, or null</em>
+<a name="441" href="#441">441</a> <em>     * @throws IOException  if there was a problem while peeking</em>
+<a name="442" href="#442">442</a> <em>     */</em>
+<a name="443" href="#443">443</a>     <strong>protected</strong> <strong>abstract</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> peekItem(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier)
+<a name="444" href="#444">444</a>         throws IOException;
+<a name="445" href="#445">445</a> 
+<a name="446" href="#446">446</a>     <em>/**<em>*</em></em>
+<a name="447" href="#447">447</a> <em>     * Suspends this WorkQueue. Closes all connections to resources etc.</em>
+<a name="448" href="#448">448</a> <em>     * </em>
+<a name="449" href="#449">449</a> <em>     * @param frontier</em>
+<a name="450" href="#450">450</a> <em>     * @throws IOException</em>
+<a name="451" href="#451">451</a> <em>     */</em>
+<a name="452" href="#452">452</a>     <strong>protected</strong> <strong>void</strong> suspend(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier) throws IOException {
+<a name="453" href="#453">453</a>     }
+<a name="454" href="#454">454</a> 
+<a name="455" href="#455">455</a>     <em>/**<em>*</em></em>
+<a name="456" href="#456">456</a> <em>     * Resumes this WorkQueue. Eventually opens connections to resources etc.</em>
+<a name="457" href="#457">457</a> <em>     * </em>
+<a name="458" href="#458">458</a> <em>     * @param frontier</em>
+<a name="459" href="#459">459</a> <em>     * @throws IOException</em>
+<a name="460" href="#460">460</a> <em>     */</em>
+<a name="461" href="#461">461</a>     <strong>protected</strong> <strong>void</strong> resume(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier) throws IOException {
+<a name="462" href="#462">462</a>     }
+<a name="463" href="#463">463</a> 
+<a name="464" href="#464">464</a>     <strong>public</strong> <strong>void</strong> setActive(<strong>final</strong> <a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> frontier, <strong>final</strong> <strong>boolean</strong> b) {
+<a name="465" href="#465">465</a>         <strong>if</strong>(active != b) {
+<a name="466" href="#466">466</a>             active = b;
+<a name="467" href="#467">467</a>             <strong>try</strong> {
+<a name="468" href="#468">468</a>                 <strong>if</strong>(active) {
+<a name="469" href="#469">469</a>                     resume(frontier);
+<a name="470" href="#470">470</a>                 } <strong>else</strong> {
+<a name="471" href="#471">471</a>                     suspend(frontier);
+<a name="472" href="#472">472</a>                 }
+<a name="473" href="#473">473</a>             } <strong>catch</strong> (IOException e) {
+<a name="474" href="#474">474</a>                 <em class="comment">//FIXME better exception handling</em>
+<a name="475" href="#475">475</a>                 e.printStackTrace();
+<a name="476" href="#476">476</a>                 <strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="477" href="#477">477</a>             }
+<a name="478" href="#478">478</a>         }
+<a name="479" href="#479">479</a>     }
+<a name="480" href="#480">480</a>     
+<a name="481" href="#481">481</a>     <em class="comment">// </em>
+<a name="482" href="#482">482</a>     <em class="comment">// Reporter</em>
+<a name="483" href="#483">483</a>     <em class="comment">//</em>
+<a name="484" href="#484">484</a> 
+<a name="485" href="#485">485</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="486" href="#486">486</a> <em class="comment">     * @see org.archive.util.Reporter#getReports()</em>
+<a name="487" href="#487">487</a> <em class="comment">     */</em>
+<a name="488" href="#488">488</a>     <strong>public</strong> String[] getReports() {
+<a name="489" href="#489">489</a>         <strong>return</strong> <strong>new</strong> String[] {};
+<a name="490" href="#490">490</a>     }
+<a name="491" href="#491">491</a> 
+<a name="492" href="#492">492</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="493" href="#493">493</a> <em class="comment">     * @see org.archive.util.Reporter#reportTo(java.io.Writer)</em>
+<a name="494" href="#494">494</a> <em class="comment">     */</em>
+<a name="495" href="#495">495</a>     <strong>public</strong> <strong>void</strong> reportTo(PrintWriter writer) {
+<a name="496" href="#496">496</a>         reportTo(<strong>null</strong>,writer);
+<a name="497" href="#497">497</a>     }
+<a name="498" href="#498">498</a> 
+<a name="499" href="#499">499</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="500" href="#500">500</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineReportTo(java.io.Writer)</em>
+<a name="501" href="#501">501</a> <em class="comment">     */</em>
+<a name="502" href="#502">502</a>     <strong>public</strong> <strong>void</strong> singleLineReportTo(PrintWriter writer) {
+<a name="503" href="#503">503</a>         <em class="comment">// queue name</em>
+<a name="504" href="#504">504</a>         writer.print(classKey);
+<a name="505" href="#505">505</a>         writer.print(<span class="string">" "</span>);
+<a name="506" href="#506">506</a>         <em class="comment">// count of items</em>
+<a name="507" href="#507">507</a>         writer.print(Long.toString(count));
+<a name="508" href="#508">508</a>         writer.print(<span class="string">" "</span>);
+<a name="509" href="#509">509</a>         <em class="comment">// enqueue count</em>
+<a name="510" href="#510">510</a>         writer.print(Long.toString(enqueueCount));
+<a name="511" href="#511">511</a>         writer.print(<span class="string">" "</span>);
+<a name="512" href="#512">512</a>         writer.print(sessionBalance);
+<a name="513" href="#513">513</a>         writer.print(<span class="string">" "</span>);
+<a name="514" href="#514">514</a>         writer.print(lastCost);
+<a name="515" href="#515">515</a>         writer.print(<span class="string">"("</span>);
+<a name="516" href="#516">516</a>         writer.print(ArchiveUtils.doubleToString(
+<a name="517" href="#517">517</a>                     ((<strong>double</strong>) totalExpenditure / costCount), 1));
+<a name="518" href="#518">518</a>         writer.print(<span class="string">")"</span>);
+<a name="519" href="#519">519</a>         writer.print(<span class="string">" "</span>);
+<a name="520" href="#520">520</a>         <em class="comment">// last dequeue time, if any, or '-'</em>
+<a name="521" href="#521">521</a>         <strong>if</strong> (lastDequeueTime != 0) {
+<a name="522" href="#522">522</a>             writer.print(ArchiveUtils.getLog17Date(lastDequeueTime));
+<a name="523" href="#523">523</a>         } <strong>else</strong> {
+<a name="524" href="#524">524</a>             writer.print(<span class="string">"-"</span>);
+<a name="525" href="#525">525</a>         }
+<a name="526" href="#526">526</a>         writer.print(<span class="string">" "</span>);
+<a name="527" href="#527">527</a>         <em class="comment">// wake time if snoozed, or '-'</em>
+<a name="528" href="#528">528</a>         <strong>if</strong> (wakeTime != 0) {
+<a name="529" href="#529">529</a>             writer.print(ArchiveUtils.formatMillisecondsToConventional(wakeTime - System.currentTimeMillis()));
+<a name="530" href="#530">530</a>         } <strong>else</strong> {
+<a name="531" href="#531">531</a>             writer.print(<span class="string">"-"</span>);
+<a name="532" href="#532">532</a>         }
+<a name="533" href="#533">533</a>         writer.print(<span class="string">" "</span>);
+<a name="534" href="#534">534</a>         writer.print(Long.toString(totalExpenditure));
+<a name="535" href="#535">535</a>         writer.print(<span class="string">"/"</span>);
+<a name="536" href="#536">536</a>         writer.print(Long.toString(totalBudget));
+<a name="537" href="#537">537</a>         writer.print(<span class="string">" "</span>);
+<a name="538" href="#538">538</a>         writer.print(Long.toString(errorCount));
+<a name="539" href="#539">539</a>         writer.print(<span class="string">" "</span>);
+<a name="540" href="#540">540</a>         writer.print(lastPeeked);
+<a name="541" href="#541">541</a>         writer.print(<span class="string">" "</span>);
+<a name="542" href="#542">542</a>         writer.print(lastQueued);
+<a name="543" href="#543">543</a>         writer.print(<span class="string">"\n"</span>);
+<a name="544" href="#544">544</a>     }
+<a name="545" href="#545">545</a> 
+<a name="546" href="#546">546</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="547" href="#547">547</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineLegend()</em>
+<a name="548" href="#548">548</a> <em class="comment">     */</em>
+<a name="549" href="#549">549</a>     <strong>public</strong> String singleLineLegend() {
+<a name="550" href="#550">550</a>         <strong>return</strong> <span class="string">"queue currentSize totalEnqueues sessionBalance lastCost "</span> +
+<a name="551" href="#551">551</a>                 <span class="string">"(averageCost) lastDequeueTime wakeTime "</span> +
+<a name="552" href="#552">552</a>                 <span class="string">"totalSpend/totalBudget errorCount lastPeekUri lastQueuedUri"</span>;
+<a name="553" href="#553">553</a>     }
+<a name="554" href="#554">554</a>     
+<a name="555" href="#555">555</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="556" href="#556">556</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineReport()</em>
+<a name="557" href="#557">557</a> <em class="comment">     */</em>
+<a name="558" href="#558">558</a>     <strong>public</strong> String singleLineReport() {
+<a name="559" href="#559">559</a>         <strong>return</strong> ArchiveUtils.singleLineReport(<strong>this</strong>);
+<a name="560" href="#560">560</a>     }
+<a name="561" href="#561">561</a>     
+<a name="562" href="#562">562</a>     <em>/**<em>*</em></em>
+<a name="563" href="#563">563</a> <em>     * @param writer</em>
+<a name="564" href="#564">564</a> <em>     * @throws IOException</em>
+<a name="565" href="#565">565</a> <em>     */</em>
+<a name="566" href="#566">566</a>     <strong>public</strong> <strong>void</strong> reportTo(String name, PrintWriter writer) {
+<a name="567" href="#567">567</a>         <em class="comment">// name is ignored: only one kind of report for now</em>
+<a name="568" href="#568">568</a>         writer.print(<span class="string">"Queue "</span>);
+<a name="569" href="#569">569</a>         writer.print(classKey);
+<a name="570" href="#570">570</a>         writer.print(<span class="string">"\n"</span>);
+<a name="571" href="#571">571</a>         writer.print(<span class="string">"  "</span>);
+<a name="572" href="#572">572</a>         writer.print(Long.toString(count));
+<a name="573" href="#573">573</a>         writer.print(<span class="string">" items"</span>);
+<a name="574" href="#574">574</a>         <strong>if</strong> (wakeTime != 0) {
+<a name="575" href="#575">575</a>             writer.print(<span class="string">"\n   wakes in: "</span>+ArchiveUtils.formatMillisecondsToConventional(wakeTime - System.currentTimeMillis()));
+<a name="576" href="#576">576</a>         }
+<a name="577" href="#577">577</a>         writer.print(<span class="string">"\n    last enqueued: "</span>);
+<a name="578" href="#578">578</a>         writer.print(lastQueued);
+<a name="579" href="#579">579</a>         writer.print(<span class="string">"\n      last peeked: "</span>);
+<a name="580" href="#580">580</a>         writer.print(lastPeeked);
+<a name="581" href="#581">581</a>         writer.print(<span class="string">"\n"</span>);
+<a name="582" href="#582">582</a>         writer.print(<span class="string">"   total expended: "</span>);
+<a name="583" href="#583">583</a>         writer.print(Long.toString(totalExpenditure));
+<a name="584" href="#584">584</a>         writer.print(<span class="string">" (total budget: "</span>);
+<a name="585" href="#585">585</a>         writer.print(Long.toString(totalBudget));
+<a name="586" href="#586">586</a>         writer.print(<span class="string">")\n"</span>);
+<a name="587" href="#587">587</a>         writer.print(<span class="string">"   active balance: "</span>);
+<a name="588" href="#588">588</a>         writer.print(sessionBalance);
+<a name="589" href="#589">589</a>         writer.print(<span class="string">"\n   last(avg) cost: "</span>);
+<a name="590" href="#590">590</a>         writer.print(lastCost);
+<a name="591" href="#591">591</a>         writer.print(<span class="string">"("</span>);
+<a name="592" href="#592">592</a>         writer.print(ArchiveUtils.doubleToString(
+<a name="593" href="#593">593</a>                     ((<strong>double</strong>) totalExpenditure / costCount), 1));
+<a name="594" href="#594">594</a>         writer.print(<span class="string">")\n\n"</span>);
+<a name="595" href="#595">595</a>     }
+<a name="596" href="#596">596</a>     
+<a name="597" href="#597">597</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlSubstats.html">CrawlSubstats</a> getSubstats() {
+<a name="598" href="#598">598</a>         <strong>return</strong> substats;
+<a name="599" href="#599">599</a>     }
+<a name="600" href="#600">600</a> 
+<a name="601" href="#601">601</a>     <em>/**<em>*</em></em>
+<a name="602" href="#602">602</a> <em>     * Set the retired status of this queue.</em>
+<a name="603" href="#603">603</a> <em>     * </em>
+<a name="604" href="#604">604</a> <em>     * @param b new value for retired status</em>
+<a name="605" href="#605">605</a> <em>     */</em>
+<a name="606" href="#606">606</a>     <strong>public</strong> <strong>void</strong> setRetired(<strong>boolean</strong> b) {
+<a name="607" href="#607">607</a>         <strong>this</strong>.retired = b;
+<a name="608" href="#608">608</a>     }
+<a name="609" href="#609">609</a>     
+<a name="610" href="#610">610</a>     <strong>public</strong> <strong>boolean</strong> isRetired() {
+<a name="611" href="#611">611</a>         <strong>return</strong> retired;
+<a name="612" href="#612">612</a>     }
+<a name="613" href="#613">613</a> 
+<a name="614" href="#614">614</a>     <strong>public</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> getContextUURI(<a href="../../../../org/archive/crawler/frontier/WorkQueueFrontier.html">WorkQueueFrontier</a> wqf) {
+<a name="615" href="#615">615</a>         <strong>if</strong>(lastPeeked!=<strong>null</strong>) {
+<a name="616" href="#616">616</a>             <strong>try</strong> {
+<a name="617" href="#617">617</a>                 <strong>return</strong> UURIFactory.getInstance(lastPeeked);
+<a name="618" href="#618">618</a>             } <strong>catch</strong> (URIException e) {
+<a name="619" href="#619">619</a>                 <em class="comment">// just move along to next try</em>
+<a name="620" href="#620">620</a>             }
+<a name="621" href="#621">621</a>         }
+<a name="622" href="#622">622</a>         <strong>if</strong>(lastQueued!=<strong>null</strong>) {
+<a name="623" href="#623">623</a>             <strong>try</strong> {
+<a name="624" href="#624">624</a>                 <strong>return</strong> UURIFactory.getInstance(lastQueued);
+<a name="625" href="#625">625</a>             } <strong>catch</strong> (URIException e) {
+<a name="626" href="#626">626</a>                 <em class="comment">// just move along to next try</em>
+<a name="627" href="#627">627</a>             }
+<a name="628" href="#628">628</a>         }
+<a name="629" href="#629">629</a>         <strong>if</strong>(peekItem!=<strong>null</strong>) {
+<a name="630" href="#630">630</a>             <strong>return</strong> peekItem.getUURI();
+<a name="631" href="#631">631</a>         }
+<a name="632" href="#632">632</a>         <em class="comment">// peek a CrawlURI temporarily just for context </em>
+<a name="633" href="#633">633</a>         <a href="../../../../org/archive/net/UURI.html">UURI</a> contextUri = peek(wqf).getUURI(); 
+<a name="634" href="#634">634</a>         unpeek(); <em class="comment">// but don't insist on that URI being next released</em>
+<a name="635" href="#635">635</a>         <strong>return</strong> contextUri;
+<a name="636" href="#636">636</a>     }
+<a name="637" href="#637">637</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

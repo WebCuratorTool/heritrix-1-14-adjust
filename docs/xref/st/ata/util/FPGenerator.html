@@ -1,0 +1,464 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" /><title>FPGenerator xref</title>
+<link type="text/css" rel="stylesheet" href="../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../apidocs/st/ata/util/FPGenerator.html">View Javadoc</a></div><pre>
+
+<a name="1" href="#1">1</a>   
+<a name="2" href="#2">2</a>   <strong>package</strong> <a href="../../../st/ata/util/package-summary.html">st.ata.util</a>;
+<a name="3" href="#3">3</a>   
+<a name="4" href="#4">4</a>   <strong>import</strong> java.util.Hashtable;
+<a name="5" href="#5">5</a>   
+<a name="6" href="#6">6</a>   <em>/**<em>*</em></em>
+<a name="7" href="#7">7</a>   
+<a name="8" href="#8">8</a>   <em>&lt;p> This class provides methods that construct fingerprints of strings</em>
+<a name="9" href="#9">9</a>   <em>of bytes via operations in &lt;i>GF[2^d]&lt;/i> for &lt;i>0 &lt; d &lt;= 64&lt;/i>.</em>
+<a name="10" href="#10">10</a>  <em>&lt;i>GF[2^d]&lt;/i> is represented as the set of polynomials of degree</em>
+<a name="11" href="#11">11</a>  <em>&lt;i>d&lt;/i> with coefficients in &lt;i>Z(2)&lt;/i>, modulo an irreducible</em>
+<a name="12" href="#12">12</a>  <em>polynomial &lt;i>P&lt;/i> of degree &lt;i>d&lt;/i>.  The representation of</em>
+<a name="13" href="#13">13</a>  <em>polynomials is as an unsigned binary number in which the least</em>
+<a name="14" href="#14">14</a>  <em>significant exponent is kept in the most significant bit.</em>
+<a name="15" href="#15">15</a>  
+<a name="16" href="#16">16</a>  <em>&lt;p> Let S be a string of bytes and &lt;i>g(S)&lt;/i> the string obtained by</em>
+<a name="17" href="#17">17</a>  <em>taking the byte &lt;code>0x01&lt;/code> followed by eight &lt;code>0x00&lt;/code></em>
+<a name="18" href="#18">18</a>  <em>bytes followed by &lt;code>S&lt;/code>.  Let &lt;i>f(S)&lt;/i> be the polynomial</em>
+<a name="19" href="#19">19</a>  <em>associated to the string &lt;i>S&lt;/i> viewed as a polynomial with</em>
+<a name="20" href="#20">20</a>  <em>coefficients in the field &lt;i>Z(2)&lt;/i>.  The fingerprint of S is simply</em>
+<a name="21" href="#21">21</a>  <em>the value &lt;i>f(g(S))&lt;/i> modulo &lt;i>P&lt;/i>.  Because polynomials are</em>
+<a name="22" href="#22">22</a>  <em>represented with the least significant coefficient in the most</em>
+<a name="23" href="#23">23</a>  <em>significant bit, fingerprints of degree &lt;i>d&lt;/i> are stored in the</em>
+<a name="24" href="#24">24</a>  <em>&lt;code>d&lt;/code> &lt;strong>most&lt;/code> significant bits of a long word.</em>
+<a name="25" href="#25">25</a>  
+<a name="26" href="#26">26</a>  <em>&lt;p> Fingerprints can be used as a probably unique id for the input</em>
+<a name="27" href="#27">27</a>  <em>string.  More precisely, if &lt;i>P&lt;/i> is chosen at random among</em>
+<a name="28" href="#28">28</a>  <em>irreducible polynomials of degree &lt;i>d&lt;/i>, then the probability that</em>
+<a name="29" href="#29">29</a>  <em>any two strings &lt;i>A&lt;/i> and &lt;i>B&lt;/i> have the same fingerprint is</em>
+<a name="30" href="#30">30</a>  <em>less than &lt;i>max(|A|,|B|)/2^(d+1)&lt;/i> where &lt;i>|A|&lt;/i> is the length</em>
+<a name="31" href="#31">31</a>  <em>of A in bits.</em>
+<a name="32" href="#32">32</a>  
+<a name="33" href="#33">33</a>  <em>&lt;p> The routines named &lt;code>extend[8]&lt;/code> and &lt;code>fp[8]&lt;/code></em>
+<a name="34" href="#34">34</a>  <em>return reduced results, while &lt;code>extend_[byte/char/int/long]&lt;/code></em>
+<a name="35" href="#35">35</a>  <em>do not.  An &lt;em>un&lt;/em>reduced result is a number that is equal (mod</em>
+<a name="36" href="#36">36</a>  <em>&lt;/code>polynomial&lt;/code> to the desired fingerprint but may have</em>
+<a name="37" href="#37">37</a>  <em>degree &lt;code>degree&lt;/code> or higher.  The method &lt;code>reduce&lt;/code></em>
+<a name="38" href="#38">38</a>  <em>reduces such a result to a polynomial of degree less than</em>
+<a name="39" href="#39">39</a>  <em>&lt;code>degree&lt;/code>.  Obtaining reduced results takes longer than</em>
+<a name="40" href="#40">40</a>  <em>obtaining unreduced results; thus, when fingerprinting long strings,</em>
+<a name="41" href="#41">41</a>  <em>it's better to obtain irreduced results inside the fingerprinting loop</em>
+<a name="42" href="#42">42</a>  <em>and use &lt;code>reduce&lt;/code> to reduce to a fingerprint after the loop.</em>
+<a name="43" href="#43">43</a>  
+<a name="44" href="#44">44</a>  <em>*/</em>
+<a name="45" href="#45">45</a>  
+<a name="46" href="#46">46</a>  <em class="comment">// Tested by: TestFPGenerator</em>
+<a name="47" href="#47">47</a>  @SuppressWarnings(<span class="string">"unchecked"</span>)
+<a name="48" href="#48">48</a>  <strong>public</strong> <strong>final</strong> <strong>class</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> {
+<a name="49" href="#49">49</a>  
+<a name="50" href="#50">50</a>      <em>/**<em>* Return a fingerprint generator.  The fingerprints generated</em></em>
+<a name="51" href="#51">51</a>  <em>        will have degree &lt;code>degree&lt;/code> and will be generated by</em>
+<a name="52" href="#52">52</a>  <em>        &lt;code>polynomial&lt;/code>.  If a generator based on</em>
+<a name="53" href="#53">53</a>  <em>        &lt;code>polynomial&lt;/code> has already been created, it will be</em>
+<a name="54" href="#54">54</a>  <em>        returned.  Requires that &lt;code>polynomial&lt;/code> is an</em>
+<a name="55" href="#55">55</a>  <em>        irreducible polynomial of degree &lt;code>degree&lt;/code> (the</em>
+<a name="56" href="#56">56</a>  <em>        array &lt;code>polynomials&lt;/code> contains some irreducible</em>
+<a name="57" href="#57">57</a>  <em>        polynomials). */</em>
+<a name="58" href="#58">58</a>      <strong>public</strong> <strong>static</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> make(<strong>long</strong> polynomial, <strong>int</strong> degree) {
+<a name="59" href="#59">59</a>          Long l = <strong>new</strong> Long(polynomial);
+<a name="60" href="#60">60</a>          <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> fpgen = (FPGenerator) generators.get(l);
+<a name="61" href="#61">61</a>          <strong>if</strong> (fpgen == <strong>null</strong>) {
+<a name="62" href="#62">62</a>              fpgen = <strong>new</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a>(polynomial, degree);
+<a name="63" href="#63">63</a>              generators.put(l, fpgen);
+<a name="64" href="#64">64</a>          }
+<a name="65" href="#65">65</a>          <strong>return</strong> fpgen;
+<a name="66" href="#66">66</a>      }
+<a name="67" href="#67">67</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> Hashtable generators = <strong>new</strong> Hashtable(10);
+<a name="68" href="#68">68</a>  
+<a name="69" href="#69">69</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> zero = 0;
+<a name="70" href="#70">70</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> one = 0x8000000000000000L;
+<a name="71" href="#71">71</a>  
+<a name="72" href="#72">72</a>  
+<a name="73" href="#73">73</a>      <em>/**<em>* Return a value equal (mod &lt;code>polynomial&lt;/code>) to</em></em>
+<a name="74" href="#74">74</a>  <em>        &lt;code>fp&lt;/code> and of degree less than &lt;code>degree&lt;/code>. */</em>
+<a name="75" href="#75">75</a>      <strong>public</strong> <strong>long</strong> reduce(<strong>long</strong> fp) {
+<a name="76" href="#76">76</a>          <strong>int</strong> N = (8 - degree/8);
+<a name="77" href="#77">77</a>          <strong>long</strong> local = (N == 8 ? 0 : fp &amp; (-1L &lt;&lt; 8*N));
+<a name="78" href="#78">78</a>          <strong>long</strong> temp = zero;
+<a name="79" href="#79">79</a>          <strong>for</strong> (<strong>int</strong> i = 0; i &lt; N; i++) {
+<a name="80" href="#80">80</a>              temp ^= ByteModTable[8+i][((<strong>int</strong>)fp) &amp; 0xff];
+<a name="81" href="#81">81</a>              fp >>>= 8;
+<a name="82" href="#82">82</a>          };
+<a name="83" href="#83">83</a>          <strong>return</strong> local ^ temp;
+<a name="84" href="#84">84</a>      }
+<a name="85" href="#85">85</a>  
+<a name="86" href="#86">86</a>      <em>/**<em>* Extends &lt;code>f&lt;/code> with lower eight bits of &lt;code>v&lt;/code></em></em>
+<a name="87" href="#87">87</a>  <em>        with&lt;em>out&lt;/em> full reduction.  In other words, returns a</em>
+<a name="88" href="#88">88</a>  <em>        polynomial that is equal (mod &lt;code>polynomial&lt;/code>) to the</em>
+<a name="89" href="#89">89</a>  <em>        desired fingerprint but may be of higher degree than the</em>
+<a name="90" href="#90">90</a>  <em>        desired fingerprint. */</em>
+<a name="91" href="#91">91</a>      <strong>public</strong> <strong>long</strong> extend_byte(<strong>long</strong> f, <strong>int</strong> v) {
+<a name="92" href="#92">92</a>          f ^= (0xff &amp; v);
+<a name="93" href="#93">93</a>          <strong>int</strong> i = (<strong>int</strong>)f;
+<a name="94" href="#94">94</a>          <strong>long</strong> result = (f>>>8);
+<a name="95" href="#95">95</a>          result ^= ByteModTable[7][i &amp; 0xff];
+<a name="96" href="#96">96</a>          <strong>return</strong> result;
+<a name="97" href="#97">97</a>      }
+<a name="98" href="#98">98</a>  
+<a name="99" href="#99">99</a>      <em>/**<em>* Extends &lt;code>f&lt;/code> with lower sixteen bits of &lt;code>v&lt;/code>.</em></em>
+<a name="100" href="#100">100</a> <em>        Does not reduce. */</em>
+<a name="101" href="#101">101</a>     <strong>public</strong> <strong>long</strong> extend_<strong>char</strong>(<strong>long</strong> f, <strong>int</strong> v) {
+<a name="102" href="#102">102</a>         f ^= (0xffff &amp; v);
+<a name="103" href="#103">103</a>         <strong>int</strong> i = (<strong>int</strong>)f;
+<a name="104" href="#104">104</a>         <strong>long</strong> result = (f>>>16);
+<a name="105" href="#105">105</a>         result ^= ByteModTable[6][i &amp; 0xff]; i >>>= 8;
+<a name="106" href="#106">106</a>         result ^= ByteModTable[7][i &amp; 0xff];
+<a name="107" href="#107">107</a>         <strong>return</strong> result;
+<a name="108" href="#108">108</a>     }
+<a name="109" href="#109">109</a> 
+<a name="110" href="#110">110</a>     <em>/**<em>* Extends &lt;code>f&lt;/code> with (all bits of) &lt;code>v&lt;/code>.</em></em>
+<a name="111" href="#111">111</a> <em>        Does not reduce. */</em>
+<a name="112" href="#112">112</a>     <strong>public</strong> <strong>long</strong> extend_<strong>int</strong>(<strong>long</strong> f, <strong>int</strong> v) {
+<a name="113" href="#113">113</a>         f ^= (0xffffffffL &amp; v);
+<a name="114" href="#114">114</a>         <strong>int</strong> i = (<strong>int</strong>)f;
+<a name="115" href="#115">115</a>         <strong>long</strong> result = (f>>>32);
+<a name="116" href="#116">116</a>         result ^= ByteModTable[4][i &amp; 0xff]; i >>>= 8;
+<a name="117" href="#117">117</a>         result ^= ByteModTable[5][i &amp; 0xff]; i >>>= 8;
+<a name="118" href="#118">118</a>         result ^= ByteModTable[6][i &amp; 0xff]; i >>>= 8;
+<a name="119" href="#119">119</a>         result ^= ByteModTable[7][i &amp; 0xff];
+<a name="120" href="#120">120</a>         <strong>return</strong> result;
+<a name="121" href="#121">121</a>     }
+<a name="122" href="#122">122</a> 
+<a name="123" href="#123">123</a>     <em>/**<em>* Extends &lt;code>f&lt;/code> with &lt;code>v&lt;/code>.</em></em>
+<a name="124" href="#124">124</a> <em>        Does not reduce. */</em>
+<a name="125" href="#125">125</a>     <strong>public</strong> <strong>long</strong> extend_<strong>long</strong>(<strong>long</strong> f, <strong>long</strong> v) {
+<a name="126" href="#126">126</a>         f ^= v;
+<a name="127" href="#127">127</a>         <strong>long</strong> result = ByteModTable[0][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="128" href="#128">128</a>         result ^= ByteModTable[1][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="129" href="#129">129</a>         result ^= ByteModTable[2][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="130" href="#130">130</a>         result ^= ByteModTable[3][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="131" href="#131">131</a>         result ^= ByteModTable[4][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="132" href="#132">132</a>         result ^= ByteModTable[5][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="133" href="#133">133</a>         result ^= ByteModTable[6][(<strong>int</strong>)(f &amp; 0xff)]; f >>>= 8;
+<a name="134" href="#134">134</a>         result ^= ByteModTable[7][(<strong>int</strong>)(f &amp; 0xff)];
+<a name="135" href="#135">135</a>         <strong>return</strong> result;
+<a name="136" href="#136">136</a>     }
+<a name="137" href="#137">137</a> 
+<a name="138" href="#138">138</a> 
+<a name="139" href="#139">139</a>     <em>/**<em>* Compute fingerprint of "n" bytes of "buf" starting from</em></em>
+<a name="140" href="#140">140</a> <em>        "buf[start]".  Requires "[start, start+n)" is in bounds. */</em>
+<a name="141" href="#141">141</a>     <strong>public</strong> <strong>long</strong> fp(byte[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="142" href="#142">142</a>         <strong>return</strong> extend(empty, buf, start, n);
+<a name="143" href="#143">143</a>     }
+<a name="144" href="#144">144</a> 
+<a name="145" href="#145">145</a>     <em>/**<em>* Compute fingerprint of (all bits of) "n" characters of "buf"</em></em>
+<a name="146" href="#146">146</a> <em>        starting from "buf[i]".  Requires "[i, i+n)" is in bounds. */</em>
+<a name="147" href="#147">147</a>     <strong>public</strong> <strong>long</strong> fp(<strong>char</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="148" href="#148">148</a>         <strong>return</strong> extend(empty, buf, start, n);
+<a name="149" href="#149">149</a>     }
+<a name="150" href="#150">150</a> 
+<a name="151" href="#151">151</a> <em class="comment">// COMMENTED OUT TO REMOVE Dependency on st.ata.util.Text</em>
+<a name="152" href="#152">152</a> <em class="comment">//    </em><em>/**<em>* Compute fingerprint of (all bits of) &lt;code>t&lt;/code> */</em></em>
+<a name="153" href="#153">153</a> <em class="comment">//    public long fp(Text t) {</em>
+<a name="154" href="#154">154</a> <em class="comment">//        return extend(empty, t);</em>
+<a name="155" href="#155">155</a> <em class="comment">//    }</em>
+<a name="156" href="#156">156</a>     <em>/**<em>* Compute fingerprint of (all bits of) the characters of "s". */</em></em>
+<a name="157" href="#157">157</a>     <strong>public</strong> <strong>long</strong> fp(CharSequence s) {
+<a name="158" href="#158">158</a>         <strong>return</strong> extend(empty, s);
+<a name="159" href="#159">159</a>     }
+<a name="160" href="#160">160</a> 
+<a name="161" href="#161">161</a>     <em>/**<em>* Compute fingerprint of (all bits of) "n" characters of "buf"</em></em>
+<a name="162" href="#162">162</a> <em>        starting from "buf[i]".  Requires "[i, i+n)" is in bounds. */</em>
+<a name="163" href="#163">163</a>     <strong>public</strong> <strong>long</strong> fp(<strong>int</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="164" href="#164">164</a>         <strong>return</strong> extend(empty, buf, start, n);
+<a name="165" href="#165">165</a>     }
+<a name="166" href="#166">166</a> 
+<a name="167" href="#167">167</a>     <em>/**<em>* Compute fingerprint of (all bits of) "n" characters of "buf"</em></em>
+<a name="168" href="#168">168</a> <em>        starting from "buf[i]".  Requires "[i, i+n)" is in bounds. */</em>
+<a name="169" href="#169">169</a>     <strong>public</strong> <strong>long</strong> fp(<strong>long</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="170" href="#170">170</a>         <strong>return</strong> extend(empty, buf, start, n);
+<a name="171" href="#171">171</a>     }
+<a name="172" href="#172">172</a> 
+<a name="173" href="#173">173</a>     <em>/**<em>* Compute fingerprint of the lower eight bits of the characters</em></em>
+<a name="174" href="#174">174</a> <em>        of "s". */</em>
+<a name="175" href="#175">175</a>     <strong>public</strong> <strong>long</strong> fp8(String s) {
+<a name="176" href="#176">176</a>         <strong>return</strong> extend8(empty, s);
+<a name="177" href="#177">177</a>     }
+<a name="178" href="#178">178</a> 
+<a name="179" href="#179">179</a>     <em>/**<em>* Compute fingerprint of the lower eight bits of "n" characters</em></em>
+<a name="180" href="#180">180</a> <em>        of "buf" starting from "buf[i]".  Requires "[i, i+n)" is in</em>
+<a name="181" href="#181">181</a> <em>        bounds. */</em>
+<a name="182" href="#182">182</a>     <strong>public</strong> <strong>long</strong> fp8(<strong>char</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="183" href="#183">183</a>         <strong>return</strong> extend8(empty, buf, start, n);
+<a name="184" href="#184">184</a>     }
+<a name="185" href="#185">185</a> 
+<a name="186" href="#186">186</a> 
+<a name="187" href="#187">187</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding the low eight</em></em>
+<a name="188" href="#188">188</a> <em>        bits of "b". */</em>
+<a name="189" href="#189">189</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, byte v) {
+<a name="190" href="#190">190</a>         <strong>return</strong> reduce(extend_byte(f, v));
+<a name="191" href="#191">191</a>     }
+<a name="192" href="#192">192</a> 
+<a name="193" href="#193">193</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of)</em></em>
+<a name="194" href="#194">194</a> <em>        "v". */</em>
+<a name="195" href="#195">195</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>char</strong> v) {
+<a name="196" href="#196">196</a>         <strong>return</strong> reduce(extend_<strong>char</strong>(f, v));
+<a name="197" href="#197">197</a>     }
+<a name="198" href="#198">198</a> 
+<a name="199" href="#199">199</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of)</em></em>
+<a name="200" href="#200">200</a> <em>        "v". */</em>
+<a name="201" href="#201">201</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>int</strong> v) {
+<a name="202" href="#202">202</a>         <strong>return</strong> reduce(extend_<strong>int</strong>(f, v));
+<a name="203" href="#203">203</a>     }
+<a name="204" href="#204">204</a> 
+<a name="205" href="#205">205</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of)</em></em>
+<a name="206" href="#206">206</a> <em>        "v". */</em>
+<a name="207" href="#207">207</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>long</strong> v) {
+<a name="208" href="#208">208</a>         <strong>return</strong> reduce(extend_<strong>long</strong>(f, v));
+<a name="209" href="#209">209</a>     }
+<a name="210" href="#210">210</a> 
+<a name="211" href="#211">211</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding "n" bytes of</em></em>
+<a name="212" href="#212">212</a> <em>        "buf" starting from "buf[start]".</em>
+<a name="213" href="#213">213</a> <em>        Result is reduced.</em>
+<a name="214" href="#214">214</a> <em>        Requires "[i,&amp;nbsp;i+n)" is in bounds. */</em>
+<a name="215" href="#215">215</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, byte[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="216" href="#216">216</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="217" href="#217">217</a>             f = extend_byte(f, buf[start+i]);
+<a name="218" href="#218">218</a>         }
+<a name="219" href="#219">219</a>         <strong>return</strong> reduce(f);
+<a name="220" href="#220">220</a>     }
+<a name="221" href="#221">221</a> 
+<a name="222" href="#222">222</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of) "n"</em></em>
+<a name="223" href="#223">223</a> <em>        characters of "buf" starting from "buf[i]".</em>
+<a name="224" href="#224">224</a> <em>        Result is reduced.</em>
+<a name="225" href="#225">225</a> <em>        Requires "[i,&amp;nbsp;i+n)" is in bounds. */</em>
+<a name="226" href="#226">226</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>char</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="227" href="#227">227</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="228" href="#228">228</a>             f = extend_<strong>char</strong>(f, buf[start+i]);
+<a name="229" href="#229">229</a>         }
+<a name="230" href="#230">230</a>         <strong>return</strong> reduce(f);
+<a name="231" href="#231">231</a>     }
+<a name="232" href="#232">232</a> 
+<a name="233" href="#233">233</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of)</em></em>
+<a name="234" href="#234">234</a> <em>        the characters of "s".</em>
+<a name="235" href="#235">235</a> <em>        Result is reduced. */</em>
+<a name="236" href="#236">236</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, CharSequence s) {
+<a name="237" href="#237">237</a>         <strong>int</strong> n = s.length();
+<a name="238" href="#238">238</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="239" href="#239">239</a>             <strong>int</strong> v = (<strong>int</strong>) s.charAt(i);
+<a name="240" href="#240">240</a>             f = extend_<strong>char</strong>(f, v);
+<a name="241" href="#241">241</a>         }
+<a name="242" href="#242">242</a>         <strong>return</strong> reduce(f);
+<a name="243" href="#243">243</a>     }
+<a name="244" href="#244">244</a> 
+<a name="245" href="#245">245</a> <em class="comment">//  COMMENTED OUT TO REMOVE Dependency on st.ata.util.Text</em>
+<a name="246" href="#246">246</a> <em class="comment">//    </em><em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of)</em></em>
+<a name="247" href="#247">247</a> <em>//     *  &lt;code>t&lt;/code> */</em>
+<a name="248" href="#248">248</a> <em class="comment">//    public long extend(long f, Text t) {</em>
+<a name="249" href="#249">249</a> <em class="comment">//        return extend(f, t.buf, t.start, t.length());</em>
+<a name="250" href="#250">250</a> <em class="comment">//    }</em>
+<a name="251" href="#251">251</a> 
+<a name="252" href="#252">252</a> 
+<a name="253" href="#253">253</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of) "n"</em></em>
+<a name="254" href="#254">254</a> <em>        characters of "buf" starting from "buf[i]".</em>
+<a name="255" href="#255">255</a> <em>        Result is reduced.</em>
+<a name="256" href="#256">256</a> <em>        Requires "[i,&amp;nbsp;i+n)" is in bounds. */</em>
+<a name="257" href="#257">257</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>int</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="258" href="#258">258</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="259" href="#259">259</a>             f = extend_<strong>int</strong>(f, buf[start+i]);
+<a name="260" href="#260">260</a>         }
+<a name="261" href="#261">261</a>         <strong>return</strong> reduce(f);
+<a name="262" href="#262">262</a>     }
+<a name="263" href="#263">263</a> 
+<a name="264" href="#264">264</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding (all bits of) "n"</em></em>
+<a name="265" href="#265">265</a> <em>        characters of "buf" starting from "buf[i]".</em>
+<a name="266" href="#266">266</a> <em>        Result is reduced.</em>
+<a name="267" href="#267">267</a> <em>        Requires "[i,&amp;nbsp;i+n)" is in bounds. */</em>
+<a name="268" href="#268">268</a>     <strong>public</strong> <strong>long</strong> extend(<strong>long</strong> f, <strong>long</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="269" href="#269">269</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="270" href="#270">270</a>             f = extend_<strong>long</strong>(f, buf[start+i]);
+<a name="271" href="#271">271</a>         }
+<a name="272" href="#272">272</a>         <strong>return</strong> reduce(f);
+<a name="273" href="#273">273</a>     }
+<a name="274" href="#274">274</a> 
+<a name="275" href="#275">275</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding the lower eight</em></em>
+<a name="276" href="#276">276</a> <em>        bits of the characters of "s".</em>
+<a name="277" href="#277">277</a> <em>        Result is reduced. */</em>
+<a name="278" href="#278">278</a>     <strong>public</strong> <strong>long</strong> extend8(<strong>long</strong> f, String s) {
+<a name="279" href="#279">279</a>         <strong>int</strong> n = s.length();
+<a name="280" href="#280">280</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="281" href="#281">281</a>             <strong>int</strong> x = (<strong>int</strong>) s.charAt(i);
+<a name="282" href="#282">282</a>             f = extend_byte(f, x);
+<a name="283" href="#283">283</a>         }
+<a name="284" href="#284">284</a>         <strong>return</strong> reduce(f);
+<a name="285" href="#285">285</a>     }
+<a name="286" href="#286">286</a> 
+<a name="287" href="#287">287</a>     <em>/**<em>* Extends fingerprint &lt;code>f&lt;/code> by adding the lower eight</em></em>
+<a name="288" href="#288">288</a> <em>        bits of "n" characters of "buf" starting from "buf[i]".</em>
+<a name="289" href="#289">289</a> <em>        Result is reduced.</em>
+<a name="290" href="#290">290</a> <em>        Requires "[i, i+n)" is in bounds. */</em>
+<a name="291" href="#291">291</a>     <strong>public</strong> <strong>long</strong> extend8(<strong>long</strong> f, <strong>char</strong>[] buf, <strong>int</strong> start, <strong>int</strong> n) {
+<a name="292" href="#292">292</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; n; i++) {
+<a name="293" href="#293">293</a>             f = extend_byte(f, buf[start+i]);
+<a name="294" href="#294">294</a>         }
+<a name="295" href="#295">295</a>         <strong>return</strong> reduce(f);
+<a name="296" href="#296">296</a>     }
+<a name="297" href="#297">297</a> 
+<a name="298" href="#298">298</a> 
+<a name="299" href="#299">299</a>     <em>/**<em>* Fingerprint of the empty string of bytes. */</em></em>
+<a name="300" href="#300">300</a>     <strong>public</strong> <strong>final</strong> <strong>long</strong> empty;
+<a name="301" href="#301">301</a> 
+<a name="302" href="#302">302</a>     <em>/**<em>* The number of bits in fingerprints generated by</em></em>
+<a name="303" href="#303">303</a> <em>        &lt;code>this&lt;/code>. */</em>
+<a name="304" href="#304">304</a>     <strong>public</strong> <strong>final</strong> <strong>int</strong> degree;
+<a name="305" href="#305">305</a> 
+<a name="306" href="#306">306</a>     <em>/**<em>* The polynomial used by &lt;code>this&lt;/code> to generate</em></em>
+<a name="307" href="#307">307</a> <em>        fingerprints. */</em>
+<a name="308" href="#308">308</a>     <strong>public</strong> <strong>long</strong> polynomial;
+<a name="309" href="#309">309</a> 
+<a name="310" href="#310">310</a>     <em>/**<em>* Result of reducing certain polynomials.  Specifically, if</em></em>
+<a name="311" href="#311">311</a> <em>        &lt;code>f(S)&lt;/code> is bit string &lt;code>S&lt;/code> interpreted as</em>
+<a name="312" href="#312">312</a> <em>        a polynomial, &lt;code>f(ByteModTable[i][j])&lt;/code> equals</em>
+<a name="313" href="#313">313</a> <em>        &lt;code>mod(x^(127&amp;nbsp;-&amp;nbsp;8*i)&amp;nbsp;*&amp;nbsp;f(j),&amp;nbsp;P)&lt;/code>. */</em>
+<a name="314" href="#314">314</a>     <strong>private</strong> <strong>long</strong>[][] ByteModTable;
+<a name="315" href="#315">315</a> 
+<a name="316" href="#316">316</a>     <em>/**<em>* Create a fingerprint generator.  The fingerprints generated</em></em>
+<a name="317" href="#317">317</a> <em>        will have degree &lt;code>degree&lt;/code> and will be generated by</em>
+<a name="318" href="#318">318</a> <em>        &lt;code>polynomial&lt;/code>.  Requires that</em>
+<a name="319" href="#319">319</a> <em>        &lt;code>polynomial&lt;/code> is an irreducible polynomial of degree</em>
+<a name="320" href="#320">320</a> <em>        &lt;code>degree&lt;/code> (the array &lt;code>polynomials&lt;/code></em>
+<a name="321" href="#321">321</a> <em>        contains some irreducible polynomials). */</em>
+<a name="322" href="#322">322</a>     <strong>private</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a>(<strong>long</strong> polynomial, <strong>int</strong> degree) {
+<a name="323" href="#323">323</a>         <strong>this</strong>.degree = degree;
+<a name="324" href="#324">324</a>         <strong>this</strong>.polynomial = polynomial;
+<a name="325" href="#325">325</a>         ByteModTable = <strong>new</strong> <strong>long</strong>[16][256];
+<a name="326" href="#326">326</a> 
+<a name="327" href="#327">327</a>         <strong>long</strong>[] PowerTable = <strong>new</strong> <strong>long</strong>[128];
+<a name="328" href="#328">328</a> 
+<a name="329" href="#329">329</a>         <strong>long</strong> x_to_the_i = one;
+<a name="330" href="#330">330</a>         <strong>long</strong> x_to_the_degree_minus_one = (one >>> (degree-1));
+<a name="331" href="#331">331</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; 128; i++) {
+<a name="332" href="#332">332</a>             <em class="comment">// Invariants:</em>
+<a name="333" href="#333">333</a>             <em class="comment">//   x_to_the_i = mod(x^i, polynomial)</em>
+<a name="334" href="#334">334</a>             <em class="comment">//   forall 0 &lt;= j &lt; i, PowerTable[i] = mod(x^i, polynomial)</em>
+<a name="335" href="#335">335</a>             PowerTable[i] = x_to_the_i;
+<a name="336" href="#336">336</a>             <strong>boolean</strong> overflow = ((x_to_the_i &amp; x_to_the_degree_minus_one) != 0);
+<a name="337" href="#337">337</a>             x_to_the_i >>>= 1;
+<a name="338" href="#338">338</a>             <strong>if</strong> (overflow) {
+<a name="339" href="#339">339</a>                 x_to_the_i ^= polynomial;
+<a name="340" href="#340">340</a>             }
+<a name="341" href="#341">341</a>         }
+<a name="342" href="#342">342</a>         <strong>this</strong>.empty = PowerTable[64];
+<a name="343" href="#343">343</a> 
+<a name="344" href="#344">344</a>         <strong>for</strong> (<strong>int</strong> i = 0; i &lt; 16; i++) {
+<a name="345" href="#345">345</a>             <em class="comment">// Invariant: forall 0 &lt;= i' &lt; i, forall 0 &lt;= j' &lt; 256,</em>
+<a name="346" href="#346">346</a>             <em class="comment">//   ByteModTable[i'][j'] = mod(x^(127 - 8*i') * f(j'), polynomial)</em>
+<a name="347" href="#347">347</a>             <strong>for</strong> (<strong>int</strong> j = 0; j &lt; 256; j++) {
+<a name="348" href="#348">348</a>                 <em class="comment">// Invariant: forall 0 &lt;= i' &lt; i, forall 0 &lt;= j' &lt; j,</em>
+<a name="349" href="#349">349</a>                 <em class="comment">//   ByteModTable[i'][j'] = mod(x^(degree+i')*f(j'),polynomial)</em>
+<a name="350" href="#350">350</a>                 <strong>long</strong> v = zero;
+<a name="351" href="#351">351</a>                 <strong>for</strong> (<strong>int</strong> k = 0; k &lt; 8; k++) {
+<a name="352" href="#352">352</a>                     <em class="comment">// Invariant:</em>
+<a name="353" href="#353">353</a>                     <em class="comment">//   v = mod(x^(degree+i) * f(j &amp; ((1&lt;&lt;k)-1)), polynomial)</em>
+<a name="354" href="#354">354</a>                     <strong>if</strong> ((j &amp; (1 &lt;&lt; k)) != 0) {
+<a name="355" href="#355">355</a>                         v ^= PowerTable[127 - i*8 - k];
+<a name="356" href="#356">356</a>                     }
+<a name="357" href="#357">357</a>                 }
+<a name="358" href="#358">358</a>                 ByteModTable[i][j] = v;
+<a name="359" href="#359">359</a>             }
+<a name="360" href="#360">360</a>         }
+<a name="361" href="#361">361</a>     }
+<a name="362" href="#362">362</a> 
+<a name="363" href="#363">363</a>     <em>/**<em>* Array of irreducible polynomials.  For each degree</em></em>
+<a name="364" href="#364">364</a> <em>        &lt;code>d&lt;/code> between 1 and 64 (inclusive),</em>
+<a name="365" href="#365">365</a> <em>        &lt;code>polynomials[d][i]&lt;/code> is an irreducible polynomial of</em>
+<a name="366" href="#366">366</a> <em>        degree &lt;code>d&lt;/code>.  There are at least two irreducible</em>
+<a name="367" href="#367">367</a> <em>        polynomials for each degree. */</em>
+<a name="368" href="#368">368</a>     <strong>public</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> polynomials[][] = {
+<a name="369" href="#369">369</a>         <strong>null</strong>,
+<a name="370" href="#370">370</a>         {0xC000000000000000L, 0xC000000000000000L},
+<a name="371" href="#371">371</a>         {0xE000000000000000L, 0xE000000000000000L},
+<a name="372" href="#372">372</a>         {0xD000000000000000L, 0xB000000000000000L},
+<a name="373" href="#373">373</a>         {0xF800000000000000L, 0xF800000000000000L},
+<a name="374" href="#374">374</a>         {0xEC00000000000000L, 0xBC00000000000000L},
+<a name="375" href="#375">375</a>         {0xDA00000000000000L, 0xB600000000000000L},
+<a name="376" href="#376">376</a>         {0xE500000000000000L, 0xE500000000000000L},
+<a name="377" href="#377">377</a>         {0x9680000000000000L, 0xD480000000000000L},
+<a name="378" href="#378">378</a>         {0x80C0000000000000L, 0x8840000000000000L},
+<a name="379" href="#379">379</a>         {0xB0A0000000000000L, 0xE9A0000000000000L},
+<a name="380" href="#380">380</a>         {0xD9F0000000000000L, 0xC9B0000000000000L},
+<a name="381" href="#381">381</a>         {0xE758000000000000L, 0xDE98000000000000L},
+<a name="382" href="#382">382</a>         {0xE42C000000000000L, 0x94E4000000000000L},
+<a name="383" href="#383">383</a>         {0xD4CE000000000000L, 0xB892000000000000L},
+<a name="384" href="#384">384</a>         {0xE2AB000000000000L, 0x9E39000000000000L},
+<a name="385" href="#385">385</a>         {0xCCE4800000000000L, 0x9783800000000000L},
+<a name="386" href="#386">386</a>         {0xD8F8C00000000000L, 0xA9CDC00000000000L},
+<a name="387" href="#387">387</a>         {0x9A28200000000000L, 0xFD79E00000000000L},
+<a name="388" href="#388">388</a>         {0xC782500000000000L, 0x96CD300000000000L},
+<a name="389" href="#389">389</a>         {0xBEE6880000000000L, 0xE902C80000000000L},
+<a name="390" href="#390">390</a>         {0x86D7E40000000000L, 0xF066340000000000L},
+<a name="391" href="#391">391</a>         {0x9888060000000000L, 0x910ABE0000000000L},
+<a name="392" href="#392">392</a>         {0xFF30E30000000000L, 0xB27EFB0000000000L},
+<a name="393" href="#393">393</a>         {0x8E375B8000000000L, 0xA03D948000000000L},
+<a name="394" href="#394">394</a>         {0xD1415C4000000000L, 0xF5357CC000000000L},
+<a name="395" href="#395">395</a>         {0x91A916E000000000L, 0xB6CE66E000000000L},
+<a name="396" href="#396">396</a>         {0xE6D2FC5000000000L, 0xD55882B000000000L},
+<a name="397" href="#397">397</a>         {0x9A3BA0B800000000L, 0xFBD654E800000000L},
+<a name="398" href="#398">398</a>         {0xAEA5D2E400000000L, 0xF0E533AC00000000L},
+<a name="399" href="#399">399</a>         {0xDA88B7BE00000000L, 0xAA3AAEDE00000000L},
+<a name="400" href="#400">400</a>         {0xBA75BB4300000000L, 0xF5A811C500000000L},
+<a name="401" href="#401">401</a>         {0x9B6C9A2F80000000L, 0x9603CCED80000000L},
+<a name="402" href="#402">402</a>         {0xFABB538840000000L, 0xE2747090C0000000L},
+<a name="403" href="#403">403</a>         {0x8358898EA0000000L, 0x8C698D3D20000000L},
+<a name="404" href="#404">404</a>         {0xDA8ABD5BF0000000L, 0xF6DF3A0AF0000000L},
+<a name="405" href="#405">405</a>         {0xB090C3F758000000L, 0xD3B4D3D298000000L},
+<a name="406" href="#406">406</a>         {0xAD9882F5BC000000L, 0x88DA4FB544000000L},
+<a name="407" href="#407">407</a>         {0xC3C366272A000000L, 0xDCCF2A2262000000L},
+<a name="408" href="#408">408</a>         {0x9BC0224A97000000L, 0xAF5D96F273000000L},
+<a name="409" href="#409">409</a>         {0x8643FFF621800000L, 0x8E390C6EDC800000L},
+<a name="410" href="#410">410</a>         {0xE45C01919BC00000L, 0xCBB34C8945C00000L},
+<a name="411" href="#411">411</a>         {0x80D8141BC2E00000L, 0x886AFC3912200000L},
+<a name="412" href="#412">412</a>         {0xF605807C26500000L, 0xA3B92D28F6300000L},
+<a name="413" href="#413">413</a>         {0xCE9A2CFC76280000L, 0x98400C1921280000L},
+<a name="414" href="#414">414</a>         {0xF61894904C040000L, 0xC8BE6DBCEC8C0000L},
+<a name="415" href="#415">415</a>         {0xE3A44C104D160000L, 0xCA84A59443760000L},
+<a name="416" href="#416">416</a>         {0xC7E84953A11B0000L, 0xD9D4F6AA02CB0000L},
+<a name="417" href="#417">417</a>         {0xC26CDD1C9A358000L, 0x8BE8478434328000L},
+<a name="418" href="#418">418</a>         {0xAE125DBEB198C000L, 0xFCC5DBFD5AAAC000L},
+<a name="419" href="#419">419</a>         {0x86DE52A079A6A000L, 0xC5F16BD883816000L},
+<a name="420" href="#420">420</a>         {0xDF82486AAFE37000L, 0xA293EC735692D000L},
+<a name="421" href="#421">421</a>         {0xE91ABA275C272800L, 0xD686192874E3C800L},
+<a name="422" href="#422">422</a>         {0x963D0960DAB3FC00L, 0xBA9DE62072621400L},
+<a name="423" href="#423">423</a>         {0xA2188C4E8A46CE00L, 0xD31F75BCB4977E00L},
+<a name="424" href="#424">424</a>         {0xC43A416020A6CB00L, 0x99F57FECA12B3900L},
+<a name="425" href="#425">425</a>         {0xA4F72EF82A58AE80L, 0xCECE4391B81DA380L},
+<a name="426" href="#426">426</a>         {0xB39F119264BC0940L, 0x80A277D20DABB9C0L},
+<a name="427" href="#427">427</a>         {0xFD6616C0CBFA0B20L, 0xED16E64117DC11A0L},
+<a name="428" href="#428">428</a>         {0xFFA8BC44327B5390L, 0xEDFB13DB3B66C210L},
+<a name="429" href="#429">429</a>         {0xCAE8EB99E73AB548L, 0xC86135B6EA2F0B98L},
+<a name="430" href="#430">430</a>         {0xBA49BADCDD19B16CL, 0x8F1944AFB18564C4L},
+<a name="431" href="#431">431</a>         {0xECFC86D765EABBEEL, 0x9190E1C46CC13702L},
+<a name="432" href="#432">432</a>         {0xE1F8D6B3195D6D97L, 0xDF70267FF5E4C979L},
+<a name="433" href="#433">433</a>         {0xD74307D3FD3382DBL, 0x9999B3FFDC769B48L}
+<a name="434" href="#434">434</a>     };
+<a name="435" href="#435">435</a> 
+<a name="436" href="#436">436</a>     <em>/**<em>* The standard 64-bit fingerprint generator using</em></em>
+<a name="437" href="#437">437</a> <em>        &lt;code>polynomials[0][64]&lt;/code>. */</em>
+<a name="438" href="#438">438</a>     <strong>public</strong> <strong>static</strong> <strong>final</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> std64 = make(polynomials[64][0], 64);
+<a name="439" href="#439">439</a> 
+<a name="440" href="#440">440</a>     <em>/**<em>* A standard 32-bit fingerprint generator using</em></em>
+<a name="441" href="#441">441</a> <em>        &lt;code>polynomials[0][32]&lt;/code>. */</em>
+<a name="442" href="#442">442</a>     <strong>public</strong> <strong>static</strong> <strong>final</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> std32 = make(polynomials[32][0], 32);
+<a name="443" href="#443">443</a>     
+<a name="444" href="#444">444</a>     <em class="comment">// Below added by St.Ack on 09/30/2004.</em>
+<a name="445" href="#445">445</a>     <em>/**<em>* A standard 40-bit fingerprint generator using</em></em>
+<a name="446" href="#446">446</a> <em>        &lt;code>polynomials[0][40]&lt;/code>. */</em>
+<a name="447" href="#447">447</a>     <strong>public</strong> <strong>static</strong> <strong>final</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> std40 = make(polynomials[40][0], 40);
+<a name="448" href="#448">448</a>     <em>/**<em>* A standard 24-bit fingerprint generator using</em></em>
+<a name="449" href="#449">449</a> <em>        &lt;code>polynomials[0][24]&lt;/code>. */</em>
+<a name="450" href="#450">450</a>     <strong>public</strong> <strong>static</strong> <strong>final</strong> <a href="../../../st/ata/util/FPGenerator.html">FPGenerator</a> std24 = make(polynomials[24][0], 24);
+<a name="451" href="#451">451</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

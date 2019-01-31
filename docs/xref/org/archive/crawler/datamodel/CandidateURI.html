@@ -1,0 +1,722 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8" /><title>CandidateURI xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../apidocs/org/archive/crawler/datamodel/CandidateURI.html">View Javadoc</a></div><pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> Copyright (C) 2003 Internet Archive.</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> *</em>
+<a name="3" href="#3">3</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *</em>
+<a name="5" href="#5">5</a>   <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="6" href="#6">6</a>   <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="7" href="#7">7</a>   <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="8" href="#8">8</a>   <em class="comment"> * any later version.</em>
+<a name="9" href="#9">9</a>   <em class="comment"> *</em>
+<a name="10" href="#10">10</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="12" href="#12">12</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="13" href="#13">13</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="14" href="#14">14</a>  <em class="comment"> *</em>
+<a name="15" href="#15">15</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="17" href="#17">17</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="18" href="#18">18</a>  <em class="comment"> *</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * CandidateURI.java</em>
+<a name="20" href="#20">20</a>  <em class="comment"> * Created on Sep 30, 2003</em>
+<a name="21" href="#21">21</a>  <em class="comment"> *</em>
+<a name="22" href="#22">22</a>  <em class="comment"> * $Header$</em>
+<a name="23" href="#23">23</a>  <em class="comment"> */</em>
+<a name="24" href="#24">24</a>  <strong>package</strong> <a href="../../../../org/archive/crawler/datamodel/package-summary.html">org.archive.crawler.datamodel</a>;
+<a name="25" href="#25">25</a>  
+<a name="26" href="#26">26</a>  <strong>import</strong> java.io.IOException;
+<a name="27" href="#27">27</a>  <strong>import</strong> java.io.ObjectInputStream;
+<a name="28" href="#28">28</a>  <strong>import</strong> java.io.ObjectOutputStream;
+<a name="29" href="#29">29</a>  <strong>import</strong> java.io.PrintWriter;
+<a name="30" href="#30">30</a>  <strong>import</strong> java.io.Serializable;
+<a name="31" href="#31">31</a>  <strong>import</strong> java.util.ArrayList;
+<a name="32" href="#32">32</a>  <strong>import</strong> java.util.Iterator;
+<a name="33" href="#33">33</a>  <strong>import</strong> java.util.List;
+<a name="34" href="#34">34</a>  
+<a name="35" href="#35">35</a>  <strong>import</strong> org.apache.commons.httpclient.URIException;
+<a name="36" href="#36">36</a>  <strong>import</strong> org.archive.crawler.extractor.Link;
+<a name="37" href="#37">37</a>  <strong>import</strong> org.archive.net.UURI;
+<a name="38" href="#38">38</a>  <strong>import</strong> org.archive.net.UURIFactory;
+<a name="39" href="#39">39</a>  <strong>import</strong> org.archive.util.ArchiveUtils;
+<a name="40" href="#40">40</a>  <strong>import</strong> org.archive.util.Reporter;
+<a name="41" href="#41">41</a>  
+<a name="42" href="#42">42</a>  <strong>import</strong> st.ata.util.AList;
+<a name="43" href="#43">43</a>  <strong>import</strong> st.ata.util.HashtableAList;
+<a name="44" href="#44">44</a>  
+<a name="45" href="#45">45</a>  <em>/**<em>*</em></em>
+<a name="46" href="#46">46</a>  <em> * A URI, discovered or passed-in, that may be scheduled.</em>
+<a name="47" href="#47">47</a>  <em> * When scheduled, a CandidateURI becomes a {@link CrawlURI}</em>
+<a name="48" href="#48">48</a>  <em> * made with the data contained herein. A CandidateURI</em>
+<a name="49" href="#49">49</a>  <em> * contains just the fields necessary to perform quick in-scope analysis.</em>
+<a name="50" href="#50">50</a>  <em> * </em>
+<a name="51" href="#51">51</a>  <em> * &lt;p>Has a flexible attribute list that will be promoted into</em>
+<a name="52" href="#52">52</a>  <em> * any {@link CrawlURI} created from this CandidateURI.  Use it</em>
+<a name="53" href="#53">53</a>  <em> * to add custom data or state needed later doing custom processing.</em>
+<a name="54" href="#54">54</a>  <em> * See accessors/setters {@link #putString(String, String)},</em>
+<a name="55" href="#55">55</a>  <em> * {@link #getString(String)}, etc. </em>
+<a name="56" href="#56">56</a>  <em> *</em>
+<a name="57" href="#57">57</a>  <em> * @author Gordon Mohr</em>
+<a name="58" href="#58">58</a>  <em> */</em>
+<a name="59" href="#59">59</a>  <strong>public</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>
+<a name="60" href="#60">60</a>  implements Serializable, Reporter, <a href="../../../../org/archive/crawler/datamodel/CoreAttributeConstants.html">CoreAttributeConstants</a> {
+<a name="61" href="#61">61</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = -7152937921526560388L;
+<a name="62" href="#62">62</a>  
+<a name="63" href="#63">63</a>      <em>/**<em>* Highest scheduling priority.</em></em>
+<a name="64" href="#64">64</a>  <em>     * Before any others of its class.</em>
+<a name="65" href="#65">65</a>  <em>     */</em>
+<a name="66" href="#66">66</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> HIGHEST = 0;
+<a name="67" href="#67">67</a>      
+<a name="68" href="#68">68</a>      <em>/**<em>* High scheduling priority.</em></em>
+<a name="69" href="#69">69</a>  <em>     * After any {@link #HIGHEST}.</em>
+<a name="70" href="#70">70</a>  <em>     */</em>
+<a name="71" href="#71">71</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> HIGH = 1;
+<a name="72" href="#72">72</a>      
+<a name="73" href="#73">73</a>      <em>/**<em>* Medium priority.</em></em>
+<a name="74" href="#74">74</a>  <em>     * After any {@link #HIGH}.</em>
+<a name="75" href="#75">75</a>  <em>     */</em>
+<a name="76" href="#76">76</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> MEDIUM = 2;
+<a name="77" href="#77">77</a>      
+<a name="78" href="#78">78</a>      <em>/**<em>* Normal/low priority.</em></em>
+<a name="79" href="#79">79</a>  <em>     * Whenever/end of queue.</em>
+<a name="80" href="#80">80</a>  <em>     */</em>
+<a name="81" href="#81">81</a>      <strong>public</strong> <strong>static</strong> <strong>final</strong> <strong>int</strong> NORMAL = 3;
+<a name="82" href="#82">82</a>      
+<a name="83" href="#83">83</a>      <strong>private</strong> <strong>int</strong> schedulingDirective = NORMAL;
+<a name="84" href="#84">84</a>      
+<a name="85" href="#85">85</a>      <em>/**<em>* </em></em>
+<a name="86" href="#86">86</a>  <em>     * Usuable URI under consideration. Transient to allow</em>
+<a name="87" href="#87">87</a>  <em>     * more efficient custom serialization </em>
+<a name="88" href="#88">88</a>  <em>     */</em>
+<a name="89" href="#89">89</a>      <strong>private</strong> <strong>transient</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> uuri;
+<a name="90" href="#90">90</a>      
+<a name="91" href="#91">91</a>      <em>/**<em>* Seed status */</em></em>
+<a name="92" href="#92">92</a>      <strong>private</strong> <strong>boolean</strong> isSeed = false;
+<a name="93" href="#93">93</a>  
+<a name="94" href="#94">94</a>      <strong>private</strong> <strong>boolean</strong> forceRevisit = false; <em class="comment">// even if already visited</em>
+<a name="95" href="#95">95</a>      
+<a name="96" href="#96">96</a>      <em>/**<em>* String of letters indicating how this URI was reached from a seed.</em></em>
+<a name="97" href="#97">97</a>  <em>     * &lt;pre></em>
+<a name="98" href="#98">98</a>  <em>     * P precondition</em>
+<a name="99" href="#99">99</a>  <em>     * R redirection</em>
+<a name="100" href="#100">100</a> <em>     * E embedded (as frame, src, link, codebase, etc.)</em>
+<a name="101" href="#101">101</a> <em>     * X speculative embed (as from javascript, some alternate-format extractors</em>
+<a name="102" href="#102">102</a> <em>     * L link&lt;/pre></em>
+<a name="103" href="#103">103</a> <em>     * For example LLLE (an embedded image on a page 3 links from seed).</em>
+<a name="104" href="#104">104</a> <em>     */</em>
+<a name="105" href="#105">105</a>     <strong>private</strong> String pathFromSeed;
+<a name="106" href="#106">106</a>     
+<a name="107" href="#107">107</a>     <em>/**<em>*</em></em>
+<a name="108" href="#108">108</a> <em>     * Where this URI was (presently) discovered. . Transient to allow</em>
+<a name="109" href="#109">109</a> <em>     * more efficient custom serialization</em>
+<a name="110" href="#110">110</a> <em>     */</em>
+<a name="111" href="#111">111</a>     <strong>private</strong> <strong>transient</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> via;
+<a name="112" href="#112">112</a> 
+<a name="113" href="#113">113</a>     <em>/**<em>*</em></em>
+<a name="114" href="#114">114</a> <em>     * Context of URI's discovery, as per the 'context' in Link</em>
+<a name="115" href="#115">115</a> <em>     */</em>
+<a name="116" href="#116">116</a>     <strong>private</strong> CharSequence viaContext;
+<a name="117" href="#117">117</a>     
+<a name="118" href="#118">118</a>     <em>/**<em>*</em></em>
+<a name="119" href="#119">119</a> <em>     * Flexible dynamic attributes list.</em>
+<a name="120" href="#120">120</a> <em>     * &lt;p></em>
+<a name="121" href="#121">121</a> <em>     * The attribute list is a flexible map of key/value pairs for storing</em>
+<a name="122" href="#122">122</a> <em>     * status of this URI for use by other processors. By convention the</em>
+<a name="123" href="#123">123</a> <em>     * attribute list is keyed by constants found in the</em>
+<a name="124" href="#124">124</a> <em>     * {@link CoreAttributeConstants} interface.  Use this list to carry</em>
+<a name="125" href="#125">125</a> <em>     * data or state produced by custom processors rather change the</em>
+<a name="126" href="#126">126</a> <em>     * classes {@link CrawlURI} or this class, CandidateURI.</em>
+<a name="127" href="#127">127</a> <em>     *</em>
+<a name="128" href="#128">128</a> <em>     * Transient to allow more efficient custom serialization.</em>
+<a name="129" href="#129">129</a> <em>     */</em>
+<a name="130" href="#130">130</a>     <strong>private</strong> <strong>transient</strong> <a href="../../../../st/ata/util/AList.html">AList</a> alist;
+<a name="131" href="#131">131</a>     
+<a name="132" href="#132">132</a>     <em>/**<em>*</em></em>
+<a name="133" href="#133">133</a> <em>     * Cache of this candidate uuri as a string.</em>
+<a name="134" href="#134">134</a> <em>     *</em>
+<a name="135" href="#135">135</a> <em>     * Profiling shows us spending about 1-2% of total elapsed time in</em>
+<a name="136" href="#136">136</a> <em>     * toString.</em>
+<a name="137" href="#137">137</a> <em>     */</em>
+<a name="138" href="#138">138</a>     <strong>private</strong> String cachedCandidateURIString = <strong>null</strong>;
+<a name="139" href="#139">139</a>     
+<a name="140" href="#140">140</a> 
+<a name="141" href="#141">141</a>     <em>/**<em>*</em></em>
+<a name="142" href="#142">142</a> <em>     * Frontier/Scheduler lifecycle info.</em>
+<a name="143" href="#143">143</a> <em>     * This is an identifier set by the Frontier for its</em>
+<a name="144" href="#144">144</a> <em>     * purposes. Usually its the name of the Frontier queue</em>
+<a name="145" href="#145">145</a> <em>     * this URI gets queued to.  Values can be host + port</em>
+<a name="146" href="#146">146</a> <em>     * or IP, etc.</em>
+<a name="147" href="#147">147</a> <em>     */</em>
+<a name="148" href="#148">148</a>     <strong>private</strong> String classKey;
+<a name="149" href="#149">149</a> 
+<a name="150" href="#150">150</a>     <em>/**<em>*</em></em>
+<a name="151" href="#151">151</a> <em>     * Constructor.</em>
+<a name="152" href="#152">152</a> <em>     * Protected access to block access to default constructor.</em>
+<a name="153" href="#153">153</a> <em>     */</em>
+<a name="154" href="#154">154</a>     <strong>protected</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> () {
+<a name="155" href="#155">155</a>         <strong>super</strong>();
+<a name="156" href="#156">156</a>     }
+<a name="157" href="#157">157</a>     
+<a name="158" href="#158">158</a>     <em>/**<em>*</em></em>
+<a name="159" href="#159">159</a> <em>     * @param u uuri instance this CandidateURI wraps.</em>
+<a name="160" href="#160">160</a> <em>     */</em>
+<a name="161" href="#161">161</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>(<a href="../../../../org/archive/net/UURI.html">UURI</a> u) {
+<a name="162" href="#162">162</a>         <strong>this</strong>.uuri = u;
+<a name="163" href="#163">163</a>     }
+<a name="164" href="#164">164</a>     
+<a name="165" href="#165">165</a>     <em>/**<em>*</em></em>
+<a name="166" href="#166">166</a> <em>     * @param u uuri instance this CandidateURI wraps.</em>
+<a name="167" href="#167">167</a> <em>     * @param pathFromSeed</em>
+<a name="168" href="#168">168</a> <em>     * @param via</em>
+<a name="169" href="#169">169</a> <em>     * @param viaContext</em>
+<a name="170" href="#170">170</a> <em>     */</em>
+<a name="171" href="#171">171</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>(<a href="../../../../org/archive/net/UURI.html">UURI</a> u, String pathFromSeed, <a href="../../../../org/archive/net/UURI.html">UURI</a> via,
+<a name="172" href="#172">172</a>             CharSequence viaContext) {
+<a name="173" href="#173">173</a>         <strong>this</strong>.uuri = u;
+<a name="174" href="#174">174</a>         <strong>this</strong>.pathFromSeed = pathFromSeed;
+<a name="175" href="#175">175</a>         <strong>this</strong>.via = via;
+<a name="176" href="#176">176</a>         <strong>this</strong>.viaContext = viaContext;
+<a name="177" href="#177">177</a>     }
+<a name="178" href="#178">178</a> 
+<a name="179" href="#179">179</a>     <em>/**<em>*</em></em>
+<a name="180" href="#180">180</a> <em>     * Set the &lt;tt>isSeed&lt;/tt> attribute of this URI.</em>
+<a name="181" href="#181">181</a> <em>     * @param b Is this URI a seed, true or false.</em>
+<a name="182" href="#182">182</a> <em>     */</em>
+<a name="183" href="#183">183</a>     <strong>public</strong> <strong>void</strong> setIsSeed(<strong>boolean</strong> b) {
+<a name="184" href="#184">184</a>         <strong>this</strong>.isSeed = b;
+<a name="185" href="#185">185</a>         <strong>if</strong> (<strong>this</strong>.isSeed) {
+<a name="186" href="#186">186</a>             <strong>if</strong>(pathFromSeed==<strong>null</strong>) {
+<a name="187" href="#187">187</a>                 <strong>this</strong>.pathFromSeed = <span class="string">""</span>;
+<a name="188" href="#188">188</a>             }
+<a name="189" href="#189">189</a> <em class="comment">//          seeds created on redirect must have a via to be recognized; don't clear</em>
+<a name="190" href="#190">190</a> <em class="comment">//            setVia(null);</em>
+<a name="191" href="#191">191</a>         }
+<a name="192" href="#192">192</a>     }
+<a name="193" href="#193">193</a> 
+<a name="194" href="#194">194</a>     <em>/**<em>*</em></em>
+<a name="195" href="#195">195</a> <em>     * @return UURI</em>
+<a name="196" href="#196">196</a> <em>     */</em>
+<a name="197" href="#197">197</a>     <strong>public</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> getUURI() {
+<a name="198" href="#198">198</a>         <strong>return</strong> <strong>this</strong>.uuri;
+<a name="199" href="#199">199</a>     }
+<a name="200" href="#200">200</a> 
+<a name="201" href="#201">201</a>     <em>/**<em>*</em></em>
+<a name="202" href="#202">202</a> <em>     * @return Whether seeded.</em>
+<a name="203" href="#203">203</a> <em>     */</em>
+<a name="204" href="#204">204</a>     <strong>public</strong> <strong>boolean</strong> isSeed() {
+<a name="205" href="#205">205</a>         <strong>return</strong> <strong>this</strong>.isSeed;
+<a name="206" href="#206">206</a>     }
+<a name="207" href="#207">207</a> 
+<a name="208" href="#208">208</a>     <em>/**<em>*</em></em>
+<a name="209" href="#209">209</a> <em>     * @return path (hop-types) from seed</em>
+<a name="210" href="#210">210</a> <em>     */</em>
+<a name="211" href="#211">211</a>     <strong>public</strong> String getPathFromSeed() {
+<a name="212" href="#212">212</a>         <strong>return</strong> <strong>this</strong>.pathFromSeed;
+<a name="213" href="#213">213</a>     }
+<a name="214" href="#214">214</a> 
+<a name="215" href="#215">215</a>     <em>/**<em>*</em></em>
+<a name="216" href="#216">216</a> <em>     * @return URI via which this one was discovered</em>
+<a name="217" href="#217">217</a> <em>     */</em>
+<a name="218" href="#218">218</a>     <strong>public</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> getVia() {
+<a name="219" href="#219">219</a>         <strong>return</strong> <strong>this</strong>.via;
+<a name="220" href="#220">220</a>     }
+<a name="221" href="#221">221</a> 
+<a name="222" href="#222">222</a>     <em>/**<em>*</em></em>
+<a name="223" href="#223">223</a> <em>     * @return CharSequence context in which this one was discovered</em>
+<a name="224" href="#224">224</a> <em>     */</em>
+<a name="225" href="#225">225</a>     <strong>public</strong> CharSequence getViaContext() {
+<a name="226" href="#226">226</a>         <strong>return</strong> <strong>this</strong>.viaContext;
+<a name="227" href="#227">227</a>     }
+<a name="228" href="#228">228</a>     
+<a name="229" href="#229">229</a>     <em>/**<em>*</em></em>
+<a name="230" href="#230">230</a> <em>     * @param string</em>
+<a name="231" href="#231">231</a> <em>     */</em>
+<a name="232" href="#232">232</a>     <strong>protected</strong> <strong>void</strong> setPathFromSeed(String string) {
+<a name="233" href="#233">233</a>         pathFromSeed = string;
+<a name="234" href="#234">234</a>     }
+<a name="235" href="#235">235</a>     
+<a name="236" href="#236">236</a>     <em>/**<em>*</em></em>
+<a name="237" href="#237">237</a> <em>     * Called when making a copy of another CandidateURI.</em>
+<a name="238" href="#238">238</a> <em>     * @param alist AList to use.</em>
+<a name="239" href="#239">239</a> <em>     */</em>
+<a name="240" href="#240">240</a>     <strong>protected</strong> <strong>void</strong> setAList(<a href="../../../../st/ata/util/AList.html">AList</a> alist) {
+<a name="241" href="#241">241</a>         <strong>this</strong>.alist = alist;
+<a name="242" href="#242">242</a>     }
+<a name="243" href="#243">243</a> 
+<a name="244" href="#244">244</a>     <strong>public</strong> <strong>void</strong> setVia(<a href="../../../../org/archive/net/UURI.html">UURI</a> via) {
+<a name="245" href="#245">245</a>         <strong>this</strong>.via = via;
+<a name="246" href="#246">246</a>     }
+<a name="247" href="#247">247</a> 
+<a name="248" href="#248">248</a>     <em>/**<em>*</em></em>
+<a name="249" href="#249">249</a> <em>     * @return This candidate URI as a string wrapped with 'CandidateURI(' +</em>
+<a name="250" href="#250">250</a> <em>     * ')'.</em>
+<a name="251" href="#251">251</a> <em>     */</em>
+<a name="252" href="#252">252</a>     <strong>public</strong> <strong>synchronized</strong> String getCandidateURIString() {
+<a name="253" href="#253">253</a>         <strong>if</strong> (<strong>this</strong>.cachedCandidateURIString == <strong>null</strong>) {
+<a name="254" href="#254">254</a>             <strong>this</strong>.cachedCandidateURIString =
+<a name="255" href="#255">255</a>                 <span class="string">"CandidateURI("</span> + toString() + <span class="string">")"</span>;
+<a name="256" href="#256">256</a>         }
+<a name="257" href="#257">257</a>         <strong>return</strong> <strong>this</strong>.cachedCandidateURIString;
+<a name="258" href="#258">258</a>     }
+<a name="259" href="#259">259</a> 
+<a name="260" href="#260">260</a>     <em>/**<em>*</em></em>
+<a name="261" href="#261">261</a> <em>     * Method returns string version of this URI's referral URI.</em>
+<a name="262" href="#262">262</a> <em>     * @return String version of referral URI</em>
+<a name="263" href="#263">263</a> <em>     */</em>
+<a name="264" href="#264">264</a>     <strong>public</strong> String flattenVia() {
+<a name="265" href="#265">265</a>         <strong>return</strong> (via == <strong>null</strong>)? <span class="string">""</span>: via.toString();
+<a name="266" href="#266">266</a>     }
+<a name="267" href="#267">267</a>     
+<a name="268" href="#268">268</a>     <em>/**<em>*</em></em>
+<a name="269" href="#269">269</a> <em>     * @return The UURI this CandidateURI wraps as a string </em>
+<a name="270" href="#270">270</a> <em>     * (We used return what {@link #getCandidateURIString()}</em>
+<a name="271" href="#271">271</a> <em>     * returns on a toString -- use that method if you still need</em>
+<a name="272" href="#272">272</a> <em>     * this functionality).</em>
+<a name="273" href="#273">273</a> <em>     * @see #getCandidateURIString()</em>
+<a name="274" href="#274">274</a> <em>     */</em>
+<a name="275" href="#275">275</a>     <strong>public</strong> String toString() {
+<a name="276" href="#276">276</a>         <strong>return</strong> getURIString();
+<a name="277" href="#277">277</a>     }
+<a name="278" href="#278">278</a> 
+<a name="279" href="#279">279</a>     <em>/**<em>*</em></em>
+<a name="280" href="#280">280</a> <em>     * @return URI String</em>
+<a name="281" href="#281">281</a> <em>     * @deprecated Use {@link #toString()}.</em>
+<a name="282" href="#282">282</a> <em>     */</em>
+<a name="283" href="#283">283</a>     <strong>public</strong> String getURIString() {
+<a name="284" href="#284">284</a>         <strong>return</strong> getUURI().toString();
+<a name="285" href="#285">285</a>     }
+<a name="286" href="#286">286</a> 
+<a name="287" href="#287">287</a>     <em>/**<em>*</em></em>
+<a name="288" href="#288">288</a> <em>     * Compares the domain of this CandidateURI with that of another</em>
+<a name="289" href="#289">289</a> <em>     * CandidateURI</em>
+<a name="290" href="#290">290</a> <em>     *</em>
+<a name="291" href="#291">291</a> <em>     * @param other The other CandidateURI</em>
+<a name="292" href="#292">292</a> <em>     *</em>
+<a name="293" href="#293">293</a> <em>     * @return True if both are in the same domain, false otherwise.</em>
+<a name="294" href="#294">294</a> <em>     * @throws URIException</em>
+<a name="295" href="#295">295</a> <em>     */</em>
+<a name="296" href="#296">296</a>     <strong>public</strong> <strong>boolean</strong> sameDomainAs(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> other) throws URIException {
+<a name="297" href="#297">297</a>         String domain = getUURI().getHost();
+<a name="298" href="#298">298</a>         <strong>if</strong> (domain == <strong>null</strong>) {
+<a name="299" href="#299">299</a>             <strong>return</strong> false;
+<a name="300" href="#300">300</a>         }
+<a name="301" href="#301">301</a>         <strong>while</strong>(domain.lastIndexOf('.') > domain.indexOf('.')) {
+<a name="302" href="#302">302</a>             <em class="comment">// While has more than one dot, lop off first segment</em>
+<a name="303" href="#303">303</a>             domain = domain.substring(domain.indexOf('.') + 1);
+<a name="304" href="#304">304</a>         }
+<a name="305" href="#305">305</a>         <strong>if</strong>(other.getUURI().getHost() == <strong>null</strong>) {
+<a name="306" href="#306">306</a>             <strong>return</strong> false;
+<a name="307" href="#307">307</a>         }
+<a name="308" href="#308">308</a>         <strong>return</strong> other.getUURI().getHost().endsWith(domain);
+<a name="309" href="#309">309</a>     }
+<a name="310" href="#310">310</a> 
+<a name="311" href="#311">311</a>     <em>/**<em>*</em></em>
+<a name="312" href="#312">312</a> <em>     * If this method returns true, this URI should be fetched even though</em>
+<a name="313" href="#313">313</a> <em>     * it already has been crawled. This also implies</em>
+<a name="314" href="#314">314</a> <em>     * that this URI will be scheduled for crawl before any other waiting</em>
+<a name="315" href="#315">315</a> <em>     * URIs for the same host.</em>
+<a name="316" href="#316">316</a> <em>     *</em>
+<a name="317" href="#317">317</a> <em>     * This value is used to refetch any expired robots.txt or dns-lookups.</em>
+<a name="318" href="#318">318</a> <em>     *</em>
+<a name="319" href="#319">319</a> <em>     * @return true if crawling of this URI should be forced</em>
+<a name="320" href="#320">320</a> <em>     */</em>
+<a name="321" href="#321">321</a>     <strong>public</strong> <strong>boolean</strong> forceFetch() {
+<a name="322" href="#322">322</a>         <strong>return</strong> forceRevisit;
+<a name="323" href="#323">323</a>     }
+<a name="324" href="#324">324</a> 
+<a name="325" href="#325">325</a>    <em>/**<em>*</em></em>
+<a name="326" href="#326">326</a> <em>     * Method to signal that this URI should be fetched even though</em>
+<a name="327" href="#327">327</a> <em>     * it already has been crawled. Setting this to true also implies</em>
+<a name="328" href="#328">328</a> <em>     * that this URI will be scheduled for crawl before any other waiting</em>
+<a name="329" href="#329">329</a> <em>     * URIs for the same host.</em>
+<a name="330" href="#330">330</a> <em>     *</em>
+<a name="331" href="#331">331</a> <em>     * This value is used to refetch any expired robots.txt or dns-lookups.</em>
+<a name="332" href="#332">332</a> <em>     *</em>
+<a name="333" href="#333">333</a> <em>     * @param b set to true to enforce the crawling of this URI</em>
+<a name="334" href="#334">334</a> <em>     */</em>
+<a name="335" href="#335">335</a>     <strong>public</strong> <strong>void</strong> setForceFetch(<strong>boolean</strong> b) {
+<a name="336" href="#336">336</a>         forceRevisit = b;
+<a name="337" href="#337">337</a>     }
+<a name="338" href="#338">338</a> 
+<a name="339" href="#339">339</a>     <em>/**<em>*</em></em>
+<a name="340" href="#340">340</a> <em>     * @return Returns the schedulingDirective.</em>
+<a name="341" href="#341">341</a> <em>     */</em>
+<a name="342" href="#342">342</a>     <strong>public</strong> <strong>int</strong> getSchedulingDirective() {
+<a name="343" href="#343">343</a>         <strong>return</strong> schedulingDirective;
+<a name="344" href="#344">344</a>     }
+<a name="345" href="#345">345</a>     <em>/**<em>* </em></em>
+<a name="346" href="#346">346</a> <em>     * @param schedulingDirective The schedulingDirective to set.</em>
+<a name="347" href="#347">347</a> <em>     */</em>
+<a name="348" href="#348">348</a>     <strong>public</strong> <strong>void</strong> setSchedulingDirective(<strong>int</strong> schedulingDirective) {
+<a name="349" href="#349">349</a>         <strong>this</strong>.schedulingDirective = schedulingDirective;
+<a name="350" href="#350">350</a>     }
+<a name="351" href="#351">351</a> 
+<a name="352" href="#352">352</a> 
+<a name="353" href="#353">353</a>     <em>/**<em>*</em></em>
+<a name="354" href="#354">354</a> <em>     * @return True if needs immediate scheduling.</em>
+<a name="355" href="#355">355</a> <em>     */</em>
+<a name="356" href="#356">356</a>     <strong>public</strong> <strong>boolean</strong> needsImmediateScheduling() {
+<a name="357" href="#357">357</a>         <strong>return</strong> schedulingDirective == HIGH;
+<a name="358" href="#358">358</a>     }
+<a name="359" href="#359">359</a> 
+<a name="360" href="#360">360</a>     <em>/**<em>*</em></em>
+<a name="361" href="#361">361</a> <em>     * @return True if needs soon but not top scheduling.</em>
+<a name="362" href="#362">362</a> <em>     */</em>
+<a name="363" href="#363">363</a>     <strong>public</strong> <strong>boolean</strong> needsSoonScheduling() {
+<a name="364" href="#364">364</a>         <strong>return</strong> schedulingDirective == MEDIUM;
+<a name="365" href="#365">365</a>     }
+<a name="366" href="#366">366</a> 
+<a name="367" href="#367">367</a>     <em>/**<em>*</em></em>
+<a name="368" href="#368">368</a> <em>     * Tally up the number of transitive (non-simple-link) hops at</em>
+<a name="369" href="#369">369</a> <em>     * the end of this CandidateURI's pathFromSeed.</em>
+<a name="370" href="#370">370</a> <em>     * </em>
+<a name="371" href="#371">371</a> <em>     * In some cases, URIs with greater than zero but less than some</em>
+<a name="372" href="#372">372</a> <em>     * threshold such hops are treated specially. </em>
+<a name="373" href="#373">373</a> <em>     * </em>
+<a name="374" href="#374">374</a> <em>     * &lt;p>TODO: consider moving link-count in here as well, caching</em>
+<a name="375" href="#375">375</a> <em>     * calculation, and refactoring CrawlScope.exceedsMaxHops() to use this. </em>
+<a name="376" href="#376">376</a> <em>     * </em>
+<a name="377" href="#377">377</a> <em>     * @return Transhop count.</em>
+<a name="378" href="#378">378</a> <em>     */</em>
+<a name="379" href="#379">379</a>     <strong>public</strong> <strong>int</strong> getTransHops() {
+<a name="380" href="#380">380</a>         String path = getPathFromSeed();
+<a name="381" href="#381">381</a>         <strong>int</strong> transCount = 0;
+<a name="382" href="#382">382</a>         <strong>for</strong>(<strong>int</strong> i=path.length()-1;i>=0;i--) {
+<a name="383" href="#383">383</a>             <strong>if</strong>(path.charAt(i)==Link.NAVLINK_HOP) {
+<a name="384" href="#384">384</a>                 <strong>break</strong>;
+<a name="385" href="#385">385</a>             }
+<a name="386" href="#386">386</a>             transCount++;
+<a name="387" href="#387">387</a>         }
+<a name="388" href="#388">388</a>         <strong>return</strong> transCount;
+<a name="389" href="#389">389</a>     }
+<a name="390" href="#390">390</a> 
+<a name="391" href="#391">391</a>     <em>/**<em>*</em></em>
+<a name="392" href="#392">392</a> <em>     * Given a string containing a URI, then optional whitespace</em>
+<a name="393" href="#393">393</a> <em>     * delimited hops-path and via info, create a CandidateURI </em>
+<a name="394" href="#394">394</a> <em>     * instance.</em>
+<a name="395" href="#395">395</a> <em>     * </em>
+<a name="396" href="#396">396</a> <em>     * @param uriHopsViaString String with a URI.</em>
+<a name="397" href="#397">397</a> <em>     * @return A CandidateURI made from passed &lt;code>uriHopsViaString&lt;/code>.</em>
+<a name="398" href="#398">398</a> <em>     * @throws URIException</em>
+<a name="399" href="#399">399</a> <em>     */</em>
+<a name="400" href="#400">400</a>     <strong>public</strong> <strong>static</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> fromString(String uriHopsViaString)
+<a name="401" href="#401">401</a>             throws URIException {
+<a name="402" href="#402">402</a>         String args[] = uriHopsViaString.split(<span class="string">"&#47;&#47;s+"</span>);
+<a name="403" href="#403">403</a>         String pathFromSeeds = (args.length > 1 &amp;&amp; !args[1].equals(<span class="string">"-"</span>)) ?
+<a name="404" href="#404">404</a>                 args[1]: <span class="string">""</span>;
+<a name="405" href="#405">405</a>         <a href="../../../../org/archive/net/UURI.html">UURI</a> via = (args.length > 2 &amp;&amp; !args[2].equals(<span class="string">"-"</span>)) ?
+<a name="406" href="#406">406</a>                 UURIFactory.getInstance(args[2]) : <strong>null</strong>;
+<a name="407" href="#407">407</a>         CharSequence viaContext = (args.length > 3 &amp;&amp; !args[3].equals(<span class="string">"-"</span>)) ?
+<a name="408" href="#408">408</a>                 args[2]: <strong>null</strong>;
+<a name="409" href="#409">409</a>         <strong>return</strong> <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>(UURIFactory.getInstance(args[0]),
+<a name="410" href="#410">410</a>                 pathFromSeeds, via, viaContext);
+<a name="411" href="#411">411</a>     }
+<a name="412" href="#412">412</a>     
+<a name="413" href="#413">413</a>     <strong>public</strong> <strong>static</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> createSeedCandidateURI(<a href="../../../../org/archive/net/UURI.html">UURI</a> uuri) {
+<a name="414" href="#414">414</a>         <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> c = <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>(uuri);
+<a name="415" href="#415">415</a>         c.setIsSeed(<strong>true</strong>);
+<a name="416" href="#416">416</a>         <strong>return</strong> c;
+<a name="417" href="#417">417</a>     }
+<a name="418" href="#418">418</a>     
+<a name="419" href="#419">419</a>     <em>/**<em>*</em></em>
+<a name="420" href="#420">420</a> <em>     * Utility method for creation of CandidateURIs found extracting</em>
+<a name="421" href="#421">421</a> <em>     * links from this CrawlURI.</em>
+<a name="422" href="#422">422</a> <em>     * @param baseUURI BaseUURI for &lt;code>link&lt;/code>.</em>
+<a name="423" href="#423">423</a> <em>     * @param link Link to wrap CandidateURI in.</em>
+<a name="424" href="#424">424</a> <em>     * @return New candidateURI wrapper around &lt;code>link&lt;/code>.</em>
+<a name="425" href="#425">425</a> <em>     * @throws URIException</em>
+<a name="426" href="#426">426</a> <em>     */</em>
+<a name="427" href="#427">427</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> createCandidateURI(<a href="../../../../org/archive/net/UURI.html">UURI</a> baseUURI, <a href="../../../../org/archive/crawler/extractor/Link.html">Link</a> link)
+<a name="428" href="#428">428</a>     throws URIException {
+<a name="429" href="#429">429</a>         <a href="../../../../org/archive/net/UURI.html">UURI</a> u = (link.getDestination() instanceof UURI)?
+<a name="430" href="#430">430</a>             (<a href="../../../../org/archive/net/UURI.html">UURI</a>)link.getDestination():
+<a name="431" href="#431">431</a>             UURIFactory.getInstance(baseUURI,
+<a name="432" href="#432">432</a>                 link.getDestination().toString());
+<a name="433" href="#433">433</a>         <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> <strong>new</strong>CaURI = <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a>(u, getPathFromSeed() + link.getHopType(),
+<a name="434" href="#434">434</a>                 getUURI(), link.getContext());
+<a name="435" href="#435">435</a>         newCaURI.inheritFrom(<strong>this</strong>);
+<a name="436" href="#436">436</a>         <strong>return</strong> newCaURI;
+<a name="437" href="#437">437</a>     }
+<a name="438" href="#438">438</a> 
+<a name="439" href="#439">439</a>     <em>/**<em>*</em></em>
+<a name="440" href="#440">440</a> <em>     * Utility method for creation of CandidateURIs found extracting</em>
+<a name="441" href="#441">441</a> <em>     * links from this CrawlURI.</em>
+<a name="442" href="#442">442</a> <em>     * @param baseUURI BaseUURI for &lt;code>link&lt;/code>.</em>
+<a name="443" href="#443">443</a> <em>     * @param link Link to wrap CandidateURI in.</em>
+<a name="444" href="#444">444</a> <em>     * @param scheduling How new CandidateURI should be scheduled.</em>
+<a name="445" href="#445">445</a> <em>     * @param seed True if this CandidateURI is a seed.</em>
+<a name="446" href="#446">446</a> <em>     * @return New candidateURI wrapper around &lt;code>link&lt;/code>.</em>
+<a name="447" href="#447">447</a> <em>     * @throws URIException</em>
+<a name="448" href="#448">448</a> <em>     */</em>
+<a name="449" href="#449">449</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> createCandidateURI(<a href="../../../../org/archive/net/UURI.html">UURI</a> baseUURI, <a href="../../../../org/archive/crawler/extractor/Link.html">Link</a> link,
+<a name="450" href="#450">450</a>         <strong>int</strong> scheduling, <strong>boolean</strong> seed)
+<a name="451" href="#451">451</a>     throws URIException {
+<a name="452" href="#452">452</a>         <strong>final</strong> <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caURI = createCandidateURI(baseUURI, link);
+<a name="453" href="#453">453</a>         caURI.setSchedulingDirective(scheduling);
+<a name="454" href="#454">454</a>         caURI.setIsSeed(seed);
+<a name="455" href="#455">455</a>         <strong>return</strong> caURI;
+<a name="456" href="#456">456</a>     }
+<a name="457" href="#457">457</a>     
+<a name="458" href="#458">458</a>     <em>/**<em>*</em></em>
+<a name="459" href="#459">459</a> <em>     * Inherit (copy) the relevant keys-values from the ancestor. </em>
+<a name="460" href="#460">460</a> <em>     * </em>
+<a name="461" href="#461">461</a> <em>     * @param ancestor</em>
+<a name="462" href="#462">462</a> <em>     */</em>
+<a name="463" href="#463">463</a>     <strong>protected</strong> <strong>void</strong> inheritFrom(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> ancestor) {
+<a name="464" href="#464">464</a>         List heritableKeys = (List) ancestor.getObject(A_HERITABLE_KEYS);
+<a name="465" href="#465">465</a>         <strong>if</strong>(heritableKeys!=<strong>null</strong>) {
+<a name="466" href="#466">466</a>             getAList().copyKeysFrom(heritableKeys.iterator(),ancestor.getAList());
+<a name="467" href="#467">467</a>         }
+<a name="468" href="#468">468</a>     }
+<a name="469" href="#469">469</a>     
+<a name="470" href="#470">470</a>     <em>/**<em>*</em></em>
+<a name="471" href="#471">471</a> <em>     * Get the token (usually the hostname + port) which indicates</em>
+<a name="472" href="#472">472</a> <em>     * what "class" this CrawlURI should be grouped with,</em>
+<a name="473" href="#473">473</a> <em>     * for the purposes of ensuring only one item of the</em>
+<a name="474" href="#474">474</a> <em>     * class is processed at once, all items of the class</em>
+<a name="475" href="#475">475</a> <em>     * are held for a politeness period, etc.</em>
+<a name="476" href="#476">476</a> <em>     *</em>
+<a name="477" href="#477">477</a> <em>     * @return Token (usually the hostname) which indicates</em>
+<a name="478" href="#478">478</a> <em>     * what "class" this CrawlURI should be grouped with.</em>
+<a name="479" href="#479">479</a> <em>     */</em>
+<a name="480" href="#480">480</a>     <strong>public</strong> String getClassKey() {
+<a name="481" href="#481">481</a>         <strong>return</strong> classKey;
+<a name="482" href="#482">482</a>     }
+<a name="483" href="#483">483</a> 
+<a name="484" href="#484">484</a>     <strong>public</strong> <strong>void</strong> setClassKey(String key) {
+<a name="485" href="#485">485</a>         classKey = key;
+<a name="486" href="#486">486</a>     }
+<a name="487" href="#487">487</a>     
+<a name="488" href="#488">488</a>     <em>/**<em>*</em></em>
+<a name="489" href="#489">489</a> <em>     * Assumption is that only one thread at a time will ever be accessing</em>
+<a name="490" href="#490">490</a> <em>     * a particular CandidateURI.</em>
+<a name="491" href="#491">491</a> <em>     * </em>
+<a name="492" href="#492">492</a> <em>     * @return the attribute list.</em>
+<a name="493" href="#493">493</a> <em>     */</em>
+<a name="494" href="#494">494</a>     <strong>public</strong> <a href="../../../../st/ata/util/AList.html">AList</a> getAList() {
+<a name="495" href="#495">495</a>         <strong>if</strong> (<strong>this</strong>.alist == <strong>null</strong>) {
+<a name="496" href="#496">496</a>             <strong>this</strong>.alist = <strong>new</strong> <a href="../../../../st/ata/util/HashtableAList.html">HashtableAList</a>();
+<a name="497" href="#497">497</a>         }
+<a name="498" href="#498">498</a>         <strong>return</strong> <strong>this</strong>.alist;
+<a name="499" href="#499">499</a>     }
+<a name="500" href="#500">500</a>     
+<a name="501" href="#501">501</a>     <strong>protected</strong> <strong>void</strong> clearAList() {
+<a name="502" href="#502">502</a>         <strong>this</strong>.alist = <strong>null</strong>;
+<a name="503" href="#503">503</a>     }
+<a name="504" href="#504">504</a>     
+<a name="505" href="#505">505</a>     <strong>public</strong> <strong>void</strong> putObject(String key, Object value) {
+<a name="506" href="#506">506</a>         getAList().putObject(key, value);
+<a name="507" href="#507">507</a>     }
+<a name="508" href="#508">508</a>     
+<a name="509" href="#509">509</a>     <strong>public</strong> Object getObject(String key) {
+<a name="510" href="#510">510</a>         <strong>return</strong> getAList().getObject(key);
+<a name="511" href="#511">511</a>     }
+<a name="512" href="#512">512</a>     
+<a name="513" href="#513">513</a>     <strong>public</strong> String getString(String key) {
+<a name="514" href="#514">514</a>         <strong>return</strong> getAList().getString(key);
+<a name="515" href="#515">515</a>     }
+<a name="516" href="#516">516</a>     
+<a name="517" href="#517">517</a>     <strong>public</strong> <strong>void</strong> putString(String key, String value) {
+<a name="518" href="#518">518</a>         getAList().putString(key, value);
+<a name="519" href="#519">519</a>     }
+<a name="520" href="#520">520</a>     
+<a name="521" href="#521">521</a>     <strong>public</strong> <strong>long</strong> getLong(String key) {
+<a name="522" href="#522">522</a>         <strong>return</strong> getAList().getLong(key);
+<a name="523" href="#523">523</a>     }
+<a name="524" href="#524">524</a>     
+<a name="525" href="#525">525</a>     <strong>public</strong> <strong>void</strong> putLong(String key, <strong>long</strong> value) {
+<a name="526" href="#526">526</a>         getAList().putLong(key, value);
+<a name="527" href="#527">527</a>     }
+<a name="528" href="#528">528</a>     
+<a name="529" href="#529">529</a>     <strong>public</strong> <strong>int</strong> getInt(String key) {
+<a name="530" href="#530">530</a>         <strong>return</strong> getAList().getInt(key);
+<a name="531" href="#531">531</a>     }
+<a name="532" href="#532">532</a>     
+<a name="533" href="#533">533</a>     <strong>public</strong> <strong>void</strong> putInt(String key, <strong>int</strong> value) {
+<a name="534" href="#534">534</a>         getAList().putInt(key, value);
+<a name="535" href="#535">535</a>     }
+<a name="536" href="#536">536</a>     
+<a name="537" href="#537">537</a>     <strong>public</strong> <strong>boolean</strong> containsKey(String key) {
+<a name="538" href="#538">538</a>         <strong>return</strong> getAList().containsKey(key);
+<a name="539" href="#539">539</a>     }
+<a name="540" href="#540">540</a>     
+<a name="541" href="#541">541</a>     <strong>public</strong> <strong>void</strong> remove(String key) {
+<a name="542" href="#542">542</a>         getAList().remove(key);
+<a name="543" href="#543">543</a>     }
+<a name="544" href="#544">544</a>     
+<a name="545" href="#545">545</a>     <strong>public</strong> Iterator keys() {
+<a name="546" href="#546">546</a>         <strong>return</strong> getAList().getKeys();
+<a name="547" href="#547">547</a>     }
+<a name="548" href="#548">548</a>     
+<a name="549" href="#549">549</a>     <em>/**<em>*</em></em>
+<a name="550" href="#550">550</a> <em>     * @return True if this CandidateURI was result of a redirect:</em>
+<a name="551" href="#551">551</a> <em>     * i.e. Its parent URI redirected to here, this URI was what was in </em>
+<a name="552" href="#552">552</a> <em>     * the 'Location:' or 'Content-Location:' HTTP Header.</em>
+<a name="553" href="#553">553</a> <em>     */</em>
+<a name="554" href="#554">554</a>     <strong>public</strong> <strong>boolean</strong> isLocation() {
+<a name="555" href="#555">555</a>         <strong>return</strong> <strong>this</strong>.pathFromSeed != <strong>null</strong> &amp;&amp; <strong>this</strong>.pathFromSeed.length() > 0 &amp;&amp;
+<a name="556" href="#556">556</a>             <strong>this</strong>.pathFromSeed.charAt(<strong>this</strong>.pathFromSeed.length() - 1) ==
+<a name="557" href="#557">557</a>                 Link.REFER_HOP;
+<a name="558" href="#558">558</a>     }
+<a name="559" href="#559">559</a> 
+<a name="560" href="#560">560</a>     <em>/**<em>*</em></em>
+<a name="561" href="#561">561</a> <em>     * Custom serialization writing 'uuri' and 'via' as Strings, rather</em>
+<a name="562" href="#562">562</a> <em>     * than the bloated full serialization of their object classes, and </em>
+<a name="563" href="#563">563</a> <em>     * an empty alist as 'null'. Shrinks serialized form by 50% or more</em>
+<a name="564" href="#564">564</a> <em>     * in short tests. </em>
+<a name="565" href="#565">565</a> <em>     * </em>
+<a name="566" href="#566">566</a> <em>     * @param stream</em>
+<a name="567" href="#567">567</a> <em>     * @throws IOException</em>
+<a name="568" href="#568">568</a> <em>     */</em>
+<a name="569" href="#569">569</a>     <strong>private</strong> <strong>void</strong> writeObject(ObjectOutputStream stream)
+<a name="570" href="#570">570</a>         throws IOException {
+<a name="571" href="#571">571</a>         stream.defaultWriteObject();
+<a name="572" href="#572">572</a>         stream.writeUTF(uuri.toString());
+<a name="573" href="#573">573</a>         stream.writeObject((via == <strong>null</strong>) ? <strong>null</strong> : via.getURI());
+<a name="574" href="#574">574</a>         stream.writeObject((alist==<strong>null</strong>) ? <strong>null</strong> : alist);
+<a name="575" href="#575">575</a>     }
+<a name="576" href="#576">576</a> 
+<a name="577" href="#577">577</a>     <em>/**<em>*</em></em>
+<a name="578" href="#578">578</a> <em>     * Custom deserialization to reconstruct UURI instances from more</em>
+<a name="579" href="#579">579</a> <em>     * compact Strings. </em>
+<a name="580" href="#580">580</a> <em>     * </em>
+<a name="581" href="#581">581</a> <em>     * @param stream</em>
+<a name="582" href="#582">582</a> <em>     * @throws IOException</em>
+<a name="583" href="#583">583</a> <em>     * @throws ClassNotFoundException</em>
+<a name="584" href="#584">584</a> <em>     */</em>
+<a name="585" href="#585">585</a>     <strong>private</strong> <strong>void</strong> readObject(ObjectInputStream stream)
+<a name="586" href="#586">586</a>         throws IOException, ClassNotFoundException {
+<a name="587" href="#587">587</a>         stream.defaultReadObject();
+<a name="588" href="#588">588</a>         uuri = readUuri(stream.readUTF());
+<a name="589" href="#589">589</a>         via = readUuri((String)stream.readObject());
+<a name="590" href="#590">590</a>         alist = (AList) stream.readObject();
+<a name="591" href="#591">591</a>     }
+<a name="592" href="#592">592</a> 
+<a name="593" href="#593">593</a>     <em>/**<em>*</em></em>
+<a name="594" href="#594">594</a> <em>     * Read a UURI from a String, handling a null or URIException</em>
+<a name="595" href="#595">595</a> <em>     * </em>
+<a name="596" href="#596">596</a> <em>     * @param u String or null from which to create UURI</em>
+<a name="597" href="#597">597</a> <em>     * @return the best UURI instance creatable</em>
+<a name="598" href="#598">598</a> <em>     */</em>
+<a name="599" href="#599">599</a>     <strong>protected</strong> <a href="../../../../org/archive/net/UURI.html">UURI</a> readUuri(String u) {
+<a name="600" href="#600">600</a>         <strong>if</strong> (u == <strong>null</strong>) {
+<a name="601" href="#601">601</a>             <strong>return</strong> <strong>null</strong>;
+<a name="602" href="#602">602</a>         }
+<a name="603" href="#603">603</a>         <strong>try</strong> {
+<a name="604" href="#604">604</a>             <strong>return</strong> UURIFactory.getInstance(u);
+<a name="605" href="#605">605</a>         } <strong>catch</strong> (URIException ux) {
+<a name="606" href="#606">606</a>             <em class="comment">// simply continue to next try</em>
+<a name="607" href="#607">607</a>         }
+<a name="608" href="#608">608</a>         <strong>try</strong> {
+<a name="609" href="#609">609</a>             <em class="comment">// try adding an junk scheme</em>
+<a name="610" href="#610">610</a>             <strong>return</strong> UURIFactory.getInstance(<span class="string">"invalid:"</span> + u);
+<a name="611" href="#611">611</a>         } <strong>catch</strong> (URIException ux) {
+<a name="612" href="#612">612</a>             ux.printStackTrace();
+<a name="613" href="#613">613</a>             <em class="comment">// ignored; method continues</em>
+<a name="614" href="#614">614</a>         }
+<a name="615" href="#615">615</a>         <strong>try</strong> {
+<a name="616" href="#616">616</a>             <em class="comment">// return total junk</em>
+<a name="617" href="#617">617</a>             <strong>return</strong> UURIFactory.getInstance(<span class="string">"invalid:"</span>);
+<a name="618" href="#618">618</a>         } <strong>catch</strong> (URIException e) {
+<a name="619" href="#619">619</a>             e.printStackTrace();
+<a name="620" href="#620">620</a>             <strong>return</strong> <strong>null</strong>;
+<a name="621" href="#621">621</a>         }
+<a name="622" href="#622">622</a>     }
+<a name="623" href="#623">623</a>     
+<a name="624" href="#624">624</a>     <em class="comment">//</em>
+<a name="625" href="#625">625</a>     <em class="comment">// Reporter implementation</em>
+<a name="626" href="#626">626</a>     <em class="comment">//</em>
+<a name="627" href="#627">627</a> 
+<a name="628" href="#628">628</a>     <strong>public</strong> String singleLineReport() {
+<a name="629" href="#629">629</a>         <strong>return</strong> ArchiveUtils.singleLineReport(<strong>this</strong>);
+<a name="630" href="#630">630</a>     }
+<a name="631" href="#631">631</a>     
+<a name="632" href="#632">632</a>     <strong>public</strong> <strong>void</strong> singleLineReportTo(PrintWriter w) {
+<a name="633" href="#633">633</a>         String className = <strong>this</strong>.getClass().getName();
+<a name="634" href="#634">634</a>         className = className.substring(className.lastIndexOf(<span class="string">"."</span>)+1);
+<a name="635" href="#635">635</a>         w.print(className);
+<a name="636" href="#636">636</a>         w.print(<span class="string">" "</span>);
+<a name="637" href="#637">637</a>         w.print(getUURI().toString());
+<a name="638" href="#638">638</a>         w.print(<span class="string">" "</span>);
+<a name="639" href="#639">639</a>         w.print(pathFromSeed);
+<a name="640" href="#640">640</a>         w.print(<span class="string">" "</span>);
+<a name="641" href="#641">641</a>         w.print(flattenVia());
+<a name="642" href="#642">642</a>     }
+<a name="643" href="#643">643</a> 
+<a name="644" href="#644">644</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="645" href="#645">645</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineLegend()</em>
+<a name="646" href="#646">646</a> <em class="comment">     */</em>
+<a name="647" href="#647">647</a>     <strong>public</strong> String singleLineLegend() {
+<a name="648" href="#648">648</a>         <strong>return</strong> <span class="string">"className uri hopsPath viaUri"</span>;
+<a name="649" href="#649">649</a>     }
+<a name="650" href="#650">650</a>     
+<a name="651" href="#651">651</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="652" href="#652">652</a> <em class="comment">     * @see org.archive.util.Reporter#getReports()</em>
+<a name="653" href="#653">653</a> <em class="comment">     */</em>
+<a name="654" href="#654">654</a>     <strong>public</strong> String[] getReports() {
+<a name="655" href="#655">655</a>         <em class="comment">// none but default: empty options</em>
+<a name="656" href="#656">656</a>         <strong>return</strong> <strong>new</strong> String[] {};
+<a name="657" href="#657">657</a>     }
+<a name="658" href="#658">658</a> 
+<a name="659" href="#659">659</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="660" href="#660">660</a> <em class="comment">     * @see org.archive.util.Reporter#reportTo(java.lang.String, java.io.Writer)</em>
+<a name="661" href="#661">661</a> <em class="comment">     */</em>
+<a name="662" href="#662">662</a>     <strong>public</strong> <strong>void</strong> reportTo(String name, PrintWriter writer) {
+<a name="663" href="#663">663</a>         singleLineReportTo(writer);
+<a name="664" href="#664">664</a>         writer.print(<span class="string">"\n"</span>);
+<a name="665" href="#665">665</a>     }
+<a name="666" href="#666">666</a> 
+<a name="667" href="#667">667</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="668" href="#668">668</a> <em class="comment">     * @see org.archive.util.Reporter#reportTo(java.io.Writer)</em>
+<a name="669" href="#669">669</a> <em class="comment">     */</em>
+<a name="670" href="#670">670</a>     <strong>public</strong> <strong>void</strong> reportTo(PrintWriter writer) throws IOException {
+<a name="671" href="#671">671</a>         reportTo(<strong>null</strong>,writer);
+<a name="672" href="#672">672</a>     }
+<a name="673" href="#673">673</a> 
+<a name="674" href="#674">674</a>     <em>/**<em>* Make the given key 'heritable', meaning its value will be </em></em>
+<a name="675" href="#675">675</a> <em>     * added to descendant CandidateURIs. Only keys with immutable</em>
+<a name="676" href="#676">676</a> <em>     * values should be made heritable -- the value instance may </em>
+<a name="677" href="#677">677</a> <em>     * be shared until the AList is serialized/deserialized. </em>
+<a name="678" href="#678">678</a> <em>     * </em>
+<a name="679" href="#679">679</a> <em>     * @param key to make heritable</em>
+<a name="680" href="#680">680</a> <em>     */</em>
+<a name="681" href="#681">681</a>     <strong>public</strong> <strong>void</strong> makeHeritable(String key) {
+<a name="682" href="#682">682</a>         @SuppressWarnings(<span class="string">"unchecked"</span>)
+<a name="683" href="#683">683</a>         List&lt;String> heritableKeys = (List&lt;String>) getObject(A_HERITABLE_KEYS);
+<a name="684" href="#684">684</a>         <strong>if</strong>(heritableKeys==<strong>null</strong>) {
+<a name="685" href="#685">685</a>             heritableKeys = <strong>new</strong> ArrayList&lt;String>();
+<a name="686" href="#686">686</a>             heritableKeys.add(A_HERITABLE_KEYS);
+<a name="687" href="#687">687</a>             putObject(A_HERITABLE_KEYS,heritableKeys);
+<a name="688" href="#688">688</a>         }
+<a name="689" href="#689">689</a>         heritableKeys.add(key);
+<a name="690" href="#690">690</a>     }
+<a name="691" href="#691">691</a>     
+<a name="692" href="#692">692</a>     <em>/**<em>* Make the given key non-'heritable', meaning its value will </em></em>
+<a name="693" href="#693">693</a> <em>     * not be added to descendant CandidateURIs. Only meaningful if</em>
+<a name="694" href="#694">694</a> <em>     * key was previously made heritable.  </em>
+<a name="695" href="#695">695</a> <em>     * </em>
+<a name="696" href="#696">696</a> <em>     * @param key to make non-heritable</em>
+<a name="697" href="#697">697</a> <em>     */</em>
+<a name="698" href="#698">698</a>     <strong>public</strong> <strong>void</strong> makeNonHeritable(String key) {
+<a name="699" href="#699">699</a>         List heritableKeys = (List) getObject(A_HERITABLE_KEYS);
+<a name="700" href="#700">700</a>         <strong>if</strong>(heritableKeys==<strong>null</strong>) {
+<a name="701" href="#701">701</a>             <strong>return</strong>;
+<a name="702" href="#702">702</a>         }
+<a name="703" href="#703">703</a>         heritableKeys.remove(key);
+<a name="704" href="#704">704</a>         <strong>if</strong>(heritableKeys.size()==1) {
+<a name="705" href="#705">705</a>             <em class="comment">// only remaining heritable key is itself; disable completely</em>
+<a name="706" href="#706">706</a>             remove(A_HERITABLE_KEYS);
+<a name="707" href="#707">707</a>         }
+<a name="708" href="#708">708</a>     }
+<a name="709" href="#709">709</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

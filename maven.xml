@@ -1,0 +1,534 @@
+<?xml version="1.0"?>
+<project 
+    xmlns:j="jelly:core" 
+    xmlns:define="jelly:define" 
+    xmlns:doc="doc" 
+    xmlns:artifact="artifact" 
+    xmlns:util="jelly:util" 
+    xmlns:maven="jelly:maven"
+    xmlns:ant="jelly:ant">
+
+    <preGoal name="xdoc:jelly-transform">
+        <attainGoal name="faq"/>
+        <attainGoal name="heritrix-javadoc"/>
+        <attainGoal name="docbook"/>
+    </preGoal> 
+
+    <postGoal name="sdocbook:transform">
+        <maven:get var="docfile"
+            plugin="maven-sdocbook-plugin"
+            property="file"/>
+        <j:set var="index" value="${docfile.name.indexOf('.')}"/>
+        <j:set var="docbook.basename" 
+            value="${docfile.name.substring(0,index)}"/>
+        <echo message="Basename ${docbook.basename}" />
+        <j:set var="target.dir"
+            value="${maven.sdocbook.generated.html}/${docbook.basename}"/>
+        <echo message="Target dir ${target.dir}" />
+        <echo message="Generated dir ${maven.sdocbook.generated.html}" />
+        <move todir="${target.dir}" includeEmptyDirs="no">
+            <fileset dir="${maven.sdocbook.generated.html}" >
+                <include name="*" />
+            </fileset>
+        </move>
+    </postGoal>
+    
+    <goal name="docbook">
+    <!--Check that the jimi jars are present.  If not, skip docbook.
+     -->
+    <j:set var="sDocbookSupportPresent" value="false" />
+       <util:available file="${maven.repo.local}/jimi/jars" >
+        <j:set var="sDocbookSupportPresent" value="true"/>
+       </util:available>
+       <j:if test="${sDocbookSupportPresent == 'true'}">
+        <attainGoal name="sdocbook:generate-html"/>
+        
+        <attainGoal name="sdocbook:generate-pdf"/>
+        
+       </j:if>
+       <!-- else -->
+       <j:if test="${sDocbookSupportPresent != 'true'}">
+        <echo
+         message="sdocbook SUN jimi jar not present. Skipping docbook build." />
+       </j:if>
+    </goal>
+
+    <goal name="copy_docbook">
+    <!--Copies docbooks under dist docs and under webapps. This goal runs
+        after these dirs have been setup.
+     -->
+    <property name="docbook.assembled"
+        value="${maven.dist.bin.assembly.dir}/docs/articles/" />
+    <j:set var="docbookPresent" value="false" />
+       <util:available file="${docbook.assembled}" >
+        <j:set var="docbookPresent" value="true"/>
+       </util:available>
+       <j:if test="${docbookPresent == 'true'}">
+       <!--Copy under docs in dist-->
+        <mkdir dir="${docbook.assembled}" />
+        <copy todir="${docbook.assembled}">
+          <fileset dir="${maven.build.dir}/docs/articles/" />
+        </copy>
+        <!--Copy into webapps dir-->
+        <mkdir dir="${maven.build.dir}/webapps/admin/docs/articles/" />
+        <copy todir="${maven.build.dir}/webapps/admin/docs/articles/">
+          <fileset dir="${maven.build.dir}/docs/articles/" />
+        </copy>
+       </j:if>
+       <!-- else -->
+       <j:if test="${sDocbookSupportPresent != 'true'}">
+        <echo
+         message="Docbook copy skipped (Nothing to copy -- not  built?)." />
+       </j:if>
+    </goal>
+
+    <goal name="autojar"
+        prereqs="jar"
+        description="Use autojar to make subjars from heritrix jar." >
+        <!--Needs to be able to find the autojar jar file. Define its
+        location in the variable autojar.location.  Must be full path to
+        the autojar jar file. Do this in a build.properties rather than in
+        maven.properties so that support for this task is optional rather
+        than core to the heritrix build.
+        -->
+        <ant:exec dir="${JAVA_HOME}/bin" executable="java" >
+            <ant:arg value="-jar" />
+            <ant:arg value="${autojar.location}" />
+            <ant:arg value="-v" />
+            <ant:arg value="-o" />
+            <ant:arg
+             value="${maven.build.dir}/archive-commons-${pom.currentVersion}.jar" />
+            <ant:arg value="-c" />
+            <ant:arg value="${maven.build.dir}/heritrix*jar" />
+            <ant:arg value="org.archive.io.arc.ARCReader.class" />
+            <ant:arg value="org.archive.io.arc.ARCWriterPool.class" />
+            <ant:arg value="org.archive.io.arc.ARCWriter.class" />
+            <ant:arg value="org.archive.io.arc.ARCLocation.class" />
+            <ant:arg value="org.archive.io.arc.ARC2WCDX.class" />
+            <ant:arg value="org.archive.io.warc.WARCReader.class" />
+            <ant:arg value="org.archive.io.warc.WARCReaderFactory.class" />
+            <ant:arg 
+                value="org.archive.io.warc.WARCWriterPool.class" />
+            <ant:arg 
+            value="org.archive.io.warc.ExperimentalWARCWriter.class" />
+            <ant:arg value="org.archive.util.JmxUtils.class" />
+            <ant:arg value="org.archive.util.JndiUtils.class" />
+            <ant:arg value="org.archive.net.rsync.Handler.class" />
+            <ant:arg value="org.archive.net.md5.Handler.class" />
+            <ant:arg value="org.archive.net.s3.Handler.class" />
+            <ant:arg value="org.apache.commons.pool.impl.FairGenericObjectPool"
+                />
+            <ant:arg value="org.apache.commons.pool.impl.GenericObjectPool" />
+            <ant:arg value="org.archive.util.iterator.CompositeIterator.class"
+            	/>
+            <ant:arg value="org.archive.util.iterator.LineReadingIterator.class"
+            	/>
+            <ant:arg value="org.archive.util.iterator.LookaheadIterator.class"
+            	/>
+            <ant:arg value="org.archive.util.iterator.RegexpLineIterator.class"
+            	/>
+            <ant:arg
+             value="org.archive.util.iterator.TransformingIteratorWrapper.class"
+             	/>
+        </ant:exec>
+    </goal>
+
+    <goal name="jars-dir"
+        description="Copy jars to a jars subdir for cruisecontrol to pick up">
+        <!--Copy jars into their own subdir. Have to do this because
+        cruisecontrol doesn't do globbing; have to name a dir of content.
+        -->
+        <mkdir dir="${maven.build.dir}/jars" />
+        <copy todir="${maven.build.dir}/jars">
+          <fileset dir="${maven.build.dir}" >
+            <include name="*.jar" />
+          </fileset>
+        </copy>
+    </goal>
+
+    <preGoal name="java:jar-resources"> 
+        <!--Copy the conf dirs content to build dir so it can
+            be run through filters and have the version number interpolated.
+            Project.xml refers to this new dir when its finding
+            stuff to include in the built heritrix jar.
+         -->
+        <filter token="VERSION" value="${pom.currentVersion}" /> 
+        <copy todir="${maven.build.dir}/conf/" filtering="true">
+          <fileset dir="./src/conf/" >
+            <exclude name="*.cacerts"/>
+          </fileset>
+        </copy>
+        <copy todir="${maven.build.dir}/conf/" filtering="false">
+          <fileset dir="./src/conf/" >
+            <include name="*.cacerts"/>
+          </fileset>
+        </copy>
+    </preGoal> 
+
+    <postGoal name="war:webapp"> 
+        <attainGoal name="docbook"/>
+        <echo message="HERE" />
+        <property name="docbook.assembled"
+            value="${maven.build.dir}/docs/articles/" />
+        <j:set var="docbookPresent" value="false" />
+           <util:available file="${docbook.assembled}" >
+            <j:set var="docbookPresent" value="true"/>
+           </util:available>
+           <j:if test="${docbookPresent == 'true'}">
+            <!--Copy docs under war-->
+        <echo message="IS ${maven.war.webapp.dir}" />
+            <mkdir dir="${maven.war.webapp.dir}/docs/articles/" />
+            <copy todir="${maven.war.webapp.dir}/docs/articles/">
+                <fileset dir="${maven.build.dir}/docs/articles/" />
+            </copy>
+           </j:if>
+           <!-- else -->
+           <j:if test="${sDocbookSupportPresent != 'true'}">
+            <echo
+             message="Docbook copy skipped (Nothing to copy -- not  built?)." />
+           </j:if>
+    </postGoal> 
+
+    <goal name="copy_webapps">
+        <!--Copy articles to the docs dir.-->
+        <attainGoal name="docbook"/>
+        <!--Copy webapps to build directory w/ filtering enabled.
+            Do the copy like this doing non-jpg first and then gif.
+            Otherwise, ant breaks the jpgs because it interpolates.
+         -->
+        <copy todir="${maven.build.dir}/webapps" filtering="true">
+          <fileset dir="${maven.src.dir}/webapps">
+            <exclude name="**/*.gif"/>
+            <exclude name="**/*.ico"/>
+            <exclude name="**/*.jpg"/>
+            <exclude name="**/*.png"/>
+            <exclude name="**/*.swf"/>
+            <exclude name="**/jetty-web.xml"/>
+          </fileset>
+        </copy>
+        <copy todir="${maven.build.dir}/webapps" filtering="false">
+          <fileset dir="${maven.src.dir}/webapps">
+            <include name="**/*.gif"/>
+            <include name="**/*.ico"/>
+            <include name="**/*.jpg"/>
+            <include name="**/*.png"/>
+            <exclude name="**/*.swf"/>
+          </fileset>
+        </copy>
+
+        <!--Copy docs into the admin webapp so available to UI and to dist dir
+         -->
+        <attainGoal name="copy_docbook"/>
+    </goal>
+
+    <postGoal name="dist:prepare-bin-filesystem">
+        <echo>[Heritrix] dist:prepare-bin-filesystem postGoal</echo>
+
+        <!--Add the lib dir to our binary distribution.-->
+        <copy todir="${maven.dist.bin.assembly.dir}/lib">
+          <fileset dir="./lib">
+            <include name="*.jar"/>
+          </fileset>
+        </copy>
+
+        <!--Set filter token used in a few instances below.-->
+        <filter token="VERSION" value="${pom.currentVersion}" />
+
+        <!--Add the conf dir to our binary distribution.  Be careful w/
+            filtering.  It ruins truststores so exclude those during 
+            filter copy.  Copy truststores separately afterward.
+         -->
+        <copy todir="${maven.dist.bin.assembly.dir}/conf" filtering="true">
+          <fileset dir="./src/conf/">
+            <include name="heritrix.*"/>
+            <include name="jmxremote.password.template"/>
+            <exclude name="*.cacerts"/>
+          </fileset>
+        </copy>
+        <copy todir="${maven.dist.bin.assembly.dir}/conf">
+          <fileset dir="./src/conf/">
+            <include name="*cacerts"/>
+          </fileset>
+        </copy>
+
+        <!--Copy to a bin dir the heritrix start script.-->
+        <copy todir="${maven.dist.bin.assembly.dir}/bin">
+          <fileset dir="${maven.src.dir}/scripts">
+            <include name="*heritrix"/>
+            <include name="*heritrix"/>
+            <include name="*.cmd"/>
+            <include name="arcreader"/>
+            <include name="shutdown.sh"/>
+            <include name="*extractor"/>
+            <include name="runclassmain"/>
+            <include name="hoppath*"/>
+            <include name="make_reports*"/>
+            <include name="cmdline-jmxclient*jar"/>
+          </fileset>
+        </copy>
+
+        <!--Set permission on scripts just copied.-->
+        <!--The below succeeds changing the mode on the executables but 
+            the subsequent dist:build-bin task ant tar'ring removes the
+            execute bit.  Need to replace the dist:build-bin task w/ 
+            a version that will preserve the execute bit on the script
+            files (Putting the task in here whole doesn't work).-->
+        <chmod perm="ugo+rx" >
+          <fileset dir="${maven.dist.bin.assembly.dir}/bin">
+            <include name="*heritrix"/>
+          </fileset>
+        </chmod>
+
+        <attainGoal name="copy_webapps"/>
+
+        <!--Compile jsp pages into a jar.
+            TODO: Make this conditional.
+         -->
+        <attainGoal name="jspc" />
+
+        <!--Now create war files of what is in build directory.-->
+        <property name="webapps.dir" value="${maven.build.dir}/webapps" />
+        <war destfile="${maven.build.dir}/admin.war"
+            webxml="${webapps.dir}/admin/WEB-INF/web.xml"
+            basedir="${webapps.dir}/admin" />
+        <war destfile="${maven.build.dir}/selftest.war"
+            webxml="${webapps.dir}/selftest/WEB-INF/web.xml"
+            basedir="${webapps.dir}/selftest" />
+
+        <!--Copy over the just made war files into the distribution copy.-->
+        <copy todir="${maven.dist.bin.assembly.dir}/webapps">
+          <fileset dir="${maven.build.dir}">
+            <include name="*.war"/>
+          </fileset>
+        </copy>
+
+    </postGoal>
+
+    <postGoal name="dist:prepare-src-filesystem">
+        <echo>[Heritrix] dist:prepare-src-filesystem postGoal</echo>
+        <!--Add the lib dir to our binary distribution.-->
+        <copy todir="${maven.dist.src.assembly.dir}/lib">
+          <fileset dir="./lib">
+            <include name="*.jar"/>
+          </fileset>
+        </copy>
+        <copy todir="${maven.dist.src.assembly.dir}/testdata">
+          <fileset dir="./testdata" />
+        </copy>
+    </postGoal>
+
+    <goal name="selftest" 
+        prereqs="dist:build-bin"
+            description="Run selftest and fail if we don't pass." >
+        <property name="maven.dist.dir" 
+            value="${maven.build.dir}/distributions" />  
+        <property name="maven.selftest.dir" 
+            value="${maven.build.dir}/selftest" />  
+        <delete dir="${maven.selftest.dir}" />
+        <mkdir dir="${maven.selftest.dir}" />
+        <property name="${maven.selftest.dir}"
+           value="${maven.dist.dir}/${maven.final.name}" />  
+        <copy todir="${maven.selftest.dir}" 
+           file="${maven.dist.dir}/${maven.final.name}.tar.gz" />  
+        <property name="basename"
+           value="${maven.selftest.dir}/${maven.final.name}" />  
+        <echo message="${basename}.tar.gz" />
+        <gunzip src="${basename}.tar.gz" dest="${basename}.tar" />
+        <untar src="${basename}.tar" dest="${maven.selftest.dir}" />
+        <chmod file="${basename}/bin/*" perm="a+rx" />
+        <chmod file="${basename}/bin/*" perm="a+rx" />
+        <exec failonerror="true"
+                timeout="120000"
+                executable="/bin/sh" >
+            <arg line="${basename}/bin/foreground_heritrix" />
+            <arg line="--selftest" />
+            <arg line="--port=8083" />
+        </exec>
+       
+    </goal>
+
+    <goal name="jspc">
+        <!--Compile down to servlets all in the ${webapp.name} webapp
+            (Set this ant property before calling this goal).  Compile the 
+            generated java classes.  Make a jar of them and install under
+            the webapp/lib dir.  Add web.xml fragment that lists all servlets
+            to the web.xml.
+            
+            Currently does admin webapp only.
+         -->
+        <property name="webapp.name" value="admin" />
+        <echo>[jspc] Precompiling ${webapp.name} jsp pages.</echo>
+        <property name="jspc" value="${maven.build.dir}/jspc/${webapp.name}" />
+        <property name="jsp.jar" value="${jspc}/jsp.jar" />
+        <property name="web.fragment" value="${jspc}/web-fragment.xml" />
+        <property name="jspc.src" value="${jspc}/src" />
+        <property name="jspc.classes" value="${jspc}/classes" />
+        <property name="webapp.src.dir" value="${maven.build.dir}/webapps" />
+        <property name="webinf"
+            value="${maven.build.dir}/webapps/${webapp.name}/WEB-INF" />
+        <!--Make a couple of dirs.-->
+        <mkdir dir="${jspc.src}" />
+        <mkdir dir="${jspc.classes}" />
+        <!--Classpath to use in the believe.-->
+        <path id="jspc.classpath">
+            <path  refid="maven.dependency.classpath" />
+            <pathelement path="${maven.build.dest}" />
+        </path>
+        <!--Run the compilation of the jsp pages. Note, jasper has its own
+            included ant task but ant also comes w/ a jspc.  We use the ant
+            one below.  The jasper one gave me grief trying to figure out
+            exclude of 'include' dir.
+         -->
+        <jspc destdir="${jspc.src}" srcdir="${webapp.src.dir}/${webapp.name}"
+            verbose="100" package="org.archive.crawler.jspc.${webapp.name}"
+            webinc="${web.fragment}" classpathref="jspc.classpath"
+            uriroot="${webapp.src.dir}/${webapp.name}" >
+                <!--This include/exclude mechanism is really contrary.
+                    The below seems to work properly though keeping the
+                    include out of the fragments and out of the path of
+                    our compiler; nothing under include is compilable
+                    but its needed.
+                 -->
+                <exclude name="**/include/*.jsp"/>
+        </jspc>
+        <javac sourcepath="" srcdir="${jspc.src}" destdir="${jspc.classes}" 
+            classpathref="jspc.classpath"
+            source="${maven.compile.source}"
+            target="${maven.compile.target}"
+            />
+        <loadfile srcFile="${web.fragment}" property="fragment"
+            failonerror="true" />
+        <replace file="${webinf}/web.xml"
+            token="&lt;!--[INSERT JSP COMPILE SERVLET WEB FRAGMENT HERE]--&gt;"
+            value="${fragment}" />
+        <!--Jar up classes and copy into webapp/lib.-->
+        <property name="webapp.lib" value="${webinf}/lib" />
+        <jar destfile="${jsp.jar}" basedir="${jspc.classes}" />
+        <mkdir dir="${webapp.lib}" />
+        <copy todir="${webapp.lib}" file="${jsp.jar}" /> 
+    </goal>
+
+    <goal name="site:update-sourceforge">
+        <!--This goal will update sourceforge crawler.archive.org site. Assumes
+            maven.username has been defined in project.properties or in a 
+            build.properties, and that that users public ssh key has been
+            uploaded totheir sourceforge preferences (see
+            http://sourceforge.net/docman/display_doc.php?docid=761&group_id=1)
+            and that this key has no password associated (Means that 
+            we get ssh SVN access w/o having to supply password).
+
+            Note, this goal may give out a couple of lines like the below but
+            these are harmless:
+            
+                [exec] failed to set permissions on . : Operation not permitted
+
+            We use this new goal rather than 'site:sshdeploy' because we don't 
+            want to totally overwrite the htdoc content up on sourceforge.
+         -->
+        <exec executable="rsync" >
+            <arg value="--quiet" />
+            <arg value="--archive" />
+            <arg value="--rsh=ssh" />
+            <arg
+              value="${maven.build.dir}/docs/"/>
+            <arg value="${maven.username}@crawler.archive.org:/home/groups/a/ar/archive-crawler/htdocs/" />
+        </exec>
+    </goal>
+
+  <!--Below we our own version of the default javadoc plugin.
+      Override is because default tool does not copy doc-files nor
+      package.html files.  The below is ugly but there is no other means left
+      to us when the plugin only passes java files to the javadoc ant task.
+    -->
+  <goal name="heritrix-javadoc"
+        prereqs="xdoc:init"
+        description="Generate API documentation (Override of the default
+        maven task because default leaves out package.html and doc-files)">
+                                                                                
+    <j:if test="${sourcesPresent == 'true'}">
+      <ant:mkdir dir="${maven.javadoc.destdir}"/>
+                                                                                
+      <!-- Get the year to display in the Javadocs -->
+      <ant:tstamp>
+         <ant:format property="currentYear" pattern="yyyy"/>
+      </ant:tstamp>
+      <ant:tstamp>
+        <j:choose>
+          <j:when test="${pom.inceptionYear.equals(currentYear)}">
+            <ant:format property="year" pattern="yyyy"/>
+          </j:when>
+          <j:otherwise>
+            <ant:format property="year" pattern="${pom.inceptionYear}-yyyy"/>
+          </j:otherwise>
+        </j:choose>
+      </ant:tstamp>
+                                                                                
+      <ant:property name="copyright"
+        value="Copyright &amp;copy; ${year} ${pom.organization.name}. All Rights Reserved." />
+                                                                                
+      <!-- calculate online/offline mode -->
+      <j:set var="online" value="${maven.javadoc.mode.online}"/>
+      <j:if test="${empty(online)}">
+        <j:set var="online" value="${maven.mode.online}"/>
+      </j:if>
+                                                                                
+      <j:choose>
+        <j:when test="${online}">
+          <util:tokenize var="links" delim="," trim="true">${maven.javadoc.links}</util:tokenize>
+          <j:forEach var="link" items="${links}">
+            <ant:echo>Linking with API information from ${link.trim()} ...</ant:echo>
+          </j:forEach>
+        </j:when>
+        <j:otherwise>
+          <util:tokenize var="links" delim="," trim="true">${maven.javadoc.offlineLinks}</util:tokenize>
+          <j:forEach var="link" items="${links}">
+            <ant:echo>Linking offline API information from ${link.trim()} ...</ant:echo>
+          </j:forEach>
+        </j:otherwise>
+      </j:choose>
+
+      <!--Am unable to exclude *Test.java from javadoc using excludes/includes
+      in a fileset passed to the javadoc task. Seems to be broken. As a
+      workaround, copy src files minus *Test.java files to a new location and
+      run javadoc cmd against the copy.
+      -->
+        <property name="javadoc.src" value="${maven.build.dir}/javadoc-src" />
+        <copy todir="${javadoc.src}" filtering="true">
+          <fileset dir="${pom.build.sourceDirectory}" >
+            <exclude name="**/*Test.java"/>
+          </fileset>
+        </copy>
+                                                                                
+      <j:set var="maxMemory" value="${maven.javadoc.maxmemory}" />
+                                                                                
+      <ant:mkdir dir="${maven.build.dir}/javadoc/" />
+      <ant:record name="${maven.build.dir}/javadoc/report.txt" action="start" /> 
+      <ant:javadoc
+        packagenames="${pom.package}.*"
+        destdir="${maven.javadoc.destdir}"
+        author="${maven.javadoc.author}"
+        public="${maven.javadoc.public}"
+        package="${maven.javadoc.package}"
+        private="${maven.javadoc.private}"
+        version="${maven.javadoc.version}"
+        use="${maven.javadoc.use}"
+        windowtitle="${maven.javadoc.windowtitle}"
+        doctitle="${maven.javadoc.windowtitle}"
+        bottom="${copyright}"
+        additionalparam="${maven.javadoc.additionalparam}"
+        useexternalfile="${maven.javadoc.useexternalfile}"
+            sourcepath="${javadoc.src}" 
+            overview="${pom.build.sourceDirectory}/overview.html" 
+            source="${maven.javadoc.source}" >
+                                                                                
+        <ant:classpath>
+          <ant:path refid="maven.dependency.classpath"/>
+          <ant:path location="${maven.build.dest}"/>
+        </ant:classpath>
+     </ant:javadoc>
+
+      <ant:record name="${maven.build.dir}/javadoc/report.txt" action="stop" />
+    </j:if>
+                                                                                
+  </goal>
+</project>

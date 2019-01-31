@@ -1,0 +1,821 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    On maven:
+     http://maven.apache.org/
+     http://www.onjava.com/pub/a/onjava/2003/10/22/maven.html?page=1	
+     http://www-106.ibm.com/developerworks/java/library/j-maven/
+
+    Maven builds into ${basedir}/target. Its hard to change this going by the
+    maven.build.dir note in http://maven.apache.org/reference/user-guide.html.
+    Eclipse normally builds into ${basedir}/bin but we set a property in 
+    the .classpath file so eclipse too will build into ${basedir}/target.
+    Be careful.  Eclipse overwrites the build target directory.
+
+    Currently we have one project to build all; the utils, the WAR, and the 
+    heritrix crawler itself.  Later we might refactor so each has its own
+    maven subproject created by a master project.  For now we'll run w/ one 
+    maven project only because we want to be able to build w/ either maven
+    or ant only.
+
+    TODO: http://maven.apache.org/reference/plugins/statcvs/
+
+    Maven generates documentation using xdoc.  Xdoc is a dumbed down html
+    written as xml.   There is no dtd so no validation.  The best description
+    of whats allowed in an xdoc file seems to be this document:
+    http://jakarta.apache.org/site/jakarta-site-tags.html.  Its constraining;
+    you can't do much formatting using xdoc tags.
+ -->
+<project>
+  <!--The version of maven's project object model -->
+  <pomVersion>3</pomVersion>
+
+  <!--The group id shared by Internet Archive projects.-->
+  <groupId>org.archive</groupId>
+  
+  <!-- A unique name for this project -->
+  <id>heritrix</id>
+  
+  <!-- A short but descriptive name for the project -->
+  <name>Heritrix</name>
+
+  <!-- The version of the project under development, e.g. 1.1, 1.2, 2.0-SNAPSHOT
+
+    See "Version and Release Numbering" in
+    http://crawler.archive.org/articles/developer_manual.html#release_numbering
+    for how version is done in this project.
+
+    Supply a version.build.suffix in a build.properties file and it will
+    be picked up and appended to the currentVersion.  Handy for continuous
+    builds if the version.build.suffix holds time of build.
+    -->
+  <currentVersion>1.14.1</currentVersion>
+  
+  <!-- Details about the organization that 'owns' the project -->
+  <organization>
+    <name>Internet Archive</name>
+    <url>http://www.archive.org/</url>
+    <logo>http://www.archive.org/images/logo.jpg</logo>
+  </organization>
+  
+  <!-- the year the project started -->
+  <inceptionYear>2003</inceptionYear>
+  <package>org.archive</package>
+  <!--TODO: Make a logo for the heritrix crawler!-->
+  <logo>/images/logo.gif</logo>
+  <description>The Internet Archive's open-source, extensible, web-scale,
+  archival-quality web crawler project.
+  </description>
+  <!-- a short description of what the project does -->
+  <shortDescription>
+  An open-source, extensible, web-scale crawler.
+  </shortDescription>
+
+  <url>http://crawler.archive.org</url>
+  <issueTrackingUrl>http://webteam.archive.org/jira/browse/HER
+	</issueTrackingUrl>
+    <!--Optional. The hostname of the web server that hosts the project's web
+        site. This is used when the web site is deployed.
+     -->
+    <siteAddress>crawler.archive.org</siteAddress>
+    
+    <!--Optional. The directory on the web server where the public web site 
+        for this project resides. This is used when the web site is deployed.
+     -->
+    <siteDirectory>/home/groups/a/ar/archive-crawler/htdocs/</siteDirectory>
+
+    <!--TODO: See what these configurations do.
+    -->
+    <distributionSite>http://shell.sourceforge.net</distributionSite>
+    <distributionDirectory>/home/users/s/st/${maven.username}
+    </distributionDirectory>
+
+    <!--The version control repository and http url for online access
+        the connection element has the form:
+        scm:<system>:<system specific connection string> 
+     -->
+    <repository>
+       <connection>scm:svn:https://archive-crawler.svn.sourceforge.net/svnroot/archive-crawler</connection>
+        <url>https://archive-crawler.svn.sourceforge.net/svnroot/archive-crawler</url>
+    </repository>
+
+    <versions />
+
+    <!-- Mailing lists for the project -->
+    <mailingLists>
+        <mailingList>  
+            <name>Crawler Discussion List</name>
+            <subscribe>
+            archive-crawler-subscribe@yahoogroups.com
+            </subscribe>
+            <unsubscribe>
+            archive-crawler-unsubscribe@yahoogroups.com
+            </unsubscribe>
+            <archive>
+            http://groups.yahoo.com/group/archive-crawler/
+            </archive>
+        </mailingList>  
+        <mailingList>  
+            <name>Crawler Commits</name>
+            <subscribe>
+            http://lists.sourceforge.net/lists/listinfo/archive-crawler-cvs
+            </subscribe>
+            <unsubscribe>
+            http://lists.sourceforge.net/lists/listinfo/archive-crawler-cvs
+            </unsubscribe>
+            <archive>http://sourceforge.net/mailarchive/forum.php?forum=archive-crawler-cvs
+            </archive>
+        </mailingList>  
+    </mailingLists>
+  
+  <!--Developers for the project -->
+  <developers>
+    <developer>
+        <name>Gordon Mohr</name>
+        <id>gojomo</id>
+        <email>gojomo at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Michele Kimpton</name>
+        <id>michele</id>
+        <email>michele at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Igor Ranitovic</name>
+        <id>ia_igor</id>
+        <email>igor at archive dot org</email>
+        <organization>Internet Archive</organization>
+        <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>John Erik Halse</name>
+        <id>johnerik</id>
+        <email>johnh at archive dot org</email>
+        <organization>National Library of Norway</organization>
+        <url>http://www.nb.no</url>
+         <timezone>-1</timezone>
+    </developer>
+    <developer>
+        <name>Kristinn Sigurdsson</name>
+        <id>kristinn_sig</id>
+        <email>kris at archive dot org</email>
+        <organization>National and University Library of Iceland</organization>
+        <url>http://www.bok.hi.is/</url>
+         <timezone>-0</timezone>
+    </developer>
+    <developer>
+        <name>Raymie Stata</name>
+        <id>rstata</id>
+        <email>rstata at archive dot org</email>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Michael Stack</name>
+        <id>stack-sf</id>
+        <email>stack at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Dan Avery</name>
+        <id>danavery</id>
+        <email>davery at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Karl Thiessen</name>
+        <id>karl</id>
+        <email>karl at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Paul Jack</name>
+        <id>paul_jack</id>
+        <email>pjack at archive dot org</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+    <developer>
+        <name>Noah Levitt</name>
+        <id>nlevitt</id>
+        <email>nlevitt at archive</email>
+         <organization>Internet Archive</organization>
+         <url>http://www.archive.org</url>
+         <timezone>-8</timezone>
+    </developer>
+  </developers>
+
+  <contributors>
+    <contributor>
+        <name>James Casey</name>
+        <email>me at jamesc dot net</email>
+        <url>http://www.jamesc.net</url>
+    </contributor>
+    <contributor>
+        <name>Parker Thompson</name>
+        <email>parkert at archive dot org</email>
+         <organization>Internet Archive</organization>
+    </contributor>
+    <contributor>
+        <name>Judy Ma</name>
+        <email>jma at archive dot org</email>
+         <organization>Internet Archive</organization>
+    </contributor>
+    <contributor>
+        <name>Soren Vejrup Carlsen</name>
+        <email>svc at kb dot dk</email>
+         <organization>The Royal Library</organization>
+    </contributor>
+    <contributor>
+        <name>Tom Emerson</name>
+        <email>tree at basistech dot com</email>
+         <organization>Basis Technology</organization>
+    </contributor>
+    <contributor>
+        <name>Andy Boyko</name>
+        <email>aboy at loc dot gov</email>
+         <organization>Library of Congress</organization>
+    </contributor>
+    <contributor>
+        <name>Mark Williamson</name>
+        <email>junklight at sourceforge dot net</email>
+         <organization>British Library</organization>
+    </contributor>
+    <contributor>
+        <name>Oskar Grenholm</name>
+        <email>oskar dot grenholm  at kb dot se</email>
+         <organization>Swedish Royal Library</organization>
+    </contributor>
+    <contributor>
+        <name>Howard Lee Gayle</name>
+        <email />
+         <organization />
+    </contributor>
+    <contributor>
+        <name>Ansi Zhousp</name>
+        <email>zhousp at gmail dot com</email>
+         <organization />
+    </contributor>
+    <contributor>
+        <name>Dave Skinner</name>
+        <email>dave at solid dot net</email>
+         <organization>Solid.net Consulting</organization>
+    </contributor>
+    <contributor>
+        <name>Christian Kohlsch&#xFC;tter</name>
+        <email>kohlschuetter@l3s.de</email>
+         <organization>L3S Research Center</organization>
+    </contributor>
+    <contributor>
+        <name>Mike Schwartz</name>
+        <email>schwartz at CodeOnTheRoad dot com</email>
+         <organization />
+    </contributor>
+    <contributor>
+        <name>Rob Eger</name>
+        <email>reger at aptas dot com</email>
+         <organization>Aptas</organization>
+    </contributor>
+    <contributor>
+        <name>Shifra Raffel</name>
+        <email>Shifra dot Raffel at ucop dot edu</email>
+         <organization>California Digital Library</organization>
+    </contributor>
+    <contributor>
+        <name>Nicolas Baly</name>
+        <email>nicolas dot baly at epfl dot ch</email>
+         <organization />
+    </contributor>
+    <contributor>
+        <name>Olaf Freyer</name>
+        <email></email>
+         <organization />
+    </contributor>
+  </contributors>
+
+    <licenses>
+        <license>
+            <name>GNU LESSER GENERAL PUBLIC LICENSE</name>
+            <url>http://www.gnu.org/licenses/lgpl.txt</url>
+            <distribution>repo</distribution>
+       </license>
+    </licenses>
+
+
+    <!--For now, refer to local jars.  Later when (if) we decide to go
+        all-out maven, we'll pull common jars from remote repository.
+
+        TODO: Fix the display of dependencies so it displays the 
+        license and description properties added by us, IA.  Or add a pregoal
+        to dependency generation so that it generates a dependencies license
+        page using info below.
+
+        TODO: Change the licenses into links to actual licenses.
+    -->
+    <dependencies>
+         <dependency>
+             <id>jericho-html</id>
+             <version>2.6</version>
+             <url>http://jerichohtml.sourceforge.net/</url>
+             <properties>
+                 <war.bundle>true</war.bundle>
+                 <ear.bundle>true</ear.bundle>
+                 <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                 <description>Jericho HTML Parser is a simple but powerful 
+ 		java library allowing analysis and manipulation of parts 
+ 		of an HTML document, including some common server-side tags,
+ 		while reproducing verbatim any unrecognised or invalid HTML.
+                 </description>
+                 <license>GNU Lesser General Public License
+                 http://www.gnu.org/licenses/lgpl.txt</license>
+             </properties>
+         </dependency>
+        <dependency>
+            <id>je</id>
+            <version>3.3.62</version>
+            <url>http://www.oracle.com/technology/products/berkeley-db/je/index.html</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Berkeley DB Java Edition.  
+                Copyright (c) 2008 Oracle.  
+                All rights reserved.  See above link for how to obtain source.  
+                </description>
+                <license>http://www.oracle.com/technology/software/products/berkeley-db/htdocs/jeoslicense.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-httpclient-local</id>
+            <version>3.1</version>
+            <url>http://jakarta.apache.org/commons/httpclient/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>This package is used for fetching URIs via http.
+                Need to give this component an id other than the natural
+                one of 'commons-httpclient' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-io-local</id>
+            <version>1.3.1</version>
+            <url>http://jakarta.apache.org/commons/io/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>IO helper classes.
+                Need to give this component an id other than the natural
+                one of 'commons-io' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-lang-local</id>
+            <version>2.3</version>
+            <url>http://jakarta.apache.org/commons/lang/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Provides helper classes for java.lang.
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-logging-local</id>
+            <version>1.0.4</version>
+            <url>http://jakarta.apache.org/commons/logging.html</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Provides logging adapters.
+                Need to give this component an id other than the natural
+                one of 'commons-logging' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-net-local</id>
+            <version>1.4.1</version>
+            <url>http://jakarta.apache.org/commons/net/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Used to provide FTP fetching.  May one day be
+                used for TFTP, SFTP, gopher and so on.
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-codec</id>
+            <version>1.3</version>
+            <url>http://jakarta.apache.org/commons/codec/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Commons Codec provides implementations of common
+                encoders and decoders such as Base64, Hex, various phonetic
+                encodings, and URLs.</description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>dnsjava</id>
+            <version>2.0.3</version>
+            <url>http://www.dnsjava.org/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>DNS Lookups.
+                </description>
+                <license>BSD</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>jetty</id>
+            <version>4.2.23</version>
+            <url>http://jetty.mortbay.com/jetty/</url>
+            <properties>
+                <description>The Jetty servlet container.
+                </description>
+                <license>Jetty license,
+                    http://jetty.mortbay.org/jetty/LICENSE.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>servlet</id>
+            <version>2.3</version>
+            <url>http://jakarta.apache.org/tomcat/</url>
+            <properties>
+                <description>
+                Taken from tomcat.
+                </description>
+                <license>
+                    http://jakarta.apache.org/site/legal.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>jasper-runtime</id>
+            <version>4.1.30</version>
+            <url>http://jakarta.apache.org/tomcat/</url>
+            <properties>
+                <description>
+                Taken from tomcat.
+                </description>
+                <license>
+                    http://jakarta.apache.org/site/legal.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>jasper-compiler</id>
+            <version>4.1.30</version>
+            <url>http://jakarta.apache.org/tomcat/</url>
+            <properties>
+                <description>
+                Taken from tomcat.
+                </description>
+                <license>
+                    http://jakarta.apache.org/site/legal.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>poi</id>
+            <version>2.0-RC1-20031102</version>
+            <url>http://jakarta.apache.org/poi/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>For parsing PDFs.
+                </description>
+                <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>poi-scratchpad</id>
+            <version>2.0-RC1-20031102</version>
+            <url>http://jakarta.apache.org/poi/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>For parsing PDFs.  Has the 
+                org.apache.poi.hdf.extractor.WordDocument.
+                </description>
+                <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>javaswf</id>
+            <version />
+            <url>http://www.anotherbigidea.com/javaswf</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>JavaSWF2 is a set of Java packages that enable 
+                the parsing, manipulation and generation of the Macromedia 
+                Flash(TM) file format known as SWF ("swiff").  Added jar was 
+                made by unzipping javaswf-CVS-SNAPSHOT-1.zip download, 
+                compiling the java classes therein, and then making a jar 
+                of the product.</description>
+                <license>The JavaSWF BSD License, 
+                http://anotherbigidea.com/javaswf/JavaSWF2-BSD.LICENSE.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>itext</id>
+            <version>1.2</version>
+            <url>http://www.lowagie.com/iText/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>A library for parsing PDF files.</description>
+                <license>MPL (http://www.lowagie.com/iText/MPL-1.1.txt)
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>ant-local</id>
+            <version>1.6.2</version>
+            <url>http://ant.apache.org</url>
+            <properties>
+                <description>Build tool. An ant task is used to compile
+                the jspc pages at build time and then for the selftest at
+                runtime.
+                Need to give this component an id other than the natural
+                one of 'ant' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>Apache 1.1.  http://ant.apache.org/license.html
+                </license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>junit-local</id>
+            <version>3.8.2</version>
+            <url>http://www.junit.org/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>A framework for implimenting the unit testing
+                methology.
+                Need to give this component an id other than the natural
+                one of 'junit' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>IBM's Common Public License Version 0.5.</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-pool</id>
+            <version>1.3</version>
+            <url>http://jakarta.apache.org/site/binindex.cgi#commons-pool</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>For object pooling.
+                </description>
+                <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-collections-local</id>
+            <version>3.1</version>
+            <url>http://jakarta.apache.org/site/binindex.cgi#commons-collections</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Needed by commons-pool.
+                Need to give this component an id other than the natural
+                one of 'commons-collections' because of bug in 1.0.2 maven;
+                our project.properties override that forces maven to use
+                a local copy rather than pull one from the net is causing
+                it confusion on initial setup (This feature worked fine in
+                earlier mavens).
+                </description>
+                <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>commons-cli</id>
+            <version>1.0</version>
+            <url>http://jakarta.apache.org/site/binindex.cgi</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Needed doing Heritrix command-line processing.
+                </description>
+                <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>mg4j-local</id>
+            <version>1.0.1</version>
+            <url>http://mg4j.dsi.unimi.it/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Managing Gigabytes for Java; required for 
+                MutableString and NullInputStream classes.
+                </description>
+                <license>GNU Lesser General Public License 
+                http://www.gnu.org/licenses/lgpl.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>fastutil-local</id>
+            <version>1.0</version>
+            <url>http://fastutil.dsi.unimi.it/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>Fastutil: Fast and compact type-specific 
+                collections for Java. required for FastBufferedOutputStream,
+                LongIterator, LongIterators, Long2ObjectOpenHashMap, 
+                LongArrayList, RepositionableStream, and possibly others. 
+                
+                Subsetted from the full (12MB!) fastutil-5.0.4.jar using
+                autojar (1.3.1) and the command:
+                
+                java -jar autojar.jar -v -o fastutil-5.0.4-heritrix-subset-1.0.jar -c ../fastutil-5.0.3/fastutil-5.0.3.jar it.unimi.dsi.fastutil.io.FastBufferedInputStream.class it.unimi.dsi.fastutil.io.FastBufferedOutputStream.class it.unimi.dsi.fastutil.io.RepositionableStream.class it.unimi.dsi.fastutil.longs.LongIterators.class it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap.class
+                </description>
+                <license>GNU Lesser General Public License 
+                http://www.gnu.org/licenses/lgpl.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>libidn</id>
+            <version>0.5.9</version>
+            <url>http://www.gnu.org/software/libidn/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>GNU Libidn is an implementation of the Stringprep, 
+                Punycode and IDNA specifications defined by the IETF 
+                Internationalized Domain Names (IDN) working group, used for 
+                internationalized domain names.
+                </description>
+                <license>GNU Lesser General Public License 
+                http://www.gnu.org/licenses/lgpl.txt</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>beanshell</id>
+            <version>2.0b4</version>
+            <url>http://beanshell.org/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <ear.bundle>true</ear.bundle>
+                <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
+                <description>eanShell is a small, free, embeddable Java 
+                source interpreter with object scripting language features, 
+                written in Java. 
+                </description>
+                <license>LGPL or Sun Public License (SPL)</license>
+            </properties>
+        </dependency>
+        <dependency>
+            <id>jets3t</id>
+            <version>0.5.0</version>
+            <url>http://jets3t.s3.amazonaws.com/</url>
+            <properties>
+                <war.bundle>true</war.bundle>
+                <description>
+                Use same S3 lib as hadoop.
+                </description>
+                <license>Apache 2.0
+                http://www.apache.org/licenses/LICENSE-2.0</license>
+            </properties>
+        </dependency>
+  </dependencies>
+
+  
+  <!-- build information for the project -->
+  <build>
+    <nagEmailAddress>webmaster@crawler.archive.org</nagEmailAddress>
+    <sourceDirectory>src/java</sourceDirectory>
+    <unitTestSourceDirectory>src/java</unitTestSourceDirectory>
+    <unitTest>
+      <excludes>
+        <exclude>**/*SelfTest.java</exclude>
+      </excludes>
+      <includes>
+        <include>**/*Test.java</include>
+      </includes>
+    </unitTest>
+    <defaultGoal>dist</defaultGoal>
+    <resources>
+    <resource>
+        <directory>${basedir}/src/resources</directory>
+        <includes>
+            <include>*.xsl</include>
+        </includes>
+    </resource>
+    <resource>
+        <directory>${maven.build.dir}/conf/</directory>
+        <includes>
+            <include>heritrix.properties</include>
+            <include>jndi.properties</include>
+            <include>profiles/*default/**</include>
+            <include>modules/**</include>
+            <include>selftest/**</include>
+            <include>effective_tld_names.dat</include>
+        </includes>
+    </resource>
+    </resources>
+  </build>
+
+    <!--List of reports to generate.
+        Some are not working.  Fix.
+     -->
+    <reports>
+        <!--Use the heritrix javadoc goal rather than the default
+            maven javadoc plugin.  The latter doesn't copy over doc-files
+            nor package.html files.
+          -->
+        <report>maven-license-plugin</report>
+        <!--Takes a long time. No one looks at it.  Comment in when wanted.
+        <report>maven-changelog-plugin</report>
+        <report>maven-checkstyle-plugin</report>
+        -->
+        <!--
+        <report>maven-jdepend-plugin</report>
+        -->
+        <report>maven-junit-report-plugin</report>
+        <report>maven-jxr-plugin</report>
+        <report>maven-pmd-plugin</report>
+        <report>maven-tasklist-plugin</report>
+        <!--<report>maven-findbugs-plugin</report>
+         -->
+        <!--<report>maven-developer-activity-plugin</report>-->
+        <!--TODO: <report>maven-file-activity-plugin</report>-->
+        <!--TODO: OOME and takes long time.
+            <report>maven-linkcheck-plugin</report>
+         -->
+    </reports>
+</project>
+

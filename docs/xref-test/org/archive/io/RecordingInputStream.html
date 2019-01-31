@@ -1,0 +1,382 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" /><title>RecordingInputStream xref</title>
+<link type="text/css" rel="stylesheet" href="../../../stylesheet.css" />
+</head>
+<body>
+<pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> RecordingInputStream</em></em>
+<a name="2" href="#2">2</a>   <em class="comment"> *</em>
+<a name="3" href="#3">3</a>   <em class="comment"> * $Id: RecordingInputStream.java 5080 2007-04-13 20:30:49Z gojomo $</em>
+<a name="4" href="#4">4</a>   <em class="comment"> *</em>
+<a name="5" href="#5">5</a>   <em class="comment"> * Created on Sep 24, 2003</em>
+<a name="6" href="#6">6</a>   <em class="comment"> *</em>
+<a name="7" href="#7">7</a>   <em class="comment"> * Copyright (C) 2003 Internet Archive.</em>
+<a name="8" href="#8">8</a>   <em class="comment"> *</em>
+<a name="9" href="#9">9</a>   <em class="comment"> * This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="10" href="#10">10</a>  <em class="comment"> *</em>
+<a name="11" href="#11">11</a>  <em class="comment"> * Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="12" href="#12">12</a>  <em class="comment"> * it under the terms of the GNU Lesser Public License as published by</em>
+<a name="13" href="#13">13</a>  <em class="comment"> * the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="14" href="#14">14</a>  <em class="comment"> * any later version.</em>
+<a name="15" href="#15">15</a>  <em class="comment"> *</em>
+<a name="16" href="#16">16</a>  <em class="comment"> * Heritrix is distributed in the hope that it will be useful,</em>
+<a name="17" href="#17">17</a>  <em class="comment"> * but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="18" href="#18">18</a>  <em class="comment"> * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="19" href="#19">19</a>  <em class="comment"> * GNU Lesser Public License for more details.</em>
+<a name="20" href="#20">20</a>  <em class="comment"> *</em>
+<a name="21" href="#21">21</a>  <em class="comment"> * You should have received a copy of the GNU Lesser Public License</em>
+<a name="22" href="#22">22</a>  <em class="comment"> * along with Heritrix; if not, write to the Free Software</em>
+<a name="23" href="#23">23</a>  <em class="comment"> * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="24" href="#24">24</a>  <em class="comment"> */</em>
+<a name="25" href="#25">25</a>  <strong>package</strong> <a href="../../../org/archive/io/package-summary.html">org.archive.io</a>;
+<a name="26" href="#26">26</a>  
+<a name="27" href="#27">27</a>  <strong>import</strong> java.io.File;
+<a name="28" href="#28">28</a>  <strong>import</strong> java.io.FileOutputStream;
+<a name="29" href="#29">29</a>  <strong>import</strong> java.io.IOException;
+<a name="30" href="#30">30</a>  <strong>import</strong> java.io.InputStream;
+<a name="31" href="#31">31</a>  <strong>import</strong> java.net.SocketException;
+<a name="32" href="#32">32</a>  <strong>import</strong> java.net.SocketTimeoutException;
+<a name="33" href="#33">33</a>  <strong>import</strong> java.security.MessageDigest;
+<a name="34" href="#34">34</a>  <strong>import</strong> java.util.logging.Level;
+<a name="35" href="#35">35</a>  <strong>import</strong> java.util.logging.Logger;
+<a name="36" href="#36">36</a>  
+<a name="37" href="#37">37</a>  
+<a name="38" href="#38">38</a>  <em>/**<em>*</em></em>
+<a name="39" href="#39">39</a>  <em> * Stream which records all data read from it, which it acquires from a wrapped</em>
+<a name="40" href="#40">40</a>  <em> * input stream.</em>
+<a name="41" href="#41">41</a>  <em> *</em>
+<a name="42" href="#42">42</a>  <em> * Makes use of a RecordingOutputStream for recording because of its being</em>
+<a name="43" href="#43">43</a>  <em> * file backed so we can write massive amounts of data w/o worrying about</em>
+<a name="44" href="#44">44</a>  <em> * overflowing memory.</em>
+<a name="45" href="#45">45</a>  <em> *</em>
+<a name="46" href="#46">46</a>  <em> * @author gojomo</em>
+<a name="47" href="#47">47</a>  <em> *</em>
+<a name="48" href="#48">48</a>  <em> */</em>
+<a name="49" href="#49">49</a>  <strong>public</strong> <strong>class</strong> <a href="../../../org/archive/io/RecordingInputStream.html">RecordingInputStream</a>
+<a name="50" href="#50">50</a>      <strong>extends</strong> InputStream {
+<a name="51" href="#51">51</a>  
+<a name="52" href="#52">52</a>      <strong>protected</strong> <strong>static</strong> Logger logger =
+<a name="53" href="#53">53</a>          Logger.getLogger(<span class="string">"org.archive.io.RecordingInputStream"</span>);
+<a name="54" href="#54">54</a>  
+<a name="55" href="#55">55</a>      <em>/**<em>*</em></em>
+<a name="56" href="#56">56</a>  <em>     * Where we are recording to.</em>
+<a name="57" href="#57">57</a>  <em>     */</em>
+<a name="58" href="#58">58</a>      <strong>private</strong> <a href="../../../org/archive/io/RecordingOutputStream.html">RecordingOutputStream</a> recordingOutputStream;
+<a name="59" href="#59">59</a>  
+<a name="60" href="#60">60</a>      <em>/**<em>*</em></em>
+<a name="61" href="#61">61</a>  <em>     * Stream to record.</em>
+<a name="62" href="#62">62</a>  <em>     */</em>
+<a name="63" href="#63">63</a>      <strong>private</strong> InputStream in = <strong>null</strong>;
+<a name="64" href="#64">64</a>  
+<a name="65" href="#65">65</a>      <em>/**<em>*</em></em>
+<a name="66" href="#66">66</a>  <em>     * Reusable buffer to avoid reallocation on each readFullyUntil</em>
+<a name="67" href="#67">67</a>  <em>     */</em>
+<a name="68" href="#68">68</a>      <strong>protected</strong> byte[] drainBuffer = <strong>new</strong> byte[16*1024];
+<a name="69" href="#69">69</a>  
+<a name="70" href="#70">70</a>      <em>/**<em>*</em></em>
+<a name="71" href="#71">71</a>  <em>     * Create a new RecordingInputStream.</em>
+<a name="72" href="#72">72</a>  <em>     *</em>
+<a name="73" href="#73">73</a>  <em>     * @param bufferSize Size of buffer to use.</em>
+<a name="74" href="#74">74</a>  <em>     * @param backingFilename Name of backing file.</em>
+<a name="75" href="#75">75</a>  <em>     */</em>
+<a name="76" href="#76">76</a>      <strong>public</strong> <a href="../../../org/archive/io/RecordingInputStream.html">RecordingInputStream</a>(<strong>int</strong> bufferSize, String backingFilename)
+<a name="77" href="#77">77</a>      {
+<a name="78" href="#78">78</a>          <strong>this</strong>.recordingOutputStream = <strong>new</strong> <a href="../../../org/archive/io/RecordingOutputStream.html">RecordingOutputStream</a>(bufferSize,
+<a name="79" href="#79">79</a>              backingFilename);
+<a name="80" href="#80">80</a>      }
+<a name="81" href="#81">81</a>  
+<a name="82" href="#82">82</a>      <strong>public</strong> <strong>void</strong> open(InputStream wrappedStream) throws IOException {
+<a name="83" href="#83">83</a>          logger.fine(Thread.currentThread().getName() + <span class="string">" opening "</span> +
+<a name="84" href="#84">84</a>              wrappedStream + <span class="string">", "</span> + Thread.currentThread().getName());
+<a name="85" href="#85">85</a>          <strong>if</strong>(isOpen()) {
+<a name="86" href="#86">86</a>              <em class="comment">// error; should not be opening/wrapping in an unclosed </em>
+<a name="87" href="#87">87</a>              <em class="comment">// stream remains open</em>
+<a name="88" href="#88">88</a>              <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"RIS already open for "</span>
+<a name="89" href="#89">89</a>                      +Thread.currentThread().getName());
+<a name="90" href="#90">90</a>          }
+<a name="91" href="#91">91</a>          <strong>this</strong>.in = wrappedStream;
+<a name="92" href="#92">92</a>          <strong>this</strong>.recordingOutputStream.open();
+<a name="93" href="#93">93</a>      }
+<a name="94" href="#94">94</a>  
+<a name="95" href="#95">95</a>      <strong>public</strong> <strong>int</strong> read() throws IOException {
+<a name="96" href="#96">96</a>          <strong>if</strong> (!isOpen()) {
+<a name="97" href="#97">97</a>              <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Stream closed "</span> +
+<a name="98" href="#98">98</a>                  Thread.currentThread().getName());
+<a name="99" href="#99">99</a>          }
+<a name="100" href="#100">100</a>         <strong>int</strong> b = <strong>this</strong>.in.read();
+<a name="101" href="#101">101</a>         <strong>if</strong> (b != -1) {
+<a name="102" href="#102">102</a>             assert <strong>this</strong>.recordingOutputStream != <strong>null</strong>: <span class="string">"ROS is null "</span> +
+<a name="103" href="#103">103</a>                 Thread.currentThread().getName();
+<a name="104" href="#104">104</a>             <strong>this</strong>.recordingOutputStream.write(b);
+<a name="105" href="#105">105</a>         }
+<a name="106" href="#106">106</a>         <strong>return</strong> b;
+<a name="107" href="#107">107</a>     }
+<a name="108" href="#108">108</a> 
+<a name="109" href="#109">109</a>     <strong>public</strong> <strong>int</strong> read(byte[] b, <strong>int</strong> off, <strong>int</strong> len) throws IOException {
+<a name="110" href="#110">110</a>         <strong>if</strong> (!isOpen()) {
+<a name="111" href="#111">111</a>             <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Stream closed "</span> +
+<a name="112" href="#112">112</a>                 Thread.currentThread().getName());
+<a name="113" href="#113">113</a>         }
+<a name="114" href="#114">114</a>         <strong>int</strong> count = <strong>this</strong>.in.read(b,off,len);
+<a name="115" href="#115">115</a>         <strong>if</strong> (count > 0) {
+<a name="116" href="#116">116</a>             assert <strong>this</strong>.recordingOutputStream != <strong>null</strong>: <span class="string">"ROS is null "</span> +
+<a name="117" href="#117">117</a>                 Thread.currentThread().getName();
+<a name="118" href="#118">118</a>             <strong>this</strong>.recordingOutputStream.write(b,off,count);
+<a name="119" href="#119">119</a>         }
+<a name="120" href="#120">120</a>         <strong>return</strong> count;
+<a name="121" href="#121">121</a>     }
+<a name="122" href="#122">122</a> 
+<a name="123" href="#123">123</a>     <strong>public</strong> <strong>int</strong> read(byte[] b) throws IOException {
+<a name="124" href="#124">124</a>     	    <strong>if</strong> (!isOpen()) {
+<a name="125" href="#125">125</a>     	    	    <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Stream closed "</span> +
+<a name="126" href="#126">126</a>     			    Thread.currentThread().getName());
+<a name="127" href="#127">127</a>     	    }
+<a name="128" href="#128">128</a>     	    <strong>int</strong> count = <strong>this</strong>.in.read(b);
+<a name="129" href="#129">129</a>         <strong>if</strong> (count > 0) {
+<a name="130" href="#130">130</a>             assert <strong>this</strong>.recordingOutputStream != <strong>null</strong>: <span class="string">"ROS is null "</span> +
+<a name="131" href="#131">131</a>                 Thread.currentThread().getName();
+<a name="132" href="#132">132</a>             <strong>this</strong>.recordingOutputStream.write(b,0,count);
+<a name="133" href="#133">133</a>         }
+<a name="134" href="#134">134</a>         <strong>return</strong> count;
+<a name="135" href="#135">135</a>     }
+<a name="136" href="#136">136</a> 
+<a name="137" href="#137">137</a>     <strong>public</strong> <strong>void</strong> close() throws IOException {
+<a name="138" href="#138">138</a>         <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="139" href="#139">139</a>             logger.fine(Thread.currentThread().getName() + <span class="string">" closing "</span> +
+<a name="140" href="#140">140</a>                     <strong>this</strong>.in + <span class="string">", "</span> + Thread.currentThread().getName());
+<a name="141" href="#141">141</a>         }
+<a name="142" href="#142">142</a>         <strong>if</strong> (<strong>this</strong>.in != <strong>null</strong>) {
+<a name="143" href="#143">143</a>             <strong>this</strong>.in.close();
+<a name="144" href="#144">144</a>             <strong>this</strong>.in = <strong>null</strong>;
+<a name="145" href="#145">145</a>         }
+<a name="146" href="#146">146</a>         <strong>this</strong>.recordingOutputStream.close();
+<a name="147" href="#147">147</a>     }
+<a name="148" href="#148">148</a> 
+<a name="149" href="#149">149</a>     <strong>public</strong> <a href="../../../org/archive/io/ReplayInputStream.html">ReplayInputStream</a> getReplayInputStream() throws IOException {
+<a name="150" href="#150">150</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getReplayInputStream();
+<a name="151" href="#151">151</a>     }
+<a name="152" href="#152">152</a> 
+<a name="153" href="#153">153</a>     <strong>public</strong> <a href="../../../org/archive/io/ReplayInputStream.html">ReplayInputStream</a> getContentReplayInputStream() throws IOException {
+<a name="154" href="#154">154</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getContentReplayInputStream();
+<a name="155" href="#155">155</a>     }
+<a name="156" href="#156">156</a> 
+<a name="157" href="#157">157</a>     <strong>public</strong> <strong>long</strong> readFully() throws IOException {
+<a name="158" href="#158">158</a>         <strong>while</strong>(read(drainBuffer) != -1) {
+<a name="159" href="#159">159</a>             <em class="comment">// Empty out stream.</em>
+<a name="160" href="#160">160</a>             <strong>continue</strong>;
+<a name="161" href="#161">161</a>         }
+<a name="162" href="#162">162</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getSize();
+<a name="163" href="#163">163</a>     }
+<a name="164" href="#164">164</a> 
+<a name="165" href="#165">165</a>     <em>/**<em>*</em></em>
+<a name="166" href="#166">166</a> <em>     * Read all of a stream (Or read until we timeout or have read to the max).</em>
+<a name="167" href="#167">167</a> <em>     * @param softMaxLength Maximum length to read; if zero or &lt; 0, then no </em>
+<a name="168" href="#168">168</a> <em>     * limit. If met, return normally. </em>
+<a name="169" href="#169">169</a> <em>     * @param hardMaxLength Maximum length to read; if zero or &lt; 0, then no </em>
+<a name="170" href="#170">170</a> <em>     * limit. If exceeded, throw RecorderLengthExceededException</em>
+<a name="171" href="#171">171</a> <em>     * @param timeout Timeout in milliseconds for total read; if zero or</em>
+<a name="172" href="#172">172</a> <em>     * negative, timeout is &lt;code>Long.MAX_VALUE&lt;/code>. If exceeded, throw</em>
+<a name="173" href="#173">173</a> <em>     * RecorderTimeoutException</em>
+<a name="174" href="#174">174</a> <em>     * @param maxBytesPerMs How many bytes per millisecond.</em>
+<a name="175" href="#175">175</a> <em>     * @throws IOException failed read.</em>
+<a name="176" href="#176">176</a> <em>     * @throws RecorderLengthExceededException</em>
+<a name="177" href="#177">177</a> <em>     * @throws RecorderTimeoutException</em>
+<a name="178" href="#178">178</a> <em>     * @throws InterruptedException</em>
+<a name="179" href="#179">179</a> <em>     */</em>
+<a name="180" href="#180">180</a>     <strong>public</strong> <strong>void</strong> readFullyOrUntil(<strong>long</strong> softMaxLength)
+<a name="181" href="#181">181</a>         throws IOException, RecorderLengthExceededException,
+<a name="182" href="#182">182</a>             RecorderTimeoutException, InterruptedException {
+<a name="183" href="#183">183</a>         <em class="comment">// Check we're open before proceeding.</em>
+<a name="184" href="#184">184</a>         <strong>if</strong> (!isOpen()) {
+<a name="185" href="#185">185</a>             <em class="comment">// TODO: should this be a noisier exception-raising error? </em>
+<a name="186" href="#186">186</a>             <strong>return</strong>;
+<a name="187" href="#187">187</a>         } 
+<a name="188" href="#188">188</a> 
+<a name="189" href="#189">189</a>         <strong>long</strong> totalBytes = 0L;
+<a name="190" href="#190">190</a>         <strong>long</strong> bytesRead = -1L;
+<a name="191" href="#191">191</a>         <strong>long</strong> maxToRead = -1; 
+<a name="192" href="#192">192</a>         <strong>while</strong> (<strong>true</strong>) {
+<a name="193" href="#193">193</a>             <strong>try</strong> {
+<a name="194" href="#194">194</a>                 <em class="comment">// read no more than soft max</em>
+<a name="195" href="#195">195</a>                 maxToRead = (softMaxLength &lt;= 0) 
+<a name="196" href="#196">196</a>                     ? drainBuffer.length 
+<a name="197" href="#197">197</a>                     : Math.min(drainBuffer.length, softMaxLength - totalBytes);
+<a name="198" href="#198">198</a>                 <em class="comment">// nor more than hard max</em>
+<a name="199" href="#199">199</a>                 maxToRead = Math.min(maxToRead, recordingOutputStream.getRemainingLength());
+<a name="200" href="#200">200</a>                 <em class="comment">// but always at least 1 (to trigger hard max exception</em>
+<a name="201" href="#201">201</a>                 maxToRead = Math.max(maxToRead, 1);
+<a name="202" href="#202">202</a>                 
+<a name="203" href="#203">203</a>                 bytesRead = read(drainBuffer,0,(<strong>int</strong>)maxToRead);
+<a name="204" href="#204">204</a>                 <strong>if</strong> (bytesRead == -1) {
+<a name="205" href="#205">205</a>                     <strong>break</strong>;
+<a name="206" href="#206">206</a>                 }
+<a name="207" href="#207">207</a>                 totalBytes += bytesRead;
+<a name="208" href="#208">208</a> 
+<a name="209" href="#209">209</a>                 <strong>if</strong> (Thread.interrupted()) {
+<a name="210" href="#210">210</a>                     <strong>throw</strong> <strong>new</strong> InterruptedException(<span class="string">"Interrupted during IO"</span>);
+<a name="211" href="#211">211</a>                 }
+<a name="212" href="#212">212</a>             } <strong>catch</strong> (SocketTimeoutException e) {
+<a name="213" href="#213">213</a>                 <em class="comment">// A socket timeout is just a transient problem, meaning</em>
+<a name="214" href="#214">214</a>                 <em class="comment">// nothing was available in the configured  timeout period,</em>
+<a name="215" href="#215">215</a>                 <em class="comment">// but something else might become available later.</em>
+<a name="216" href="#216">216</a>                 <em class="comment">// Take this opportunity to check the overall </em>
+<a name="217" href="#217">217</a>                 <em class="comment">// timeout (below).  One reason for this timeout is </em>
+<a name="218" href="#218">218</a>                 <em class="comment">// servers that keep up the connection, 'keep-alive', even</em>
+<a name="219" href="#219">219</a>                 <em class="comment">// though we asked them to not keep the connection open.</em>
+<a name="220" href="#220">220</a>                 <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="221" href="#221">221</a>                     logger.log(Level.FINE, <span class="string">"socket timeout"</span>, e); 
+<a name="222" href="#222">222</a>                 }
+<a name="223" href="#223">223</a>                 <em class="comment">// check for overall timeout</em>
+<a name="224" href="#224">224</a>                 recordingOutputStream.checkLimits();
+<a name="225" href="#225">225</a>             } <strong>catch</strong> (SocketException se) {
+<a name="226" href="#226">226</a>                 <strong>throw</strong> se;
+<a name="227" href="#227">227</a>             } <strong>catch</strong> (NullPointerException e) {
+<a name="228" href="#228">228</a>                 <em class="comment">// [ 896757 ] NPEs in Andy's Th-Fri Crawl.</em>
+<a name="229" href="#229">229</a>                 <em class="comment">// A crawl was showing NPE's in this part of the code but can</em>
+<a name="230" href="#230">230</a>                 <em class="comment">// not reproduce.  Adding this rethrowing catch block w/</em>
+<a name="231" href="#231">231</a>                 <em class="comment">// diagnostics to help should we come across the problem in the</em>
+<a name="232" href="#232">232</a>                 <em class="comment">// future.</em>
+<a name="233" href="#233">233</a>                 <strong>throw</strong> <strong>new</strong> NullPointerException(<span class="string">"Stream "</span> + <strong>this</strong>.in + <span class="string">", "</span> +
+<a name="234" href="#234">234</a>                     e.getMessage() + <span class="string">" "</span> + Thread.currentThread().getName());
+<a name="235" href="#235">235</a>             }
+<a name="236" href="#236">236</a>             
+<a name="237" href="#237">237</a>             <em class="comment">// if have read 'enough', just finish</em>
+<a name="238" href="#238">238</a>             <strong>if</strong> (softMaxLength > 0 &amp;&amp; totalBytes >= softMaxLength) {
+<a name="239" href="#239">239</a>                 <strong>break</strong>; <em class="comment">// return</em>
+<a name="240" href="#240">240</a>             }
+<a name="241" href="#241">241</a>         }
+<a name="242" href="#242">242</a>     }
+<a name="243" href="#243">243</a> 
+<a name="244" href="#244">244</a>     <strong>public</strong> <strong>long</strong> getSize() {
+<a name="245" href="#245">245</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getSize();
+<a name="246" href="#246">246</a>     }
+<a name="247" href="#247">247</a> 
+<a name="248" href="#248">248</a>     <strong>public</strong> <strong>void</strong> markContentBegin() {
+<a name="249" href="#249">249</a>         <strong>this</strong>.recordingOutputStream.markContentBegin();
+<a name="250" href="#250">250</a>     }
+<a name="251" href="#251">251</a>     
+<a name="252" href="#252">252</a>     <strong>public</strong> <strong>long</strong> getContentBegin() {
+<a name="253" href="#253">253</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getContentBegin();
+<a name="254" href="#254">254</a>     }
+<a name="255" href="#255">255</a>     
+<a name="256" href="#256">256</a>     <strong>public</strong> <strong>void</strong> startDigest() {
+<a name="257" href="#257">257</a>         <strong>this</strong>.recordingOutputStream.startDigest();
+<a name="258" href="#258">258</a>     }
+<a name="259" href="#259">259</a> 
+<a name="260" href="#260">260</a>     <em>/**<em>*</em></em>
+<a name="261" href="#261">261</a> <em>     * Convenience method for setting SHA1 digest.</em>
+<a name="262" href="#262">262</a> <em>     */</em>
+<a name="263" href="#263">263</a>     <strong>public</strong> <strong>void</strong> setSha1Digest() {
+<a name="264" href="#264">264</a>         <strong>this</strong>.recordingOutputStream.setSha1Digest();
+<a name="265" href="#265">265</a>     }
+<a name="266" href="#266">266</a>     
+<a name="267" href="#267">267</a>     <em>/**<em>*</em></em>
+<a name="268" href="#268">268</a> <em>     * Sets a digest algorithm which may be applied to recorded data.</em>
+<a name="269" href="#269">269</a> <em>     * As usually only a subset of the recorded data should</em>
+<a name="270" href="#270">270</a> <em>     * be fed to the digest, you must also call startDigest()</em>
+<a name="271" href="#271">271</a> <em>     * to begin digesting.</em>
+<a name="272" href="#272">272</a> <em>     *</em>
+<a name="273" href="#273">273</a> <em>     * @param algorithm</em>
+<a name="274" href="#274">274</a> <em>     */</em>
+<a name="275" href="#275">275</a>     <strong>public</strong> <strong>void</strong> setDigest(String algorithm) {
+<a name="276" href="#276">276</a>         <strong>this</strong>.recordingOutputStream.setDigest(algorithm);
+<a name="277" href="#277">277</a>     }
+<a name="278" href="#278">278</a>     
+<a name="279" href="#279">279</a>     <em>/**<em>*</em></em>
+<a name="280" href="#280">280</a> <em>     * Sets a digest function which may be applied to recorded data.</em>
+<a name="281" href="#281">281</a> <em>     * As usually only a subset of the recorded data should</em>
+<a name="282" href="#282">282</a> <em>     * be fed to the digest, you must also call startDigest()</em>
+<a name="283" href="#283">283</a> <em>     * to begin digesting.</em>
+<a name="284" href="#284">284</a> <em>     *</em>
+<a name="285" href="#285">285</a> <em>     * @param md</em>
+<a name="286" href="#286">286</a> <em>     */</em>
+<a name="287" href="#287">287</a>     <strong>public</strong> <strong>void</strong> setDigest(MessageDigest md) {
+<a name="288" href="#288">288</a>         <strong>this</strong>.recordingOutputStream.setDigest(md);
+<a name="289" href="#289">289</a>     }
+<a name="290" href="#290">290</a> 
+<a name="291" href="#291">291</a>     <em>/**<em>*</em></em>
+<a name="292" href="#292">292</a> <em>     * Return the digest value for any recorded, digested data. Call</em>
+<a name="293" href="#293">293</a> <em>     * only after all data has been recorded; otherwise, the running</em>
+<a name="294" href="#294">294</a> <em>     * digest state is ruined.</em>
+<a name="295" href="#295">295</a> <em>     *</em>
+<a name="296" href="#296">296</a> <em>     * @return the digest final value</em>
+<a name="297" href="#297">297</a> <em>     */</em>
+<a name="298" href="#298">298</a>     <strong>public</strong> byte[] getDigestValue() {
+<a name="299" href="#299">299</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getDigestValue();
+<a name="300" href="#300">300</a>     }
+<a name="301" href="#301">301</a> 
+<a name="302" href="#302">302</a>     <strong>public</strong> <a href="../../../org/archive/io/ReplayCharSequence.html">ReplayCharSequence</a> getReplayCharSequence() throws IOException {
+<a name="303" href="#303">303</a>         <strong>return</strong> getReplayCharSequence(<strong>null</strong>);
+<a name="304" href="#304">304</a>     }
+<a name="305" href="#305">305</a> 
+<a name="306" href="#306">306</a>     <em>/**<em>*</em></em>
+<a name="307" href="#307">307</a> <em>     * @param characterEncoding Encoding of recorded stream.</em>
+<a name="308" href="#308">308</a> <em>     * @return A ReplayCharSequence  Will return null if an IOException.  Call</em>
+<a name="309" href="#309">309</a> <em>     * close on returned RCS when done.</em>
+<a name="310" href="#310">310</a> <em>     * @throws IOException</em>
+<a name="311" href="#311">311</a> <em>     */</em>
+<a name="312" href="#312">312</a>     <strong>public</strong> <a href="../../../org/archive/io/ReplayCharSequence.html">ReplayCharSequence</a> getReplayCharSequence(String characterEncoding)
+<a name="313" href="#313">313</a>     		throws IOException {
+<a name="314" href="#314">314</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.
+<a name="315" href="#315">315</a>             getReplayCharSequence(characterEncoding);
+<a name="316" href="#316">316</a>     }
+<a name="317" href="#317">317</a> 
+<a name="318" href="#318">318</a>     <strong>public</strong> <strong>long</strong> getResponseContentLength() {
+<a name="319" href="#319">319</a>         <strong>return</strong> <strong>this</strong>.recordingOutputStream.getResponseContentLength();
+<a name="320" href="#320">320</a>     }
+<a name="321" href="#321">321</a> 
+<a name="322" href="#322">322</a>     <strong>public</strong> <strong>void</strong> closeRecorder() throws IOException {
+<a name="323" href="#323">323</a>         <strong>this</strong>.recordingOutputStream.closeRecorder();
+<a name="324" href="#324">324</a>     }
+<a name="325" href="#325">325</a> 
+<a name="326" href="#326">326</a>     <em>/**<em>*</em></em>
+<a name="327" href="#327">327</a> <em>     * @param tempFile</em>
+<a name="328" href="#328">328</a> <em>     * @throws IOException</em>
+<a name="329" href="#329">329</a> <em>     */</em>
+<a name="330" href="#330">330</a>     <strong>public</strong> <strong>void</strong> copyContentBodyTo(File tempFile) throws IOException {
+<a name="331" href="#331">331</a>         FileOutputStream fos = <strong>new</strong> FileOutputStream(tempFile);
+<a name="332" href="#332">332</a>         <a href="../../../org/archive/io/ReplayInputStream.html">ReplayInputStream</a> ris = getContentReplayInputStream();
+<a name="333" href="#333">333</a>         ris.readFullyTo(fos);
+<a name="334" href="#334">334</a>         fos.close();
+<a name="335" href="#335">335</a>         ris.close();
+<a name="336" href="#336">336</a>     }
+<a name="337" href="#337">337</a> 
+<a name="338" href="#338">338</a>     <em>/**<em>*</em></em>
+<a name="339" href="#339">339</a> <em>     * @return True if we've been opened.</em>
+<a name="340" href="#340">340</a> <em>     */</em>
+<a name="341" href="#341">341</a>     <strong>public</strong> <strong>boolean</strong> isOpen()
+<a name="342" href="#342">342</a>     {
+<a name="343" href="#343">343</a>         <strong>return</strong> <strong>this</strong>.in != <strong>null</strong>;
+<a name="344" href="#344">344</a>     }
+<a name="345" href="#345">345</a> 
+<a name="346" href="#346">346</a>     @Override
+<a name="347" href="#347">347</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> mark(<strong>int</strong> readlimit) {
+<a name="348" href="#348">348</a>         <strong>this</strong>.in.mark(readlimit); 
+<a name="349" href="#349">349</a>         <strong>this</strong>.recordingOutputStream.mark(); 
+<a name="350" href="#350">350</a>     }
+<a name="351" href="#351">351</a> 
+<a name="352" href="#352">352</a>     @Override
+<a name="353" href="#353">353</a>     <strong>public</strong> <strong>boolean</strong> markSupported() {
+<a name="354" href="#354">354</a>         <strong>return</strong> <strong>this</strong>.in.markSupported(); 
+<a name="355" href="#355">355</a>     }
+<a name="356" href="#356">356</a> 
+<a name="357" href="#357">357</a>     @Override
+<a name="358" href="#358">358</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> reset() throws IOException {
+<a name="359" href="#359">359</a>         <strong>this</strong>.in.reset();
+<a name="360" href="#360">360</a>         <strong>this</strong>.recordingOutputStream.reset();
+<a name="361" href="#361">361</a>     }
+<a name="362" href="#362">362</a> 
+<a name="363" href="#363">363</a>     <em>/**<em>*</em></em>
+<a name="364" href="#364">364</a> <em>     *  Set limits to be enforced by internal recording-out</em>
+<a name="365" href="#365">365</a> <em>     */</em>
+<a name="366" href="#366">366</a>     <strong>public</strong> <strong>void</strong> setLimits(<strong>long</strong> hardMax, <strong>long</strong> timeoutMs, <strong>long</strong> maxRateKBps) {
+<a name="367" href="#367">367</a>         recordingOutputStream.setLimits(hardMax, timeoutMs, maxRateKBps);
+<a name="368" href="#368">368</a>     }
+<a name="369" href="#369">369</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+

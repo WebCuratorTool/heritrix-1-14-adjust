@@ -1,0 +1,1359 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" /><title>AdaptiveRevisitFrontier xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../stylesheet.css" />
+</head>
+<body>
+<pre>
+
+<a name="1" href="#1">1</a>   <em class="comment">/*<em class="comment"> AdaptiveRevisitFrontier.java</em></em>
+<a name="2" href="#2">2</a>   <em class="comment">*</em>
+<a name="3" href="#3">3</a>   <em class="comment">* Created on Sep 13, 2004</em>
+<a name="4" href="#4">4</a>   <em class="comment">*</em>
+<a name="5" href="#5">5</a>   <em class="comment">* Copyright (C) 2004 Kristinn Sigur?sson.</em>
+<a name="6" href="#6">6</a>   <em class="comment">*</em>
+<a name="7" href="#7">7</a>   <em class="comment">* This file is part of the Heritrix web crawler (crawler.archive.org).</em>
+<a name="8" href="#8">8</a>   <em class="comment">*</em>
+<a name="9" href="#9">9</a>   <em class="comment">* Heritrix is free software; you can redistribute it and/or modify</em>
+<a name="10" href="#10">10</a>  <em class="comment">* it under the terms of the GNU Lesser Public License as published by</em>
+<a name="11" href="#11">11</a>  <em class="comment">* the Free Software Foundation; either version 2.1 of the License, or</em>
+<a name="12" href="#12">12</a>  <em class="comment">* any later version.</em>
+<a name="13" href="#13">13</a>  <em class="comment">*</em>
+<a name="14" href="#14">14</a>  <em class="comment">* Heritrix is distributed in the hope that it will be useful,</em>
+<a name="15" href="#15">15</a>  <em class="comment">* but WITHOUT ANY WARRANTY; without even the implied warranty of</em>
+<a name="16" href="#16">16</a>  <em class="comment">* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the</em>
+<a name="17" href="#17">17</a>  <em class="comment">* GNU Lesser Public License for more details.</em>
+<a name="18" href="#18">18</a>  <em class="comment">*</em>
+<a name="19" href="#19">19</a>  <em class="comment">* You should have received a copy of the GNU Lesser Public License</em>
+<a name="20" href="#20">20</a>  <em class="comment">* along with Heritrix; if not, write to the Free Software</em>
+<a name="21" href="#21">21</a>  <em class="comment">* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</em>
+<a name="22" href="#22">22</a>  <em class="comment">*/</em>
+<a name="23" href="#23">23</a>  <strong>package</strong> <a href="../../../../org/archive/crawler/frontier/package-summary.html">org.archive.crawler.frontier</a>;
+<a name="24" href="#24">24</a>  
+<a name="25" href="#25">25</a>  <strong>import</strong> java.io.File;
+<a name="26" href="#26">26</a>  <strong>import</strong> java.io.IOException;
+<a name="27" href="#27">27</a>  <strong>import</strong> java.io.PrintWriter;
+<a name="28" href="#28">28</a>  <strong>import</strong> java.io.Serializable;
+<a name="29" href="#29">29</a>  <strong>import</strong> java.io.StringWriter;
+<a name="30" href="#30">30</a>  <strong>import</strong> java.io.Writer;
+<a name="31" href="#31">31</a>  <strong>import</strong> java.util.ArrayList;
+<a name="32" href="#32">32</a>  <strong>import</strong> java.util.Date;
+<a name="33" href="#33">33</a>  <strong>import</strong> java.util.Iterator;
+<a name="34" href="#34">34</a>  <strong>import</strong> java.util.List;
+<a name="35" href="#35">35</a>  <strong>import</strong> java.util.logging.Level;
+<a name="36" href="#36">36</a>  <strong>import</strong> java.util.logging.Logger;
+<a name="37" href="#37">37</a>  <strong>import</strong> java.util.regex.Pattern;
+<a name="38" href="#38">38</a>  
+<a name="39" href="#39">39</a>  <strong>import</strong> javax.management.AttributeNotFoundException;
+<a name="40" href="#40">40</a>  
+<a name="41" href="#41">41</a>  <strong>import</strong> org.apache.commons.httpclient.HttpStatus;
+<a name="42" href="#42">42</a>  <strong>import</strong> org.archive.crawler.datamodel.CandidateURI;
+<a name="43" href="#43">43</a>  <strong>import</strong> org.archive.crawler.datamodel.CoreAttributeConstants;
+<a name="44" href="#44">44</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlServer;
+<a name="45" href="#45">45</a>  <strong>import</strong> org.archive.crawler.datamodel.CrawlURI;
+<a name="46" href="#46">46</a>  <strong>import</strong> org.archive.crawler.datamodel.FetchStatusCodes;
+<a name="47" href="#47">47</a>  <strong>import</strong> org.archive.crawler.datamodel.UriUniqFilter;
+<a name="48" href="#48">48</a>  <strong>import</strong> org.archive.crawler.datamodel.UriUniqFilter.HasUriReceiver;
+<a name="49" href="#49">49</a>  <strong>import</strong> org.archive.crawler.event.CrawlStatusListener;
+<a name="50" href="#50">50</a>  <strong>import</strong> org.archive.crawler.framework.CrawlController;
+<a name="51" href="#51">51</a>  <strong>import</strong> org.archive.crawler.framework.Frontier;
+<a name="52" href="#52">52</a>  <strong>import</strong> org.archive.crawler.framework.FrontierMarker;
+<a name="53" href="#53">53</a>  <strong>import</strong> org.archive.crawler.framework.ToeThread;
+<a name="54" href="#54">54</a>  <strong>import</strong> org.archive.crawler.framework.exceptions.EndedException;
+<a name="55" href="#55">55</a>  <strong>import</strong> org.archive.crawler.framework.exceptions.FatalConfigurationException;
+<a name="56" href="#56">56</a>  <strong>import</strong> org.archive.crawler.framework.exceptions.InvalidFrontierMarkerException;
+<a name="57" href="#57">57</a>  <strong>import</strong> org.archive.crawler.settings.ModuleType;
+<a name="58" href="#58">58</a>  <strong>import</strong> org.archive.crawler.settings.RegularExpressionConstraint;
+<a name="59" href="#59">59</a>  <strong>import</strong> org.archive.crawler.settings.SimpleType;
+<a name="60" href="#60">60</a>  <strong>import</strong> org.archive.crawler.settings.Type;
+<a name="61" href="#61">61</a>  <strong>import</strong> org.archive.crawler.url.Canonicalizer;
+<a name="62" href="#62">62</a>  <strong>import</strong> org.archive.crawler.util.BdbUriUniqFilter;
+<a name="63" href="#63">63</a>  <strong>import</strong> org.archive.net.UURI;
+<a name="64" href="#64">64</a>  <strong>import</strong> org.archive.queue.MemQueue;
+<a name="65" href="#65">65</a>  <strong>import</strong> org.archive.queue.Queue;
+<a name="66" href="#66">66</a>  <strong>import</strong> org.archive.util.ArchiveUtils;
+<a name="67" href="#67">67</a>  
+<a name="68" href="#68">68</a>  
+<a name="69" href="#69">69</a>  <em>/**<em>*</em></em>
+<a name="70" href="#70">70</a>  <em> * A Frontier that will repeatedly visit all encountered URIs. </em>
+<a name="71" href="#71">71</a>  <em> * &lt;p></em>
+<a name="72" href="#72">72</a>  <em> * Wait time between visits is configurable and varies based on observed </em>
+<a name="73" href="#73">73</a>  <em> * changes of documents.</em>
+<a name="74" href="#74">74</a>  <em> * &lt;p></em>
+<a name="75" href="#75">75</a>  <em> * The Frontier borrows many things from HostQueuesFrontier, but implements </em>
+<a name="76" href="#76">76</a>  <em> * an entirely different strategy in issuing URIs and consequently in keeping a</em>
+<a name="77" href="#77">77</a>  <em> * record of discovered URIs.</em>
+<a name="78" href="#78">78</a>  <em> *</em>
+<a name="79" href="#79">79</a>  <em> * @author Kristinn Sigurdsson</em>
+<a name="80" href="#80">80</a>  <em> */</em>
+<a name="81" href="#81">81</a>  <strong>public</strong> <strong>class</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitFrontier.html">AdaptiveRevisitFrontier</a> <strong>extends</strong> <a href="../../../../org/archive/crawler/settings/ModuleType.html">ModuleType</a> 
+<a name="82" href="#82">82</a>  implements Frontier, FetchStatusCodes, CoreAttributeConstants,
+<a name="83" href="#83">83</a>          AdaptiveRevisitAttributeConstants, CrawlStatusListener, HasUriReceiver {
+<a name="84" href="#84">84</a>  
+<a name="85" href="#85">85</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = -8666872690438543671L;
+<a name="86" href="#86">86</a>  
+<a name="87" href="#87">87</a>      <strong>private</strong> <strong>static</strong> <strong>final</strong> Logger logger =
+<a name="88" href="#88">88</a>          Logger.getLogger(AdaptiveRevisitFrontier.<strong>class</strong>.getName());
+<a name="89" href="#89">89</a>  
+<a name="90" href="#90">90</a>      <em>/**<em>* How many multiples of last fetch elapsed time to wait before recontacting</em></em>
+<a name="91" href="#91">91</a>  <em>     * same server */</em>
+<a name="92" href="#92">92</a>      <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_DELAY_FACTOR = <span class="string">"delay-factor"</span>;
+<a name="93" href="#93">93</a>      <strong>private</strong> <strong>final</strong> <strong>static</strong> Float DEFAULT_DELAY_FACTOR = <strong>new</strong> Float(5);
+<a name="94" href="#94">94</a>      
+<a name="95" href="#95">95</a>      <em>/**<em>* Always wait this long after one completion before recontacting</em></em>
+<a name="96" href="#96">96</a>  <em>     * same server, regardless of multiple */</em>
+<a name="97" href="#97">97</a>      <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_MIN_DELAY = <span class="string">"min-delay-ms"</span>;
+<a name="98" href="#98">98</a>  
+<a name="99" href="#99">99</a>      <em class="comment">// 2 seconds</em>
+<a name="100" href="#100">100</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_MIN_DELAY = <strong>new</strong> Integer(2000);
+<a name="101" href="#101">101</a>     
+<a name="102" href="#102">102</a>     <em>/**<em>* Never wait more than this long, regardless of multiple */</em></em>
+<a name="103" href="#103">103</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_MAX_DELAY = <span class="string">"max-delay-ms"</span>;
+<a name="104" href="#104">104</a>     
+<a name="105" href="#105">105</a>     <em class="comment">// 30 seconds</em>
+<a name="106" href="#106">106</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_MAX_DELAY = <strong>new</strong> Integer(30000);
+<a name="107" href="#107">107</a>     
+<a name="108" href="#108">108</a>     <em>/**<em>* Maximum times to emit a <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> without final disposition */</em></em>
+<a name="109" href="#109">109</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_MAX_RETRIES = <span class="string">"max-retries"</span>;
+<a name="110" href="#110">110</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_MAX_RETRIES = <strong>new</strong> Integer(30);
+<a name="111" href="#111">111</a> 
+<a name="112" href="#112">112</a>     <em>/**<em>* For retryable problems, seconds to wait before a retry */</em></em>
+<a name="113" href="#113">113</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_RETRY_DELAY = <span class="string">"retry-delay-seconds"</span>;
+<a name="114" href="#114">114</a>     
+<a name="115" href="#115">115</a>     <em class="comment">// 15 minutes</em>
+<a name="116" href="#116">116</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Long DEFAULT_RETRY_DELAY = <strong>new</strong> Long(900);
+<a name="117" href="#117">117</a>     
+<a name="118" href="#118">118</a>     <em>/**<em>* Maximum simultaneous requests in process to a host (queue) */</em></em>
+<a name="119" href="#119">119</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_HOST_VALENCE = <span class="string">"host-valence"</span>;
+<a name="120" href="#120">120</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_HOST_VALENCE = <strong>new</strong> Integer(1); 
+<a name="121" href="#121">121</a> 
+<a name="122" href="#122">122</a>     <em>/**<em>* Number of hops of embeds (ERX) to bump to front of host queue */</em></em>
+<a name="123" href="#123">123</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_PREFERENCE_EMBED_HOPS =
+<a name="124" href="#124">124</a>         <span class="string">"preference-embed-hops"</span>;
+<a name="125" href="#125">125</a>     <strong>private</strong> <strong>final</strong> <strong>static</strong> Integer DEFAULT_PREFERENCE_EMBED_HOPS = <strong>new</strong> Integer(0); 
+<a name="126" href="#126">126</a>     
+<a name="127" href="#127">127</a>     <em>/**<em>* Queue assignment to force on CrawlURIs. Intended to be used </em></em>
+<a name="128" href="#128">128</a> <em>     *  via overrides*/</em>
+<a name="129" href="#129">129</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_FORCE_QUEUE = <span class="string">"force-queue-assignment"</span>;
+<a name="130" href="#130">130</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> String DEFAULT_FORCE_QUEUE = <span class="string">""</span>;
+<a name="131" href="#131">131</a>     <em>/**<em>* Acceptable characters in forced queue names.</em></em>
+<a name="132" href="#132">132</a> <em>     *  Word chars, dash, period, comma, colon */</em>
+<a name="133" href="#133">133</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> String ACCEPTABLE_FORCE_QUEUE = <span class="string">"[-&#47;&#47;w&#47;&#47;.,:]*"</span>;
+<a name="134" href="#134">134</a> 
+<a name="135" href="#135">135</a>     <em>/**<em>* Should the queue assignment ignore www in hostnames, effectively </em></em>
+<a name="136" href="#136">136</a> <em>     *  stripping them away. </em>
+<a name="137" href="#137">137</a> <em>     */</em>
+<a name="138" href="#138">138</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_QUEUE_IGNORE_WWW = <span class="string">"queue-ignore-www"</span>;
+<a name="139" href="#139">139</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Boolean DEFAULT_QUEUE_IGNORE_WWW = <strong>new</strong> Boolean(false);
+<a name="140" href="#140">140</a>     
+<a name="141" href="#141">141</a>     <em>/**<em>* Should the Frontier use a seperate 'already included' datastructure</em></em>
+<a name="142" href="#142">142</a> <em>     *  or rely on the queues'. </em>
+<a name="143" href="#143">143</a> <em>     */</em>
+<a name="144" href="#144">144</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_USE_URI_UNIQ_FILTER = <span class="string">"use-uri-uniq-filter"</span>;
+<a name="145" href="#145">145</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> Boolean DEFAULT_USE_URI_UNIQ_FILTER = <strong>new</strong> Boolean(false);
+<a name="146" href="#146">146</a>     
+<a name="147" href="#147">147</a>     <em>/**<em>* The Class to use for QueueAssignmentPolicy</em></em>
+<a name="148" href="#148">148</a> <em>     */</em>
+<a name="149" href="#149">149</a>     <strong>public</strong> <strong>final</strong> <strong>static</strong> String ATTR_QUEUE_ASSIGNMENT_POLICY = <span class="string">"queue-assignment-policy"</span>;
+<a name="150" href="#150">150</a>     <strong>protected</strong> <strong>final</strong> <strong>static</strong> String DEFAULT_QUEUE_ASSIGNMENT_POLICY = HostnameQueueAssignmentPolicy.<strong>class</strong>.getName();
+<a name="151" href="#151">151</a>     
+<a name="152" href="#152">152</a>     <strong>private</strong> <a href="../../../../org/archive/crawler/framework/CrawlController.html">CrawlController</a> controller;
+<a name="153" href="#153">153</a>     
+<a name="154" href="#154">154</a>     <strong>private</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitQueueList.html">AdaptiveRevisitQueueList</a> hostQueues;
+<a name="155" href="#155">155</a>     
+<a name="156" href="#156">156</a>     <strong>private</strong> <a href="../../../../org/archive/crawler/datamodel/UriUniqFilter.html">UriUniqFilter</a> alreadyIncluded;
+<a name="157" href="#157">157</a> 
+<a name="158" href="#158">158</a>     <strong>private</strong> ThreadLocalQueue threadWaiting = <strong>new</strong> ThreadLocalQueue();
+<a name="159" href="#159">159</a> 
+<a name="160" href="#160">160</a>     <em>/**<em>* Policy for assigning CrawlURIs to named queues */</em></em>
+<a name="161" href="#161">161</a>     <strong>private</strong> <a href="../../../../org/archive/crawler/frontier/QueueAssignmentPolicy.html">QueueAssignmentPolicy</a> queueAssignmentPolicy = <strong>null</strong>;
+<a name="162" href="#162">162</a>     
+<a name="163" href="#163">163</a>     <em class="comment">// top-level stats</em>
+<a name="164" href="#164">164</a>     <strong>private</strong> <strong>long</strong> succeededFetchCount = 0;
+<a name="165" href="#165">165</a>     <strong>private</strong> <strong>long</strong> failedFetchCount = 0;
+<a name="166" href="#166">166</a>     <em class="comment">// URI's that are disregarded (for example because of robot.txt rules)</em>
+<a name="167" href="#167">167</a>     <strong>private</strong> <strong>long</strong> disregardedUriCount = 0;
+<a name="168" href="#168">168</a> 
+<a name="169" href="#169">169</a>     <strong>private</strong> <strong>long</strong> totalProcessedBytes = 0;
+<a name="170" href="#170">170</a>     
+<a name="171" href="#171">171</a>     <em class="comment">// Flags indicating operator-specified crawl pause/end </em>
+<a name="172" href="#172">172</a>     <strong>private</strong> <strong>boolean</strong> shouldPause = false;
+<a name="173" href="#173">173</a>     <strong>private</strong> <strong>boolean</strong> shouldTerminate = false;
+<a name="174" href="#174">174</a>     
+<a name="175" href="#175">175</a> 
+<a name="176" href="#176">176</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitFrontier.html">AdaptiveRevisitFrontier</a>(String name) {
+<a name="177" href="#177">177</a>         <strong>this</strong>(name, <span class="string">"AdaptiveRevisitFrontier. EXPERIMENTAL Frontier that "</span> +
+<a name="178" href="#178">178</a>                 <span class="string">"will repeatedly visit all "</span> +
+<a name="179" href="#179">179</a>                 <span class="string">"encountered URIs. Wait time between visits is configurable"</span> +
+<a name="180" href="#180">180</a>                 <span class="string">" and is determined by seperate Processor(s). See "</span> +
+<a name="181" href="#181">181</a>                 <span class="string">"WaitEvaluators "</span> +
+<a name="182" href="#182">182</a>                 <span class="string">"See documentation for ARFrontier limitations."</span>);        
+<a name="183" href="#183">183</a>     }
+<a name="184" href="#184">184</a> 
+<a name="185" href="#185">185</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitFrontier.html">AdaptiveRevisitFrontier</a>(String name, String description) {
+<a name="186" href="#186">186</a>         <strong>super</strong>(Frontier.ATTR_NAME, description);
+<a name="187" href="#187">187</a>         addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_DELAY_FACTOR,
+<a name="188" href="#188">188</a>                 <span class="string">"How many multiples of last fetch elapsed time to wait before "</span> +
+<a name="189" href="#189">189</a>                 <span class="string">"recontacting same server"</span>, DEFAULT_DELAY_FACTOR));
+<a name="190" href="#190">190</a>             addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_MAX_DELAY,
+<a name="191" href="#191">191</a>                 <span class="string">"Never wait more than this long, regardless of multiple"</span>,
+<a name="192" href="#192">192</a>                 DEFAULT_MAX_DELAY));
+<a name="193" href="#193">193</a>             addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_MIN_DELAY,
+<a name="194" href="#194">194</a>                 <span class="string">"Always wait this long after one completion before recontacting "</span> +
+<a name="195" href="#195">195</a>                 <span class="string">"same server, regardless of multiple"</span>, DEFAULT_MIN_DELAY));
+<a name="196" href="#196">196</a>              addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_MAX_RETRIES,
+<a name="197" href="#197">197</a>                 <span class="string">"How often to retry fetching a URI that failed to be retrieved.\n"</span> +
+<a name="198" href="#198">198</a>                 <span class="string">"If zero, the crawler will get the robots.txt only."</span>,
+<a name="199" href="#199">199</a>                 DEFAULT_MAX_RETRIES));
+<a name="200" href="#200">200</a>             addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_RETRY_DELAY,
+<a name="201" href="#201">201</a>                     <span class="string">"How long to wait by default until we retry fetching a"</span> +
+<a name="202" href="#202">202</a>                     <span class="string">" URI that failed to be retrieved (seconds). "</span>,
+<a name="203" href="#203">203</a>                     DEFAULT_RETRY_DELAY));
+<a name="204" href="#204">204</a>             addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_PREFERENCE_EMBED_HOPS,
+<a name="205" href="#205">205</a>                     <span class="string">"Number of embedded (or redirected) hops up to which "</span> +
+<a name="206" href="#206">206</a>                     <span class="string">"a URI has higher priority scheduling. For example, if set "</span> +
+<a name="207" href="#207">207</a>                     <span class="string">"to 1 (the default), items such as inline images (1-hop "</span> +
+<a name="208" href="#208">208</a>                     <span class="string">"embedded resources) will be scheduled ahead of all regular "</span> +
+<a name="209" href="#209">209</a>                     <span class="string">"links (or many-hop resources, like nested frames). If set to "</span> +
+<a name="210" href="#210">210</a>                     <span class="string">"zero, no preferencing will occur, and embeds/redirects are "</span> +
+<a name="211" href="#211">211</a>                     <span class="string">"scheduled the same as regular links."</span>,
+<a name="212" href="#212">212</a>                     DEFAULT_PREFERENCE_EMBED_HOPS));
+<a name="213" href="#213">213</a>             <a href="../../../../org/archive/crawler/settings/Type.html">Type</a> t;
+<a name="214" href="#214">214</a>             t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_HOST_VALENCE,
+<a name="215" href="#215">215</a>                     <span class="string">"Maximum number of simultaneous requests to a single"</span> +
+<a name="216" href="#216">216</a>                     <span class="string">" host."</span>,
+<a name="217" href="#217">217</a>                     DEFAULT_HOST_VALENCE));
+<a name="218" href="#218">218</a>             t.setExpertSetting(<strong>true</strong>);
+<a name="219" href="#219">219</a>             t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_QUEUE_IGNORE_WWW,
+<a name="220" href="#220">220</a>                     <span class="string">"If true then documents from x.com, www.x.com and any "</span> +
+<a name="221" href="#221">221</a>                     <span class="string">"www[0-9]+.x.com will be assigned to the same queue."</span>,
+<a name="222" href="#222">222</a>                     DEFAULT_QUEUE_IGNORE_WWW));
+<a name="223" href="#223">223</a>             t.setExpertSetting(<strong>true</strong>);
+<a name="224" href="#224">224</a>             t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(
+<a name="225" href="#225">225</a>                     ATTR_FORCE_QUEUE,
+<a name="226" href="#226">226</a>                     <span class="string">"The queue name into which to force URIs. Should "</span>
+<a name="227" href="#227">227</a>                     + <span class="string">"be left blank at global level.  Specify a "</span>
+<a name="228" href="#228">228</a>                     + <span class="string">"per-domain/per-host override to force URIs into "</span>
+<a name="229" href="#229">229</a>                     + <span class="string">"a particular named queue, regardless of the assignment "</span>
+<a name="230" href="#230">230</a>                     + <span class="string">"policy in effect (domain or ip-based politeness). "</span>
+<a name="231" href="#231">231</a>                     + <span class="string">"This could be used on domains known to all be from "</span>
+<a name="232" href="#232">232</a>                     + <span class="string">"the same small set of IPs (eg blogspot, dailykos, etc.) "</span>
+<a name="233" href="#233">233</a>                     + <span class="string">"to simulate IP-based politeness, or it could be used if "</span>
+<a name="234" href="#234">234</a>                     + <span class="string">"you wanted to enforce politeness over a whole domain, even "</span>
+<a name="235" href="#235">235</a>                     + <span class="string">"though the subdomains are split across many IPs."</span>,
+<a name="236" href="#236">236</a>                     DEFAULT_FORCE_QUEUE));
+<a name="237" href="#237">237</a>             t.setOverrideable(<strong>true</strong>);
+<a name="238" href="#238">238</a>             t.setExpertSetting(<strong>true</strong>);
+<a name="239" href="#239">239</a>             t.addConstraint(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/RegularExpressionConstraint.html">RegularExpressionConstraint</a>(ACCEPTABLE_FORCE_QUEUE,
+<a name="240" href="#240">240</a>                     Level.WARNING, <span class="string">"This field must contain only alphanumeric "</span>
+<a name="241" href="#241">241</a>                     + <span class="string">"characters plus period, dash, comma, colon, or underscore."</span>));
+<a name="242" href="#242">242</a>             t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_USE_URI_UNIQ_FILTER,
+<a name="243" href="#243">243</a>                     <span class="string">"If true then the Frontier will use a seperate "</span> +
+<a name="244" href="#244">244</a>                     <span class="string">"datastructure to detect and eliminate duplicates.\n"</span> +
+<a name="245" href="#245">245</a>                     <span class="string">"This is required for Canonicalization rules to work."</span>,
+<a name="246" href="#246">246</a>                     DEFAULT_USE_URI_UNIQ_FILTER));
+<a name="247" href="#247">247</a>             t.setExpertSetting(<strong>true</strong>);
+<a name="248" href="#248">248</a>             t.setOverrideable(false);
+<a name="249" href="#249">249</a>             <em class="comment">// Read the list of permissible choices from heritrix.properties.</em>
+<a name="250" href="#250">250</a>             <em class="comment">// Its a list of space- or comma-separated values.</em>
+<a name="251" href="#251">251</a>             String queueStr = System.getProperty(AbstractFrontier.<strong>class</strong>.getName() +
+<a name="252" href="#252">252</a>                     <span class="string">"."</span> + ATTR_QUEUE_ASSIGNMENT_POLICY,
+<a name="253" href="#253">253</a>                     HostnameQueueAssignmentPolicy.<strong>class</strong>.getName() + <span class="string">" "</span> +
+<a name="254" href="#254">254</a>                     IPQueueAssignmentPolicy.<strong>class</strong>.getName() + <span class="string">" "</span> +
+<a name="255" href="#255">255</a>                     BucketQueueAssignmentPolicy.<strong>class</strong>.getName() + <span class="string">" "</span> +
+<a name="256" href="#256">256</a>                     SurtAuthorityQueueAssignmentPolicy.<strong>class</strong>.getName() + <span class="string">" "</span> +
+<a name="257" href="#257">257</a>                     TopmostAssignedSurtQueueAssignmentPolicy.<strong>class</strong>.getName());
+<a name="258" href="#258">258</a>             Pattern p = Pattern.compile(<span class="string">"&#47;&#47;s*,&#47;&#47;s*|&#47;&#47;s+"</span>);
+<a name="259" href="#259">259</a>             String [] queues = p.split(queueStr);
+<a name="260" href="#260">260</a>             <strong>if</strong> (queues.length &lt;= 0) {
+<a name="261" href="#261">261</a>                 <strong>throw</strong> <strong>new</strong> RuntimeException(<span class="string">"Failed parse of "</span> +
+<a name="262" href="#262">262</a>                         <span class="string">" assignment queue policy string: "</span> + queueStr);
+<a name="263" href="#263">263</a>             }
+<a name="264" href="#264">264</a>             t = addElementToDefinition(<strong>new</strong> <a href="../../../../org/archive/crawler/settings/SimpleType.html">SimpleType</a>(ATTR_QUEUE_ASSIGNMENT_POLICY,
+<a name="265" href="#265">265</a>                 <span class="string">"Defines how to assign URIs to queues. Can assign by host, "</span> +
+<a name="266" href="#266">266</a>                 <span class="string">"by ip, and into one of a fixed set of buckets (1k). NOTE: "</span> +
+<a name="267" href="#267">267</a>                 <span class="string">"Use of policies other than the default "</span> +
+<a name="268" href="#268">268</a>                 <span class="string">"HostnameQueueAssignmentPolicy is untested and provided "</span> +
+<a name="269" href="#269">269</a>                 <span class="string">"for use at your own risk. Further, changing this policy "</span> +
+<a name="270" href="#270">270</a>                 <span class="string">"during a crawl, or between restarts using the same data "</span> +
+<a name="271" href="#271">271</a>                 <span class="string">"directory, is likely to cause unrecoverable problems."</span>,
+<a name="272" href="#272">272</a>                 DEFAULT_QUEUE_ASSIGNMENT_POLICY, queues));
+<a name="273" href="#273">273</a>             t.setExpertSetting(<strong>true</strong>);
+<a name="274" href="#274">274</a> 
+<a name="275" href="#275">275</a>         <em class="comment">// Register persistent CrawlURI items </em>
+<a name="276" href="#276">276</a>         CrawlURI.addAlistPersistentMember(A_CONTENT_STATE_KEY);
+<a name="277" href="#277">277</a>         CrawlURI.addAlistPersistentMember(A_TIME_OF_NEXT_PROCESSING);
+<a name="278" href="#278">278</a>     }
+<a name="279" href="#279">279</a> 
+<a name="280" href="#280">280</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> initialize(<a href="../../../../org/archive/crawler/framework/CrawlController.html">CrawlController</a> c)
+<a name="281" href="#281">281</a>             throws FatalConfigurationException, IOException {
+<a name="282" href="#282">282</a>         controller = c;
+<a name="283" href="#283">283</a>         controller.addCrawlStatusListener(<strong>this</strong>);
+<a name="284" href="#284">284</a> 
+<a name="285" href="#285">285</a> 		String clsName = (String) getUncheckedAttribute(<strong>null</strong>,ATTR_QUEUE_ASSIGNMENT_POLICY);
+<a name="286" href="#286">286</a> 		<strong>try</strong> {
+<a name="287" href="#287">287</a> 			queueAssignmentPolicy = (QueueAssignmentPolicy) Class.forName(clsName).newInstance();
+<a name="288" href="#288">288</a> 		} <strong>catch</strong> (Exception e) {
+<a name="289" href="#289">289</a> 			<strong>throw</strong> <strong>new</strong> RuntimeException(e);
+<a name="290" href="#290">290</a> 		}
+<a name="291" href="#291">291</a>         
+<a name="292" href="#292">292</a>         hostQueues = <strong>new</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitQueueList.html">AdaptiveRevisitQueueList</a>(c.getBdbEnvironment(),
+<a name="293" href="#293">293</a>             c.getBdbEnvironment().getClassCatalog());
+<a name="294" href="#294">294</a>         
+<a name="295" href="#295">295</a>         <strong>if</strong>(((Boolean)getUncheckedAttribute(
+<a name="296" href="#296">296</a>                 <strong>null</strong>,ATTR_USE_URI_UNIQ_FILTER)).booleanValue()){
+<a name="297" href="#297">297</a>             alreadyIncluded = createAlreadyIncluded();
+<a name="298" href="#298">298</a>         } <strong>else</strong> {
+<a name="299" href="#299">299</a>             alreadyIncluded = <strong>null</strong>;
+<a name="300" href="#300">300</a>         }
+<a name="301" href="#301">301</a>         
+<a name="302" href="#302">302</a>         loadSeeds();
+<a name="303" href="#303">303</a>     }
+<a name="304" href="#304">304</a> 
+<a name="305" href="#305">305</a>     <em>/**<em>*</em></em>
+<a name="306" href="#306">306</a> <em>     * Create a UriUniqFilter that will serve as record </em>
+<a name="307" href="#307">307</a> <em>     * of already seen URIs.</em>
+<a name="308" href="#308">308</a> <em>     *</em>
+<a name="309" href="#309">309</a> <em>     * @return A UURISet that will serve as a record of already seen URIs</em>
+<a name="310" href="#310">310</a> <em>     * @throws IOException</em>
+<a name="311" href="#311">311</a> <em>     */</em>
+<a name="312" href="#312">312</a>     <strong>protected</strong> <a href="../../../../org/archive/crawler/datamodel/UriUniqFilter.html">UriUniqFilter</a> createAlreadyIncluded() throws IOException {
+<a name="313" href="#313">313</a>         <a href="../../../../org/archive/crawler/datamodel/UriUniqFilter.html">UriUniqFilter</a> uuf = <strong>new</strong> <a href="../../../../org/archive/crawler/util/BdbUriUniqFilter.html">BdbUriUniqFilter</a>(
+<a name="314" href="#314">314</a>                 <strong>this</strong>.controller.getBdbEnvironment());
+<a name="315" href="#315">315</a>         uuf.setDestination(<strong>this</strong>);
+<a name="316" href="#316">316</a>         <strong>return</strong> uuf;
+<a name="317" href="#317">317</a>     }
+<a name="318" href="#318">318</a>     
+<a name="319" href="#319">319</a>     <em>/**<em>*</em></em>
+<a name="320" href="#320">320</a> <em>     * Loads the seeds</em>
+<a name="321" href="#321">321</a> <em>     * &lt;p></em>
+<a name="322" href="#322">322</a> <em>     * This method is called by initialize() and kickUpdate()</em>
+<a name="323" href="#323">323</a> <em>     */</em>
+<a name="324" href="#324">324</a>     <strong>public</strong> <strong>void</strong> loadSeeds() {
+<a name="325" href="#325">325</a>         Writer ignoredWriter = <strong>new</strong> StringWriter();
+<a name="326" href="#326">326</a>         <em class="comment">// Get the seeds to refresh.</em>
+<a name="327" href="#327">327</a>         Iterator iter = <strong>this</strong>.controller.getScope().seedsIterator(ignoredWriter);
+<a name="328" href="#328">328</a>         <strong>while</strong> (iter.hasNext()) {
+<a name="329" href="#329">329</a>             <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri =
+<a name="330" href="#330">330</a>                 CandidateURI.createSeedCandidateURI((UURI)iter.next());
+<a name="331" href="#331">331</a>             caUri.setSchedulingDirective(CandidateURI.MEDIUM);
+<a name="332" href="#332">332</a>             schedule(caUri);
+<a name="333" href="#333">333</a>         }
+<a name="334" href="#334">334</a>         batchFlush();
+<a name="335" href="#335">335</a>         <em class="comment">// save ignored items (if any) where they can be consulted later</em>
+<a name="336" href="#336">336</a>         AbstractFrontier.saveIgnoredItems(
+<a name="337" href="#337">337</a>                 ignoredWriter.toString(), 
+<a name="338" href="#338">338</a>                 controller.getDisk());
+<a name="339" href="#339">339</a>     }
+<a name="340" href="#340">340</a>     
+<a name="341" href="#341">341</a>     <strong>public</strong> String getClassKey(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> cauri) {
+<a name="342" href="#342">342</a>         String queueKey = (String)getUncheckedAttribute(cauri,
+<a name="343" href="#343">343</a>                 ATTR_FORCE_QUEUE);
+<a name="344" href="#344">344</a>             <strong>if</strong> (<span class="string">""</span>.equals(queueKey)) {
+<a name="345" href="#345">345</a>                 <em class="comment">// Typical case, barring overrides</em>
+<a name="346" href="#346">346</a>                 queueKey =
+<a name="347" href="#347">347</a>                     queueAssignmentPolicy.getClassKey(controller, cauri);
+<a name="348" href="#348">348</a>                 <em class="comment">// The queueAssignmentPolicy is always based on Hostnames</em>
+<a name="349" href="#349">349</a>                 <em class="comment">// We may need to remove any www[0-9]{0,}\. prefixes from the</em>
+<a name="350" href="#350">350</a>                 <em class="comment">// hostnames</em>
+<a name="351" href="#351">351</a>                 <strong>if</strong>(((Boolean)getUncheckedAttribute(
+<a name="352" href="#352">352</a>                         cauri,ATTR_QUEUE_IGNORE_WWW)).booleanValue()){
+<a name="353" href="#353">353</a>                     queueKey = queueKey.replaceAll(<span class="string">"^www[0-9]{0,}&#47;&#47;."</span>,<span class="string">""</span>);
+<a name="354" href="#354">354</a>                 }
+<a name="355" href="#355">355</a>             }
+<a name="356" href="#356">356</a>             <strong>return</strong> queueKey;
+<a name="357" href="#357">357</a>     }
+<a name="358" href="#358">358</a> 
+<a name="359" href="#359">359</a>     <em>/**<em>*</em></em>
+<a name="360" href="#360">360</a> <em>     * Canonicalize passed uuri. Its would be sweeter if this canonicalize</em>
+<a name="361" href="#361">361</a> <em>     * function was encapsulated by that which it canonicalizes but because</em>
+<a name="362" href="#362">362</a> <em>     * settings change with context -- i.e. there may be overrides in operation</em>
+<a name="363" href="#363">363</a> <em>     * for a particular URI -- its not so easy; Each CandidateURI would need a</em>
+<a name="364" href="#364">364</a> <em>     * reference to the settings system. That's awkward to pass in.</em>
+<a name="365" href="#365">365</a> <em>     * </em>
+<a name="366" href="#366">366</a> <em>     * @param uuri Candidate URI to canonicalize.</em>
+<a name="367" href="#367">367</a> <em>     * @return Canonicalized version of passed &lt;code>uuri&lt;/code>.</em>
+<a name="368" href="#368">368</a> <em>     */</em>
+<a name="369" href="#369">369</a>     <strong>protected</strong> String canonicalize(<a href="../../../../org/archive/net/UURI.html">UURI</a> uuri) {
+<a name="370" href="#370">370</a>         <strong>return</strong> Canonicalizer.canonicalize(uuri, <strong>this</strong>.controller.getOrder());
+<a name="371" href="#371">371</a>     }
+<a name="372" href="#372">372</a> 
+<a name="373" href="#373">373</a>     <em>/**<em>*</em></em>
+<a name="374" href="#374">374</a> <em>     * Canonicalize passed CandidateURI. This method differs from</em>
+<a name="375" href="#375">375</a> <em>     * {@link #canonicalize(UURI)} in that it takes a look at</em>
+<a name="376" href="#376">376</a> <em>     * the CandidateURI context possibly overriding any canonicalization effect if</em>
+<a name="377" href="#377">377</a> <em>     * it could make us miss content. If canonicalization produces an URL that</em>
+<a name="378" href="#378">378</a> <em>     * was 'alreadyseen', but the entry in the 'alreadyseen' database did</em>
+<a name="379" href="#379">379</a> <em>     * nothing but redirect to the current URL, we won't get the current URL;</em>
+<a name="380" href="#380">380</a> <em>     * we'll think we've already see it. Examples would be archive.org</em>
+<a name="381" href="#381">381</a> <em>     * redirecting to www.archive.org or the inverse, www.netarkivet.net</em>
+<a name="382" href="#382">382</a> <em>     * redirecting to netarkivet.net (assuming stripWWW rule enabled).</em>
+<a name="383" href="#383">383</a> <em>     * &lt;p>Note, this method under circumstance sets the forceFetch flag.</em>
+<a name="384" href="#384">384</a> <em>     * </em>
+<a name="385" href="#385">385</a> <em>     * @param cauri CandidateURI to examine.</em>
+<a name="386" href="#386">386</a> <em>     * @return Canonicalized &lt;code>cacuri&lt;/code>.</em>
+<a name="387" href="#387">387</a> <em>     */</em>
+<a name="388" href="#388">388</a>     <strong>protected</strong> String canonicalize(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> cauri) {
+<a name="389" href="#389">389</a>         String canon = canonicalize(cauri.getUURI());
+<a name="390" href="#390">390</a>         <strong>if</strong> (cauri.isLocation()) {
+<a name="391" href="#391">391</a>             <em class="comment">// If the via is not the same as where we're being redirected (i.e.</em>
+<a name="392" href="#392">392</a>             <em class="comment">// we're not being redirected back to the same page, AND the</em>
+<a name="393" href="#393">393</a>             <em class="comment">// canonicalization of the via is equal to the the current cauri, </em>
+<a name="394" href="#394">394</a>             <em class="comment">// THEN forcefetch (Forcefetch so no chance of our not crawling</em>
+<a name="395" href="#395">395</a>             <em class="comment">// content because alreadyseen check things its seen the url before.</em>
+<a name="396" href="#396">396</a>             <em class="comment">// An example of an URL that redirects to itself is:</em>
+<a name="397" href="#397">397</a>             <em class="comment">// http://bridalelegance.com/images/buttons3/tuxedos-off.gif.</em>
+<a name="398" href="#398">398</a>             <em class="comment">// An example of an URL whose canonicalization equals its via's</em>
+<a name="399" href="#399">399</a>             <em class="comment">// canonicalization, and we want to fetch content at the</em>
+<a name="400" href="#400">400</a>             <em class="comment">// redirection (i.e. need to set forcefetch), is netarkivet.dk.</em>
+<a name="401" href="#401">401</a>             <strong>if</strong> (!cauri.toString().equals(cauri.getVia().toString()) &amp;&amp;
+<a name="402" href="#402">402</a>                     canonicalize(cauri.getVia()).equals(canon)) {
+<a name="403" href="#403">403</a>                 cauri.setForceFetch(<strong>true</strong>);
+<a name="404" href="#404">404</a>             }
+<a name="405" href="#405">405</a>         }
+<a name="406" href="#406">406</a>         <strong>return</strong> canon;
+<a name="407" href="#407">407</a>     }
+<a name="408" href="#408">408</a> 
+<a name="409" href="#409">409</a>     <em>/**<em>*</em></em>
+<a name="410" href="#410">410</a> <em>     * </em>
+<a name="411" href="#411">411</a> <em>     * @param caUri The URI to schedule.</em>
+<a name="412" href="#412">412</a> <em>     */</em>
+<a name="413" href="#413">413</a>     <strong>protected</strong> <strong>void</strong> innerSchedule(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri) {
+<a name="414" href="#414">414</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi;
+<a name="415" href="#415">415</a>         <strong>if</strong>(caUri instanceof <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a>) {
+<a name="416" href="#416">416</a>             curi = (CrawlURI) caUri;
+<a name="417" href="#417">417</a>         } <strong>else</strong> {
+<a name="418" href="#418">418</a>             curi = CrawlURI.from(caUri,System.currentTimeMillis());
+<a name="419" href="#419">419</a>             curi.putLong(A_TIME_OF_NEXT_PROCESSING,
+<a name="420" href="#420">420</a>                 System.currentTimeMillis());
+<a name="421" href="#421">421</a>             <em class="comment">// New CrawlURIs get 'current time' as the time of next processing.</em>
+<a name="422" href="#422">422</a>         }
+<a name="423" href="#423">423</a>         
+<a name="424" href="#424">424</a>         <strong>if</strong>(curi.getClassKey() == <strong>null</strong>){
+<a name="425" href="#425">425</a>             curi.setClassKey(getClassKey(curi));
+<a name="426" href="#426">426</a>         }
+<a name="427" href="#427">427</a> 
+<a name="428" href="#428">428</a>         <strong>if</strong>(curi.isSeed() &amp;&amp; curi.getVia() != <strong>null</strong>
+<a name="429" href="#429">429</a>                 &amp;&amp; curi.flattenVia().length() > 0) {
+<a name="430" href="#430">430</a>             <em class="comment">// The only way a seed can have a non-empty via is if it is the</em>
+<a name="431" href="#431">431</a>             <em class="comment">// result of a seed redirect.  Add it to the seeds list.</em>
+<a name="432" href="#432">432</a>             <em class="comment">//</em>
+<a name="433" href="#433">433</a>             <em class="comment">// This is a feature.  This is handling for case where a seed</em>
+<a name="434" href="#434">434</a>             <em class="comment">// gets immediately redirected to another page.  What we're doing</em>
+<a name="435" href="#435">435</a>             <em class="comment">// is treating the immediate redirect target as a seed.</em>
+<a name="436" href="#436">436</a>             <strong>this</strong>.controller.getScope().addSeed(curi);
+<a name="437" href="#437">437</a>             <em class="comment">// And it needs rapid scheduling.</em>
+<a name="438" href="#438">438</a>             curi.setSchedulingDirective(CandidateURI.MEDIUM);
+<a name="439" href="#439">439</a>         }
+<a name="440" href="#440">440</a>         
+<a name="441" href="#441">441</a>         <em class="comment">// Optionally preferencing embeds up to MEDIUM</em>
+<a name="442" href="#442">442</a>         <strong>int</strong> prefHops = ((Integer) getUncheckedAttribute(curi,
+<a name="443" href="#443">443</a>                 ATTR_PREFERENCE_EMBED_HOPS)).intValue();
+<a name="444" href="#444">444</a>         <strong>boolean</strong> prefEmbed = false;
+<a name="445" href="#445">445</a>         <strong>if</strong> (prefHops > 0) {
+<a name="446" href="#446">446</a>             <strong>int</strong> embedHops = curi.getTransHops();
+<a name="447" href="#447">447</a>             <strong>if</strong> (embedHops > 0 &amp;&amp; embedHops &lt;= prefHops
+<a name="448" href="#448">448</a>                     &amp;&amp; curi.getSchedulingDirective() == CandidateURI.NORMAL) {
+<a name="449" href="#449">449</a>                 <em class="comment">// number of embed hops falls within the preferenced range, and</em>
+<a name="450" href="#450">450</a>                 <em class="comment">// uri is not already MEDIUM -- so promote it</em>
+<a name="451" href="#451">451</a>                 curi.setSchedulingDirective(CandidateURI.MEDIUM);
+<a name="452" href="#452">452</a>                 prefEmbed = <strong>true</strong>;
+<a name="453" href="#453">453</a>             }
+<a name="454" href="#454">454</a>         }
+<a name="455" href="#455">455</a> 
+<a name="456" href="#456">456</a>         <em class="comment">// Finally, allow curi to be fetched right now </em>
+<a name="457" href="#457">457</a>         <em class="comment">// (while not overriding overdue items)</em>
+<a name="458" href="#458">458</a>         curi.putLong(A_TIME_OF_NEXT_PROCESSING,
+<a name="459" href="#459">459</a>                 System.currentTimeMillis());
+<a name="460" href="#460">460</a>         
+<a name="461" href="#461">461</a>         <strong>try</strong> {
+<a name="462" href="#462">462</a>             logger.finest(<span class="string">"scheduling "</span> + curi.toString());
+<a name="463" href="#463">463</a>             <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = getHQ(curi);
+<a name="464" href="#464">464</a>             hq.add(curi,prefEmbed);
+<a name="465" href="#465">465</a>         } <strong>catch</strong> (IOException e) {
+<a name="466" href="#466">466</a>             <em class="comment">// TODO Handle IOExceptions</em>
+<a name="467" href="#467">467</a>             e.printStackTrace();
+<a name="468" href="#468">468</a>         }
+<a name="469" href="#469">469</a>         
+<a name="470" href="#470">470</a>     }
+<a name="471" href="#471">471</a> 
+<a name="472" href="#472">472</a>     <em>/**<em>*</em></em>
+<a name="473" href="#473">473</a> <em>     * Get the AdaptiveRevisitHostQueue for the given CrawlURI, creating</em>
+<a name="474" href="#474">474</a> <em>     * it if necessary. </em>
+<a name="475" href="#475">475</a> <em>     * </em>
+<a name="476" href="#476">476</a> <em>     * @param curi CrawlURI for which to get a queue</em>
+<a name="477" href="#477">477</a> <em>     * @return AdaptiveRevisitHostQueue for given CrawlURI</em>
+<a name="478" href="#478">478</a> <em>     * @throws IOException</em>
+<a name="479" href="#479">479</a> <em>     */</em>
+<a name="480" href="#480">480</a>     <strong>protected</strong> <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> getHQ(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) throws IOException {
+<a name="481" href="#481">481</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getHQ(curi.getClassKey());
+<a name="482" href="#482">482</a>         <strong>if</strong>(hq == <strong>null</strong>){
+<a name="483" href="#483">483</a>             <em class="comment">// Need to create it.</em>
+<a name="484" href="#484">484</a>             <strong>int</strong> valence = DEFAULT_HOST_VALENCE.<strong>int</strong>Value();
+<a name="485" href="#485">485</a>             <strong>try</strong> {
+<a name="486" href="#486">486</a>                 valence = ((Integer)getAttribute(curi,ATTR_HOST_VALENCE)).intValue();
+<a name="487" href="#487">487</a>             } <strong>catch</strong> (AttributeNotFoundException e2) {
+<a name="488" href="#488">488</a>                 logger.severe(<span class="string">"Unable to load valence."</span>);
+<a name="489" href="#489">489</a>             }
+<a name="490" href="#490">490</a>             hq = hostQueues.createHQ(curi.getClassKey(),valence);
+<a name="491" href="#491">491</a>         }
+<a name="492" href="#492">492</a>         <strong>return</strong> hq;
+<a name="493" href="#493">493</a>     }
+<a name="494" href="#494">494</a> 
+<a name="495" href="#495">495</a>     <strong>protected</strong> <strong>void</strong> batchSchedule(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri) {
+<a name="496" href="#496">496</a>         threadWaiting.getQueue().enqueue(caUri);
+<a name="497" href="#497">497</a>     }
+<a name="498" href="#498">498</a> 
+<a name="499" href="#499">499</a>     <strong>synchronized</strong> <strong>protected</strong> <strong>void</strong> batchFlush() {
+<a name="500" href="#500">500</a>         innerBatchFlush();
+<a name="501" href="#501">501</a>     }
+<a name="502" href="#502">502</a> 
+<a name="503" href="#503">503</a>     <strong>private</strong> <strong>void</strong> innerBatchFlush() {
+<a name="504" href="#504">504</a>         <a href="../../../../org/archive/queue/Queue.html">Queue</a> q = threadWaiting.getQueue();
+<a name="505" href="#505">505</a>         <strong>while</strong>(!q.isEmpty()) {
+<a name="506" href="#506">506</a>             <a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caUri = (CandidateURI)q.dequeue();
+<a name="507" href="#507">507</a>             <strong>if</strong>(alreadyIncluded != <strong>null</strong>){
+<a name="508" href="#508">508</a>                 String cannon = canonicalize(caUri);
+<a name="509" href="#509">509</a>                 System.out.println(<span class="string">"Cannon of "</span> + caUri + <span class="string">" is "</span> + cannon);
+<a name="510" href="#510">510</a>                 <strong>if</strong> (caUri.forceFetch()) {
+<a name="511" href="#511">511</a>                     alreadyIncluded.addForce(cannon, caUri);
+<a name="512" href="#512">512</a>                 } <strong>else</strong> {
+<a name="513" href="#513">513</a>                     alreadyIncluded.add(cannon, caUri);
+<a name="514" href="#514">514</a>                 }
+<a name="515" href="#515">515</a>             } <strong>else</strong> {
+<a name="516" href="#516">516</a>                 innerSchedule(caUri);
+<a name="517" href="#517">517</a>             }
+<a name="518" href="#518">518</a>         }
+<a name="519" href="#519">519</a>     }
+<a name="520" href="#520">520</a>     
+<a name="521" href="#521">521</a>     <em>/**<em>*</em></em>
+<a name="522" href="#522">522</a> <em>     * @param curi</em>
+<a name="523" href="#523">523</a> <em>     * @return the CrawlServer to be associated with this CrawlURI</em>
+<a name="524" href="#524">524</a> <em>     */</em>
+<a name="525" href="#525">525</a>     <strong>protected</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlServer.html">CrawlServer</a> getServer(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="526" href="#526">526</a>         <strong>return</strong> <strong>this</strong>.controller.getServerCache().getServerFor(curi);
+<a name="527" href="#527">527</a>     }
+<a name="528" href="#528">528</a> 
+<a name="529" href="#529">529</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="530" href="#530">530</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#next()</em>
+<a name="531" href="#531">531</a> <em class="comment">     */</em>
+<a name="532" href="#532">532</a>     <strong>public</strong> <strong>synchronized</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> next() 
+<a name="533" href="#533">533</a>             throws InterruptedException, <a href="../../../../org/archive/crawler/framework/exceptions/EndedException.html">EndedException</a> {
+<a name="534" href="#534">534</a>         controller.checkFinish();
+<a name="535" href="#535">535</a>         
+<a name="536" href="#536">536</a>         <strong>while</strong>(shouldPause){
+<a name="537" href="#537">537</a>             controller.toePaused();
+<a name="538" href="#538">538</a>             wait();
+<a name="539" href="#539">539</a>         }
+<a name="540" href="#540">540</a>         
+<a name="541" href="#541">541</a>         <strong>if</strong>(shouldTerminate){
+<a name="542" href="#542">542</a>             <strong>throw</strong> <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/EndedException.html">EndedException</a>(<span class="string">"terminated"</span>);
+<a name="543" href="#543">543</a>         }
+<a name="544" href="#544">544</a>         
+<a name="545" href="#545">545</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getTopHQ();
+<a name="546" href="#546">546</a>         
+<a name="547" href="#547">547</a>         <strong>while</strong>(hq.getState() != AdaptiveRevisitHostQueue.HQSTATE_READY){
+<a name="548" href="#548">548</a>             <em class="comment">// Ok, so we don't have a ready queue, wait until the top one</em>
+<a name="549" href="#549">549</a>             <em class="comment">// will become available.</em>
+<a name="550" href="#550">550</a>             <strong>long</strong> waitTime = hq.getNextReadyTime() - System.currentTimeMillis();
+<a name="551" href="#551">551</a>             <strong>if</strong>(waitTime > 0){
+<a name="552" href="#552">552</a>                 wait(waitTime);
+<a name="553" href="#553">553</a>             }
+<a name="554" href="#554">554</a>             <em class="comment">// The top HQ may have changed, so get it again</em>
+<a name="555" href="#555">555</a>             hq = hostQueues.getTopHQ(); 
+<a name="556" href="#556">556</a>         }             
+<a name="557" href="#557">557</a> 
+<a name="558" href="#558">558</a>         <strong>if</strong>(shouldTerminate){
+<a name="559" href="#559">559</a>             <em class="comment">// May have been terminated while thread was waiting for IO</em>
+<a name="560" href="#560">560</a>             <strong>throw</strong> <strong>new</strong> <a href="../../../../org/archive/crawler/framework/exceptions/EndedException.html">EndedException</a>(<span class="string">"terminated"</span>);
+<a name="561" href="#561">561</a>         }
+<a name="562" href="#562">562</a>         
+<a name="563" href="#563">563</a>         <strong>try</strong> {
+<a name="564" href="#564">564</a>             <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi = hq.next();
+<a name="565" href="#565">565</a>             <em class="comment">// Populate CURI with 'transient' variables such as server.</em>
+<a name="566" href="#566">566</a>             logger.fine(<span class="string">"Issuing "</span> + curi.toString());
+<a name="567" href="#567">567</a>             <strong>long</strong> temp = curi.getLong(A_TIME_OF_NEXT_PROCESSING);
+<a name="568" href="#568">568</a>             <strong>long</strong> currT = System.currentTimeMillis();
+<a name="569" href="#569">569</a>             <strong>long</strong> overdue = (currT-temp);
+<a name="570" href="#570">570</a>             <strong>if</strong>(logger.isLoggable(Level.FINER)){
+<a name="571" href="#571">571</a>                 String waitI = <span class="string">"not set"</span>;
+<a name="572" href="#572">572</a>                 <strong>if</strong>(curi.containsKey(A_WAIT_INTERVAL)){
+<a name="573" href="#573">573</a>                     waitI = ArchiveUtils.formatMillisecondsToConventional(
+<a name="574" href="#574">574</a>                             curi.getLong(A_WAIT_INTERVAL));
+<a name="575" href="#575">575</a>                 }
+<a name="576" href="#576">576</a>                 logger.finer(<span class="string">"Wait interval: "</span> + waitI + 
+<a name="577" href="#577">577</a>                         <span class="string">", Time of next proc: "</span> + temp +
+<a name="578" href="#578">578</a>                         <span class="string">", Current time: "</span> + currT +
+<a name="579" href="#579">579</a>                         <span class="string">", Overdue by: "</span> + overdue + <span class="string">"ms"</span>);
+<a name="580" href="#580">580</a>             }
+<a name="581" href="#581">581</a>             <strong>if</strong>(overdue &lt; 0){
+<a name="582" href="#582">582</a>                 <em class="comment">// This should never happen.</em>
+<a name="583" href="#583">583</a>                 logger.severe(<span class="string">"Time overdue for "</span> + curi.toString() + 
+<a name="584" href="#584">584</a>                         <span class="string">"is negative ("</span> + overdue + <span class="string">")!"</span>);
+<a name="585" href="#585">585</a>             }
+<a name="586" href="#586">586</a>             curi.putLong(A_FETCH_OVERDUE,overdue);
+<a name="587" href="#587">587</a>             <strong>return</strong> curi;
+<a name="588" href="#588">588</a>         } <strong>catch</strong> (IOException e) {
+<a name="589" href="#589">589</a>             <em class="comment">// TODO: Need to handle this in an intelligent manner. </em>
+<a name="590" href="#590">590</a>             <em class="comment">//       Is probably fatal?</em>
+<a name="591" href="#591">591</a>             e.printStackTrace();
+<a name="592" href="#592">592</a>         }
+<a name="593" href="#593">593</a> 
+<a name="594" href="#594">594</a>         <strong>return</strong> <strong>null</strong>;
+<a name="595" href="#595">595</a>     }
+<a name="596" href="#596">596</a> 
+<a name="597" href="#597">597</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="598" href="#598">598</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#isEmpty()</em>
+<a name="599" href="#599">599</a> <em class="comment">     */</em>
+<a name="600" href="#600">600</a>     <strong>public</strong> <strong>boolean</strong> isEmpty() {
+<a name="601" href="#601">601</a>         <em class="comment">// Technically, the Frontier should never become empty since URIs are</em>
+<a name="602" href="#602">602</a>         <em class="comment">// only discarded under exceptional circumstances.</em>
+<a name="603" href="#603">603</a>         <strong>return</strong> hostQueues.getSize() == 0;
+<a name="604" href="#604">604</a>     }
+<a name="605" href="#605">605</a> 
+<a name="606" href="#606">606</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="607" href="#607">607</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#schedule(org.archive.crawler.datamodel.CandidateURI)</em>
+<a name="608" href="#608">608</a> <em class="comment">     */</em>
+<a name="609" href="#609">609</a>     <strong>public</strong> <strong>void</strong> schedule(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> caURI) {
+<a name="610" href="#610">610</a>         batchSchedule(caURI);
+<a name="611" href="#611">611</a>         <strong>if</strong>(!(Thread.currentThread() instanceof ToeThread)) {
+<a name="612" href="#612">612</a>             <em class="comment">// can't count on processing-cycle flush; force</em>
+<a name="613" href="#613">613</a>             batchFlush();
+<a name="614" href="#614">614</a>         }
+<a name="615" href="#615">615</a>     }
+<a name="616" href="#616">616</a> 
+<a name="617" href="#617">617</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="618" href="#618">618</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#finished(org.archive.crawler.datamodel.CrawlURI)</em>
+<a name="619" href="#619">619</a> <em class="comment">     */</em>
+<a name="620" href="#620">620</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> finished(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="621" href="#621">621</a>         logger.fine(curi.toString()+ <span class="string">" "</span> + 
+<a name="622" href="#622">622</a>                 CrawlURI.fetchStatusCodesToString(curi.getFetchStatus()));
+<a name="623" href="#623">623</a>         curi.incrementFetchAttempts();
+<a name="624" href="#624">624</a>         logLocalizedErrors(curi);
+<a name="625" href="#625">625</a> 
+<a name="626" href="#626">626</a>         innerFinished(curi);
+<a name="627" href="#627">627</a>     }
+<a name="628" href="#628">628</a>     
+<a name="629" href="#629">629</a>     <strong>protected</strong> <strong>synchronized</strong> <strong>void</strong> innerFinished(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="630" href="#630">630</a>         <strong>try</strong> {
+<a name="631" href="#631">631</a>             innerBatchFlush();
+<a name="632" href="#632">632</a>             
+<a name="633" href="#633">633</a>             <strong>if</strong> (curi.isSuccess()) {
+<a name="634" href="#634">634</a>                 successDisposition(curi);
+<a name="635" href="#635">635</a>             } <strong>else</strong> <strong>if</strong> (needsPromptRetry(curi)) {
+<a name="636" href="#636">636</a>                 <em class="comment">// Consider statuses which allow nearly-immediate retry</em>
+<a name="637" href="#637">637</a>                 <em class="comment">// (like deferred to allow precondition to be fetched)</em>
+<a name="638" href="#638">638</a>                 reschedule(curi,false);
+<a name="639" href="#639">639</a>             } <strong>else</strong> <strong>if</strong> (needsRetrying(curi)) {
+<a name="640" href="#640">640</a>                 <em class="comment">// Consider errors which can be retried</em>
+<a name="641" href="#641">641</a>                 reschedule(curi,<strong>true</strong>);
+<a name="642" href="#642">642</a>                 controller.fireCrawledURINeedRetryEvent(curi);
+<a name="643" href="#643">643</a>             } <strong>else</strong> <strong>if</strong>(isDisregarded(curi)) {
+<a name="644" href="#644">644</a>                 <em class="comment">// Check for codes that mean that while the crawler did</em>
+<a name="645" href="#645">645</a>                 <em class="comment">// manage to get it it must be disregarded for any reason.</em>
+<a name="646" href="#646">646</a>                 disregardDisposition(curi);
+<a name="647" href="#647">647</a>             } <strong>else</strong> {
+<a name="648" href="#648">648</a>                 <em class="comment">// In that case FAILURE, note &amp; log</em>
+<a name="649" href="#649">649</a>                 failureDisposition(curi);
+<a name="650" href="#650">650</a>             }
+<a name="651" href="#651">651</a> 
+<a name="652" href="#652">652</a>             <em class="comment">// New items might be available, let waiting threads know</em>
+<a name="653" href="#653">653</a>             <em class="comment">// More then one queue might have become available due to </em>
+<a name="654" href="#654">654</a>             <em class="comment">// scheduling of items outside the parent URIs host, so we</em>
+<a name="655" href="#655">655</a>             <em class="comment">// wake all waiting threads.</em>
+<a name="656" href="#656">656</a>             notifyAll();
+<a name="657" href="#657">657</a>         } <strong>catch</strong> (RuntimeException e) {
+<a name="658" href="#658">658</a>             curi.setFetchStatus(S_RUNTIME_EXCEPTION);
+<a name="659" href="#659">659</a>             <em class="comment">// store exception temporarily for logging</em>
+<a name="660" href="#660">660</a>             logger.warning(<span class="string">"RTE in innerFinished() "</span> +
+<a name="661" href="#661">661</a>                 e.getMessage());
+<a name="662" href="#662">662</a>             e.printStackTrace();
+<a name="663" href="#663">663</a>             curi.putObject(A_RUNTIME_EXCEPTION, e);
+<a name="664" href="#664">664</a>             failureDisposition(curi);
+<a name="665" href="#665">665</a>         } <strong>catch</strong> (AttributeNotFoundException e) {
+<a name="666" href="#666">666</a>             logger.severe(e.getMessage());
+<a name="667" href="#667">667</a>         }
+<a name="668" href="#668">668</a>     }
+<a name="669" href="#669">669</a> 
+<a name="670" href="#670">670</a>     <em>/**<em>*</em></em>
+<a name="671" href="#671">671</a> <em>     * Take note of any processor-local errors that have</em>
+<a name="672" href="#672">672</a> <em>     * been entered into the CrawlURI.</em>
+<a name="673" href="#673">673</a> <em>     * @param curi CrawlURI with errors.</em>
+<a name="674" href="#674">674</a> <em>     */</em>
+<a name="675" href="#675">675</a>     <strong>private</strong> <strong>void</strong> logLocalizedErrors(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="676" href="#676">676</a>         <strong>if</strong>(curi.containsKey(A_LOCALIZED_ERRORS)) {
+<a name="677" href="#677">677</a>             List localErrors = (List)curi.getObject(A_LOCALIZED_ERRORS);
+<a name="678" href="#678">678</a>             Iterator iter = localErrors.iterator();
+<a name="679" href="#679">679</a>             <strong>while</strong>(iter.hasNext()) {
+<a name="680" href="#680">680</a>                 Object array[] = {curi, iter.next()};
+<a name="681" href="#681">681</a>                 controller.localErrors.log(Level.WARNING,
+<a name="682" href="#682">682</a>                     curi.getUURI().toString(), array);
+<a name="683" href="#683">683</a>             }
+<a name="684" href="#684">684</a>             <em class="comment">// once logged, discard</em>
+<a name="685" href="#685">685</a>             curi.remove(A_LOCALIZED_ERRORS);
+<a name="686" href="#686">686</a>         }
+<a name="687" href="#687">687</a>     }
+<a name="688" href="#688">688</a>     
+<a name="689" href="#689">689</a>     <em>/**<em>*</em></em>
+<a name="690" href="#690">690</a> <em>     * The CrawlURI has been successfully crawled. </em>
+<a name="691" href="#691">691</a> <em>     *</em>
+<a name="692" href="#692">692</a> <em>     * @param curi The CrawlURI</em>
+<a name="693" href="#693">693</a> <em>     */</em>
+<a name="694" href="#694">694</a>     <strong>protected</strong> <strong>void</strong> successDisposition(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="695" href="#695">695</a>         curi.aboutToLog();
+<a name="696" href="#696">696</a> 
+<a name="697" href="#697">697</a>         <strong>long</strong> waitInterval = 0;
+<a name="698" href="#698">698</a>         
+<a name="699" href="#699">699</a>         <strong>if</strong>(curi.containsKey(A_WAIT_INTERVAL)){
+<a name="700" href="#700">700</a>             waitInterval = curi.getLong(A_WAIT_INTERVAL);
+<a name="701" href="#701">701</a>             curi.addAnnotation(<span class="string">"wt:"</span> + 
+<a name="702" href="#702">702</a>                     ArchiveUtils.formatMillisecondsToConventional(
+<a name="703" href="#703">703</a>                             waitInterval));
+<a name="704" href="#704">704</a>         } <strong>else</strong> {
+<a name="705" href="#705">705</a>             logger.severe(<span class="string">"Missing wait interval for "</span> + curi.toString() +
+<a name="706" href="#706">706</a>                     <span class="string">" WaitEvaluator may be missing."</span>);
+<a name="707" href="#707">707</a>         }
+<a name="708" href="#708">708</a>         <strong>if</strong>(curi.containsKey(A_NUMBER_OF_VISITS)){
+<a name="709" href="#709">709</a>             curi.addAnnotation(curi.getInt(A_NUMBER_OF_VISITS) + <span class="string">"vis"</span>);
+<a name="710" href="#710">710</a>         }
+<a name="711" href="#711">711</a>         <strong>if</strong>(curi.containsKey(A_NUMBER_OF_VERSIONS)){
+<a name="712" href="#712">712</a>             curi.addAnnotation(curi.getInt(A_NUMBER_OF_VERSIONS) + <span class="string">"ver"</span>);
+<a name="713" href="#713">713</a>         }
+<a name="714" href="#714">714</a>         <strong>if</strong>(curi.containsKey(A_FETCH_OVERDUE)){
+<a name="715" href="#715">715</a>             curi.addAnnotation(<span class="string">"ov:"</span> +
+<a name="716" href="#716">716</a>                     ArchiveUtils.formatMillisecondsToConventional(
+<a name="717" href="#717">717</a>                     (curi.getLong(A_FETCH_OVERDUE))));
+<a name="718" href="#718">718</a>         }
+<a name="719" href="#719">719</a>         
+<a name="720" href="#720">720</a>         Object array[] = { curi };
+<a name="721" href="#721">721</a>         controller.uriProcessing.log(
+<a name="722" href="#722">722</a>             Level.INFO,
+<a name="723" href="#723">723</a>             curi.getUURI().toString(),
+<a name="724" href="#724">724</a>             array);
+<a name="725" href="#725">725</a> 
+<a name="726" href="#726">726</a>         succeededFetchCount++;
+<a name="727" href="#727">727</a>         totalProcessedBytes += curi.getContentSize();
+<a name="728" href="#728">728</a> 
+<a name="729" href="#729">729</a>         <em class="comment">// Let everyone know in case they want to do something before we strip</em>
+<a name="730" href="#730">730</a>         <em class="comment">// the curi.</em>
+<a name="731" href="#731">731</a>         controller.fireCrawledURISuccessfulEvent(curi);
+<a name="732" href="#732">732</a>         
+<a name="733" href="#733">733</a>         curi.setSchedulingDirective(CandidateURI.NORMAL);
+<a name="734" href="#734">734</a> 
+<a name="735" href="#735">735</a>         <em class="comment">// Set time of next processing</em>
+<a name="736" href="#736">736</a>         curi.putLong(A_TIME_OF_NEXT_PROCESSING,
+<a name="737" href="#737">737</a>                 System.currentTimeMillis()+waitInterval);
+<a name="738" href="#738">738</a>         
+<a name="739" href="#739">739</a>         
+<a name="740" href="#740">740</a>         <em class="comment">/*<em class="comment"> Update HQ */</em></em>
+<a name="741" href="#741">741</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getHQ(curi.getClassKey());
+<a name="742" href="#742">742</a>         
+<a name="743" href="#743">743</a>         <em class="comment">// Wake up time is based on the time when a fetch was completed + the</em>
+<a name="744" href="#744">744</a>         <em class="comment">// calculated snooze time for politeness. If the fetch completion time</em>
+<a name="745" href="#745">745</a>         <em class="comment">// is missing, we'll use current time.</em>
+<a name="746" href="#746">746</a>         <strong>long</strong> wakeupTime = (curi.containsKey(A_FETCH_COMPLETED_TIME)?
+<a name="747" href="#747">747</a>                 curi.getLong(A_FETCH_COMPLETED_TIME):
+<a name="748" href="#748">748</a>                     (<strong>new</strong> Date()).getTime()) + calculateSnoozeTime(curi);
+<a name="749" href="#749">749</a>         
+<a name="750" href="#750">750</a>         <em class="comment">// Ready the URI for reserialization.</em>
+<a name="751" href="#751">751</a>         curi.processingCleanup(); 
+<a name="752" href="#752">752</a>         curi.resetDeferrals();   
+<a name="753" href="#753">753</a>         curi.resetFetchAttempts();
+<a name="754" href="#754">754</a>         
+<a name="755" href="#755">755</a>         <strong>try</strong> {
+<a name="756" href="#756">756</a>             hq.update(curi, <strong>true</strong>, wakeupTime, shouldBeForgotten(curi));
+<a name="757" href="#757">757</a>         } <strong>catch</strong> (IOException e) {
+<a name="758" href="#758">758</a>             logger.severe(<span class="string">"An IOException occured when updating "</span> + 
+<a name="759" href="#759">759</a>                     curi.toString() + <span class="string">"\n"</span> + e.getMessage());
+<a name="760" href="#760">760</a>             e.printStackTrace();
+<a name="761" href="#761">761</a>         }
+<a name="762" href="#762">762</a>     }
+<a name="763" href="#763">763</a> 
+<a name="764" href="#764">764</a>     <em>/**<em>*</em></em>
+<a name="765" href="#765">765</a> <em>     * Put near top of relevant hostQueue (but behind anything recently</em>
+<a name="766" href="#766">766</a> <em>     * scheduled 'high')..</em>
+<a name="767" href="#767">767</a> <em>     *</em>
+<a name="768" href="#768">768</a> <em>     * @param curi CrawlURI to reschedule. Its time of next processing is not</em>
+<a name="769" href="#769">769</a> <em>     *             modified.</em>
+<a name="770" href="#770">770</a> <em>     * @param errorWait signals if there should be a wait before retrying.</em>
+<a name="771" href="#771">771</a> <em>     * @throws AttributeNotFoundException</em>
+<a name="772" href="#772">772</a> <em>     */</em>
+<a name="773" href="#773">773</a>     <strong>protected</strong> <strong>void</strong> reschedule(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi, <strong>boolean</strong> errorWait)
+<a name="774" href="#774">774</a>             throws AttributeNotFoundException {
+<a name="775" href="#775">775</a>         <strong>long</strong> delay = 0;
+<a name="776" href="#776">776</a>         <strong>if</strong>(errorWait){
+<a name="777" href="#777">777</a>             <strong>if</strong>(curi.containsKey(A_RETRY_DELAY)) {
+<a name="778" href="#778">778</a>                 delay = curi.getLong(A_RETRY_DELAY);
+<a name="779" href="#779">779</a>             } <strong>else</strong> {
+<a name="780" href="#780">780</a>                 <em class="comment">// use ARFrontier default</em>
+<a name="781" href="#781">781</a>                 delay = ((Long)getAttribute(ATTR_RETRY_DELAY,curi)).longValue();
+<a name="782" href="#782">782</a>             }
+<a name="783" href="#783">783</a>         }
+<a name="784" href="#784">784</a>         
+<a name="785" href="#785">785</a>         <strong>long</strong> retryTime = (curi.containsKey(A_FETCH_COMPLETED_TIME)?
+<a name="786" href="#786">786</a>                 curi.getLong(A_FETCH_COMPLETED_TIME):
+<a name="787" href="#787">787</a>                     (<strong>new</strong> Date()).getTime()) + delay;
+<a name="788" href="#788">788</a>         
+<a name="789" href="#789">789</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getHQ(curi.getClassKey());
+<a name="790" href="#790">790</a>         <em class="comment">// Ready the URI for reserialization.</em>
+<a name="791" href="#791">791</a>         curi.processingCleanup(); 
+<a name="792" href="#792">792</a>         <strong>if</strong>(errorWait){
+<a name="793" href="#793">793</a>             curi.resetDeferrals(); <em class="comment">//Defferals only refer to immediate retries.</em>
+<a name="794" href="#794">794</a>         }
+<a name="795" href="#795">795</a>         <strong>try</strong> {                      	
+<a name="796" href="#796">796</a>             hq.update(curi, errorWait, retryTime, shouldBeForgotten(curi));
+<a name="797" href="#797">797</a>         } <strong>catch</strong> (IOException e) {
+<a name="798" href="#798">798</a>             <em class="comment">// TODO Handle IOException</em>
+<a name="799" href="#799">799</a>             e.printStackTrace();
+<a name="800" href="#800">800</a>         }
+<a name="801" href="#801">801</a>     }
+<a name="802" href="#802">802</a> 
+<a name="803" href="#803">803</a>     <em>/**<em>*</em></em>
+<a name="804" href="#804">804</a> <em>     * The CrawlURI has encountered a problem, and will not</em>
+<a name="805" href="#805">805</a> <em>     * be retried.</em>
+<a name="806" href="#806">806</a> <em>     *</em>
+<a name="807" href="#807">807</a> <em>     * @param curi The CrawlURI</em>
+<a name="808" href="#808">808</a> <em>     */</em>
+<a name="809" href="#809">809</a>     <strong>protected</strong> <strong>void</strong> failureDisposition(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="810" href="#810">810</a>         <em class="comment">//Let interested listeners know of failed disposition.</em>
+<a name="811" href="#811">811</a>         <strong>this</strong>.controller.fireCrawledURIFailureEvent(curi);
+<a name="812" href="#812">812</a> 
+<a name="813" href="#813">813</a>         <em class="comment">// send to basic log</em>
+<a name="814" href="#814">814</a>         curi.aboutToLog();
+<a name="815" href="#815">815</a>         Object array[] = { curi };
+<a name="816" href="#816">816</a>         <strong>this</strong>.controller.uriProcessing.log(
+<a name="817" href="#817">817</a>             Level.INFO,
+<a name="818" href="#818">818</a>             curi.getUURI().toString(),
+<a name="819" href="#819">819</a>             array);
+<a name="820" href="#820">820</a> 
+<a name="821" href="#821">821</a>         <em class="comment">// if exception, also send to crawlErrors</em>
+<a name="822" href="#822">822</a>         <strong>if</strong> (curi.getFetchStatus() == S_RUNTIME_EXCEPTION) {
+<a name="823" href="#823">823</a>             <strong>this</strong>.controller.runtimeErrors.log(
+<a name="824" href="#824">824</a>                 Level.WARNING,
+<a name="825" href="#825">825</a>                 curi.getUURI().toString(),
+<a name="826" href="#826">826</a>                 array);
+<a name="827" href="#827">827</a>         }
+<a name="828" href="#828">828</a>         failedFetchCount++;
+<a name="829" href="#829">829</a>         
+<a name="830" href="#830">830</a>         <em class="comment">// Put the failed URI at the very back of the queue.</em>
+<a name="831" href="#831">831</a>         curi.setSchedulingDirective(CandidateURI.NORMAL);
+<a name="832" href="#832">832</a>         <em class="comment">// TODO: reconsider this</em>
+<a name="833" href="#833">833</a>         curi.putLong(A_TIME_OF_NEXT_PROCESSING,Long.MAX_VALUE);
+<a name="834" href="#834">834</a> 
+<a name="835" href="#835">835</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getHQ(curi.getClassKey());
+<a name="836" href="#836">836</a>         <em class="comment">// Ready the URI for serialization.</em>
+<a name="837" href="#837">837</a>         curi.processingCleanup();
+<a name="838" href="#838">838</a>         curi.resetDeferrals();
+<a name="839" href="#839">839</a>         curi.resetFetchAttempts();
+<a name="840" href="#840">840</a>         <strong>try</strong> {
+<a name="841" href="#841">841</a>             <em class="comment">// No wait on failure. No contact was made with the server.</em>
+<a name="842" href="#842">842</a>             <strong>boolean</strong> shouldForget = shouldBeForgotten(curi);
+<a name="843" href="#843">843</a>             <strong>if</strong>(shouldForget &amp;&amp; alreadyIncluded != <strong>null</strong>){
+<a name="844" href="#844">844</a>                 alreadyIncluded.forget(canonicalize(curi.getUURI()),curi);
+<a name="845" href="#845">845</a>             }
+<a name="846" href="#846">846</a>             
+<a name="847" href="#847">847</a>             hq.update(curi,false, 0, shouldForget); 
+<a name="848" href="#848">848</a>         } <strong>catch</strong> (IOException e) {
+<a name="849" href="#849">849</a>             <em class="comment">// TODO Handle IOException</em>
+<a name="850" href="#850">850</a>             e.printStackTrace();
+<a name="851" href="#851">851</a>         }
+<a name="852" href="#852">852</a>     }
+<a name="853" href="#853">853</a> 
+<a name="854" href="#854">854</a>     <strong>protected</strong> <strong>void</strong> disregardDisposition(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="855" href="#855">855</a>         <em class="comment">//Let interested listeners know of disregard disposition.</em>
+<a name="856" href="#856">856</a>         controller.fireCrawledURIDisregardEvent(curi);
+<a name="857" href="#857">857</a> 
+<a name="858" href="#858">858</a>         <em class="comment">// send to basic log</em>
+<a name="859" href="#859">859</a>         curi.aboutToLog();
+<a name="860" href="#860">860</a>         Object array[] = { curi };
+<a name="861" href="#861">861</a>         controller.uriProcessing.log(
+<a name="862" href="#862">862</a>             Level.INFO,
+<a name="863" href="#863">863</a>             curi.getUURI().toString(),
+<a name="864" href="#864">864</a>             array);
+<a name="865" href="#865">865</a> 
+<a name="866" href="#866">866</a>         disregardedUriCount++;
+<a name="867" href="#867">867</a>         
+<a name="868" href="#868">868</a>         <em class="comment">// Todo: consider timout before retrying disregarded elements.</em>
+<a name="869" href="#869">869</a>         <em class="comment">//       Possibly add a setting to the WaitEvaluators?</em>
+<a name="870" href="#870">870</a>         curi.putLong(A_TIME_OF_NEXT_PROCESSING,Long.MAX_VALUE); 
+<a name="871" href="#871">871</a>         curi.setSchedulingDirective(CandidateURI.NORMAL);
+<a name="872" href="#872">872</a> 
+<a name="873" href="#873">873</a>         <a href="../../../../org/archive/crawler/frontier/AdaptiveRevisitHostQueue.html">AdaptiveRevisitHostQueue</a> hq = hostQueues.getHQ(curi.getClassKey());
+<a name="874" href="#874">874</a>         <em class="comment">// Ready the URI for reserialization.</em>
+<a name="875" href="#875">875</a>         curi.processingCleanup(); 
+<a name="876" href="#876">876</a>         curi.resetDeferrals();
+<a name="877" href="#877">877</a>         curi.resetFetchAttempts();
+<a name="878" href="#878">878</a>         <strong>try</strong> {
+<a name="879" href="#879">879</a>             <em class="comment">// No politness wait on disregard. No contact was made with server</em>
+<a name="880" href="#880">880</a>             hq.update(curi, false, 0, shouldBeForgotten(curi));
+<a name="881" href="#881">881</a>         } <strong>catch</strong> (IOException e) {
+<a name="882" href="#882">882</a>             <em class="comment">// TODO Handle IOException</em>
+<a name="883" href="#883">883</a>             e.printStackTrace();
+<a name="884" href="#884">884</a>         }
+<a name="885" href="#885">885</a>     }
+<a name="886" href="#886">886</a> 
+<a name="887" href="#887">887</a>     <em>/**<em>*</em></em>
+<a name="888" href="#888">888</a> <em>     * Some URIs, if they recur,  deserve another</em>
+<a name="889" href="#889">889</a> <em>     * chance at consideration: they might not be too</em>
+<a name="890" href="#890">890</a> <em>     * many hops away via another path, or the scope</em>
+<a name="891" href="#891">891</a> <em>     * may have been updated to allow them passage.</em>
+<a name="892" href="#892">892</a> <em>     *</em>
+<a name="893" href="#893">893</a> <em>     * @param curi</em>
+<a name="894" href="#894">894</a> <em>     * @return True if curi should be forgotten.</em>
+<a name="895" href="#895">895</a> <em>     */</em>
+<a name="896" href="#896">896</a>     <strong>protected</strong> <strong>boolean</strong> shouldBeForgotten(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="897" href="#897">897</a>     	<strong>boolean</strong> shouldForget = false;
+<a name="898" href="#898">898</a>     	
+<a name="899" href="#899">899</a>         <strong>switch</strong>(curi.getFetchStatus()) {
+<a name="900" href="#900">900</a>             <strong>case</strong> S_OUT_OF_SCOPE:
+<a name="901" href="#901">901</a>             <strong>case</strong> S_TOO_MANY_EMBED_HOPS:
+<a name="902" href="#902">902</a>             <strong>case</strong> S_TOO_MANY_LINK_HOPS:
+<a name="903" href="#903">903</a>             	shouldForget = <strong>true</strong>;
+<a name="904" href="#904">904</a>             <strong>default</strong>:
+<a name="905" href="#905">905</a>             	shouldForget = false;
+<a name="906" href="#906">906</a>         }
+<a name="907" href="#907">907</a>         
+<a name="908" href="#908">908</a>     	<strong>if</strong> (!shouldForget) {
+<a name="909" href="#909">909</a>             <strong>if</strong> (curi.containsKey(A_DISCARD_REVISIT)) {
+<a name="910" href="#910">910</a>                 Boolean noRevisit = (Boolean) curi.getObject(A_DISCARD_REVISIT);
+<a name="911" href="#911">911</a>                 <strong>if</strong> (noRevisit) {
+<a name="912" href="#912">912</a>                     <strong>if</strong> (logger.isLoggable(Level.FINE)) {
+<a name="913" href="#913">913</a>                         logger.fine(<span class="string">"NO_REVISIT tag set for URI: "</span>
+<a name="914" href="#914">914</a>                                 + curi.getUURI().toString());
+<a name="915" href="#915">915</a>                     }
+<a name="916" href="#916">916</a>                     shouldForget = <strong>true</strong>;
+<a name="917" href="#917">917</a>                 }
+<a name="918" href="#918">918</a>             }
+<a name="919" href="#919">919</a>         }
+<a name="920" href="#920">920</a>     	
+<a name="921" href="#921">921</a>     	<strong>return</strong> shouldForget;
+<a name="922" href="#922">922</a>     }
+<a name="923" href="#923">923</a> 
+<a name="924" href="#924">924</a>     <em>/**<em>*</em></em>
+<a name="925" href="#925">925</a> <em>     * Checks if a recently completed CrawlURI that did not finish successfully</em>
+<a name="926" href="#926">926</a> <em>     * needs to be retried immediately (processed again as soon as politeness</em>
+<a name="927" href="#927">927</a> <em>     * allows.)</em>
+<a name="928" href="#928">928</a> <em>     *</em>
+<a name="929" href="#929">929</a> <em>     * @param curi The CrawlURI to check</em>
+<a name="930" href="#930">930</a> <em>     * @return True if we need to retry promptly.</em>
+<a name="931" href="#931">931</a> <em>     * @throws AttributeNotFoundException If problems occur trying to read the</em>
+<a name="932" href="#932">932</a> <em>     *            maximum number of retries from the settings framework.</em>
+<a name="933" href="#933">933</a> <em>     */</em>
+<a name="934" href="#934">934</a>     <strong>protected</strong> <strong>boolean</strong> needsPromptRetry(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi)
+<a name="935" href="#935">935</a>             throws AttributeNotFoundException {
+<a name="936" href="#936">936</a>         <strong>if</strong> (curi.getFetchAttempts() >=
+<a name="937" href="#937">937</a>                 ((Integer)getAttribute(ATTR_MAX_RETRIES, curi)).intValue() ) {
+<a name="938" href="#938">938</a>             <strong>return</strong> false;
+<a name="939" href="#939">939</a>         }
+<a name="940" href="#940">940</a> 
+<a name="941" href="#941">941</a>         <strong>switch</strong> (curi.getFetchStatus()) {
+<a name="942" href="#942">942</a>             <strong>case</strong> S_DEFERRED:
+<a name="943" href="#943">943</a>                 <strong>return</strong> <strong>true</strong>;
+<a name="944" href="#944">944</a> 
+<a name="945" href="#945">945</a>             <strong>case</strong> HttpStatus.SC_UNAUTHORIZED:
+<a name="946" href="#946">946</a>                 <em class="comment">// We can get here though usually a positive status code is</em>
+<a name="947" href="#947">947</a>                 <em class="comment">// a success.  We get here if there is rfc2617 credential data</em>
+<a name="948" href="#948">948</a>                 <em class="comment">// loaded and we're supposed to go around again.  See if any</em>
+<a name="949" href="#949">949</a>                 <em class="comment">// rfc2617 credential present and if there, assume it got</em>
+<a name="950" href="#950">950</a>                 <em class="comment">// loaded in FetchHTTP on expectation that we're to go around</em>
+<a name="951" href="#951">951</a>                 <em class="comment">// again.  If no rfc2617 loaded, we should not be here.</em>
+<a name="952" href="#952">952</a>                 <strong>boolean</strong> loaded = curi.hasRfc2617CredentialAvatar();
+<a name="953" href="#953">953</a>                 <strong>if</strong> (!loaded) {
+<a name="954" href="#954">954</a>                     logger.severe(<span class="string">"Have 401 but no creds loaded "</span> + curi);
+<a name="955" href="#955">955</a>                 }
+<a name="956" href="#956">956</a>                 <strong>return</strong> loaded;
+<a name="957" href="#957">957</a> 
+<a name="958" href="#958">958</a>             <strong>default</strong>:
+<a name="959" href="#959">959</a>                 <strong>return</strong> false;
+<a name="960" href="#960">960</a>         }
+<a name="961" href="#961">961</a>     }
+<a name="962" href="#962">962</a> 
+<a name="963" href="#963">963</a>     <em>/**<em>*</em></em>
+<a name="964" href="#964">964</a> <em>     * Checks if a recently completed CrawlURI that did not finish successfully</em>
+<a name="965" href="#965">965</a> <em>     * needs to be retried (processed again after some time elapses)</em>
+<a name="966" href="#966">966</a> <em>     *</em>
+<a name="967" href="#967">967</a> <em>     * @param curi The CrawlURI to check</em>
+<a name="968" href="#968">968</a> <em>     * @return True if we need to retry.</em>
+<a name="969" href="#969">969</a> <em>     * @throws AttributeNotFoundException If problems occur trying to read the</em>
+<a name="970" href="#970">970</a> <em>     *            maximum number of retries from the settings framework.</em>
+<a name="971" href="#971">971</a> <em>     */</em>
+<a name="972" href="#972">972</a>     <strong>protected</strong> <strong>boolean</strong> needsRetrying(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi)
+<a name="973" href="#973">973</a>             throws AttributeNotFoundException {
+<a name="974" href="#974">974</a>         <em class="comment">// Check to see if maximum number of retries has been exceeded.</em>
+<a name="975" href="#975">975</a>         <strong>if</strong> (curi.getFetchAttempts() >= 
+<a name="976" href="#976">976</a>             ((Integer)getAttribute(ATTR_MAX_RETRIES,curi)).intValue() ) {
+<a name="977" href="#977">977</a>             <strong>return</strong> false;
+<a name="978" href="#978">978</a>         } <strong>else</strong> {
+<a name="979" href="#979">979</a>             <em class="comment">// Check if FetchStatus indicates that a delayed retry is needed.</em>
+<a name="980" href="#980">980</a>             <strong>switch</strong> (curi.getFetchStatus()) {
+<a name="981" href="#981">981</a>                 <strong>case</strong> S_CONNECT_FAILED:
+<a name="982" href="#982">982</a>                 <strong>case</strong> S_CONNECT_LOST:
+<a name="983" href="#983">983</a>                 <strong>case</strong> S_DOMAIN_UNRESOLVABLE:
+<a name="984" href="#984">984</a>                     <em class="comment">// these are all worth a retry</em>
+<a name="985" href="#985">985</a>                     <em class="comment">// TODO: consider if any others (S_TIMEOUT in some cases?) </em>
+<a name="986" href="#986">986</a>                     <em class="comment">//       deserve retry</em>
+<a name="987" href="#987">987</a>                     <strong>return</strong> <strong>true</strong>;
+<a name="988" href="#988">988</a>                 <strong>default</strong>:
+<a name="989" href="#989">989</a>                     <strong>return</strong> false;
+<a name="990" href="#990">990</a>             }
+<a name="991" href="#991">991</a>         }
+<a name="992" href="#992">992</a>     }
+<a name="993" href="#993">993</a>     
+<a name="994" href="#994">994</a>     <strong>protected</strong> <strong>boolean</strong> isDisregarded(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="995" href="#995">995</a>         <strong>switch</strong> (curi.getFetchStatus()) {
+<a name="996" href="#996">996</a>             <strong>case</strong> S_ROBOTS_PRECLUDED :     <em class="comment">// they don't want us to have it</em>
+<a name="997" href="#997">997</a>             <strong>case</strong> S_OUT_OF_SCOPE :         <em class="comment">// filtered out by scope</em>
+<a name="998" href="#998">998</a>             <strong>case</strong> S_BLOCKED_BY_CUSTOM_PROCESSOR:
+<a name="999" href="#999">999</a>             <strong>case</strong> S_BLOCKED_BY_USER :      <em class="comment">// filtered out by user</em>
+<a name="1000" href="#1000">1000</a>             <strong>case</strong> S_TOO_MANY_EMBED_HOPS :  <em class="comment">// too far from last true link</em>
+<a name="1001" href="#1001">1001</a>             <strong>case</strong> S_TOO_MANY_LINK_HOPS :   <em class="comment">// too far from seeds</em>
+<a name="1002" href="#1002">1002</a>             <strong>case</strong> S_DELETED_BY_USER :      <em class="comment">// user deleted</em>
+<a name="1003" href="#1003">1003</a>                 <strong>return</strong> <strong>true</strong>;
+<a name="1004" href="#1004">1004</a>             <strong>default</strong>:
+<a name="1005" href="#1005">1005</a>                 <strong>return</strong> false;
+<a name="1006" href="#1006">1006</a>         }
+<a name="1007" href="#1007">1007</a>     }
+<a name="1008" href="#1008">1008</a>     
+<a name="1009" href="#1009">1009</a>     <em>/**<em>*</em></em>
+<a name="1010" href="#1010">1010</a> <em>     * Calculates how long a host queue needs to be snoozed following the</em>
+<a name="1011" href="#1011">1011</a> <em>     * crawling of a URI.</em>
+<a name="1012" href="#1012">1012</a> <em>     *</em>
+<a name="1013" href="#1013">1013</a> <em>     * @param curi The CrawlURI</em>
+<a name="1014" href="#1014">1014</a> <em>     * @return How long to snooze.</em>
+<a name="1015" href="#1015">1015</a> <em>     */</em>
+<a name="1016" href="#1016">1016</a>     <strong>protected</strong> <strong>long</strong> calculateSnoozeTime(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="1017" href="#1017">1017</a>         <strong>long</strong> durationToWait = 0;
+<a name="1018" href="#1018">1018</a>         <strong>if</strong> (curi.containsKey(A_FETCH_BEGAN_TIME)
+<a name="1019" href="#1019">1019</a>             &amp;&amp; curi.containsKey(A_FETCH_COMPLETED_TIME)) {
+<a name="1020" href="#1020">1020</a>             
+<a name="1021" href="#1021">1021</a>             <strong>try</strong>{
+<a name="1022" href="#1022">1022</a>             
+<a name="1023" href="#1023">1023</a>                 <strong>long</strong> completeTime = curi.getLong(A_FETCH_COMPLETED_TIME);
+<a name="1024" href="#1024">1024</a>                 <strong>long</strong> durationTaken = 
+<a name="1025" href="#1025">1025</a>                     (completeTime - curi.getLong(A_FETCH_BEGAN_TIME));
+<a name="1026" href="#1026">1026</a>                 
+<a name="1027" href="#1027">1027</a>                 durationToWait = (<strong>long</strong>)(
+<a name="1028" href="#1028">1028</a>                         ((Float) getAttribute(ATTR_DELAY_FACTOR, curi))
+<a name="1029" href="#1029">1029</a>                             .floatValue() * durationTaken);
+<a name="1030" href="#1030">1030</a>     
+<a name="1031" href="#1031">1031</a>                 <strong>long</strong> minDelay = 
+<a name="1032" href="#1032">1032</a>                     ((Integer) getAttribute(ATTR_MIN_DELAY, curi)).longValue();
+<a name="1033" href="#1033">1033</a>                 
+<a name="1034" href="#1034">1034</a>                 <strong>if</strong> (minDelay > durationToWait) {
+<a name="1035" href="#1035">1035</a>                     <em class="comment">// wait at least the minimum</em>
+<a name="1036" href="#1036">1036</a>                     durationToWait = minDelay;
+<a name="1037" href="#1037">1037</a>                 }
+<a name="1038" href="#1038">1038</a>     
+<a name="1039" href="#1039">1039</a>                 <strong>long</strong> maxDelay = ((Integer) getAttribute(ATTR_MAX_DELAY, curi)).<strong>long</strong>Value();
+<a name="1040" href="#1040">1040</a>                 <strong>if</strong> (durationToWait > maxDelay) {
+<a name="1041" href="#1041">1041</a>                     <em class="comment">// wait no more than the maximum</em>
+<a name="1042" href="#1042">1042</a>                     durationToWait = maxDelay;
+<a name="1043" href="#1043">1043</a>                 }
+<a name="1044" href="#1044">1044</a>             } <strong>catch</strong> (AttributeNotFoundException e) {
+<a name="1045" href="#1045">1045</a>                 logger.severe(<span class="string">"Unable to find attribute. "</span> + 
+<a name="1046" href="#1046">1046</a>                         curi.toString());
+<a name="1047" href="#1047">1047</a>                 <em class="comment">//Wait for max interval.</em>
+<a name="1048" href="#1048">1048</a>                 durationToWait = DEFAULT_MAX_DELAY.longValue();
+<a name="1049" href="#1049">1049</a>             }
+<a name="1050" href="#1050">1050</a> 
+<a name="1051" href="#1051">1051</a>         }
+<a name="1052" href="#1052">1052</a>         <strong>long</strong> ret = durationToWait > DEFAULT_MIN_DELAY.<strong>long</strong>Value() ? 
+<a name="1053" href="#1053">1053</a>                 durationToWait : DEFAULT_MIN_DELAY.longValue();
+<a name="1054" href="#1054">1054</a>         logger.finest(<span class="string">"Snooze time for "</span> + curi.toString() + <span class="string">" = "</span> + ret );
+<a name="1055" href="#1055">1055</a>         <strong>return</strong> ret;
+<a name="1056" href="#1056">1056</a>     }
+<a name="1057" href="#1057">1057</a> 
+<a name="1058" href="#1058">1058</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1059" href="#1059">1059</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#discoveredUriCount()</em>
+<a name="1060" href="#1060">1060</a> <em class="comment">     */</em>
+<a name="1061" href="#1061">1061</a>     <strong>public</strong> <strong>synchronized</strong> <strong>long</strong> discoveredUriCount() {
+<a name="1062" href="#1062">1062</a>         <strong>return</strong> (<strong>this</strong>.alreadyIncluded != <strong>null</strong>) ? 
+<a name="1063" href="#1063">1063</a>                 <strong>this</strong>.alreadyIncluded.count() : hostQueues.getSize();
+<a name="1064" href="#1064">1064</a>     }
+<a name="1065" href="#1065">1065</a> 
+<a name="1066" href="#1066">1066</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1067" href="#1067">1067</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#queuedUriCount()</em>
+<a name="1068" href="#1068">1068</a> <em class="comment">     */</em>
+<a name="1069" href="#1069">1069</a>     <strong>public</strong> <strong>synchronized</strong> <strong>long</strong> queuedUriCount() {
+<a name="1070" href="#1070">1070</a>         <strong>return</strong> hostQueues.getSize();
+<a name="1071" href="#1071">1071</a>     }
+<a name="1072" href="#1072">1072</a> 
+<a name="1073" href="#1073">1073</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1074" href="#1074">1074</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#finishedUriCount()</em>
+<a name="1075" href="#1075">1075</a> <em class="comment">     */</em>
+<a name="1076" href="#1076">1076</a>     <strong>public</strong> <strong>long</strong> finishedUriCount() {
+<a name="1077" href="#1077">1077</a>         <strong>return</strong> succeededFetchCount+failedFetchCount+disregardedUriCount;
+<a name="1078" href="#1078">1078</a>     }
+<a name="1079" href="#1079">1079</a> 
+<a name="1080" href="#1080">1080</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1081" href="#1081">1081</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#succeededFetchCount()</em>
+<a name="1082" href="#1082">1082</a> <em class="comment">     */</em>
+<a name="1083" href="#1083">1083</a>     <strong>public</strong> <strong>long</strong> succeededFetchCount() {
+<a name="1084" href="#1084">1084</a>         <strong>return</strong> succeededFetchCount;
+<a name="1085" href="#1085">1085</a>     }
+<a name="1086" href="#1086">1086</a> 
+<a name="1087" href="#1087">1087</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1088" href="#1088">1088</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#failedFetchCount()</em>
+<a name="1089" href="#1089">1089</a> <em class="comment">     */</em>
+<a name="1090" href="#1090">1090</a>     <strong>public</strong> <strong>long</strong> failedFetchCount() {
+<a name="1091" href="#1091">1091</a>         <strong>return</strong> failedFetchCount;
+<a name="1092" href="#1092">1092</a>     }
+<a name="1093" href="#1093">1093</a> 
+<a name="1094" href="#1094">1094</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1095" href="#1095">1095</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#disregardedUriCount()</em>
+<a name="1096" href="#1096">1096</a> <em class="comment">     */</em>
+<a name="1097" href="#1097">1097</a>     <strong>public</strong> <strong>long</strong> disregardedUriCount() {
+<a name="1098" href="#1098">1098</a>         <strong>return</strong> disregardedUriCount++;
+<a name="1099" href="#1099">1099</a>     }
+<a name="1100" href="#1100">1100</a> 
+<a name="1101" href="#1101">1101</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1102" href="#1102">1102</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#totalBytesWritten()</em>
+<a name="1103" href="#1103">1103</a> <em class="comment">     */</em>
+<a name="1104" href="#1104">1104</a>     <strong>public</strong> <strong>long</strong> totalBytesWritten() {
+<a name="1105" href="#1105">1105</a>         <strong>return</strong> totalProcessedBytes;
+<a name="1106" href="#1106">1106</a>     }
+<a name="1107" href="#1107">1107</a> 
+<a name="1108" href="#1108">1108</a>     <em>/**<em>*</em></em>
+<a name="1109" href="#1109">1109</a> <em>     * Method is not supported by this Frontier implementation..</em>
+<a name="1110" href="#1110">1110</a> <em>     * @param pathToLog</em>
+<a name="1111" href="#1111">1111</a> <em>     * @throws IOException</em>
+<a name="1112" href="#1112">1112</a> <em>     */</em>
+<a name="1113" href="#1113">1113</a>     <strong>public</strong> <strong>void</strong> importRecoverLog(String pathToLog) throws IOException {
+<a name="1114" href="#1114">1114</a>         <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Unsupported by this frontier."</span>);
+<a name="1115" href="#1115">1115</a>     }
+<a name="1116" href="#1116">1116</a> 
+<a name="1117" href="#1117">1117</a>     <strong>public</strong> <strong>synchronized</strong> <a href="../../../../org/archive/crawler/framework/FrontierMarker.html">FrontierMarker</a> getInitialMarker(String regexpr,
+<a name="1118" href="#1118">1118</a>             <strong>boolean</strong> inCacheOnly) {
+<a name="1119" href="#1119">1119</a>         <strong>return</strong> <strong>null</strong>;
+<a name="1120" href="#1120">1120</a>     }
+<a name="1121" href="#1121">1121</a> 
+<a name="1122" href="#1122">1122</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1123" href="#1123">1123</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#getURIsList(org.archive.crawler.framework.FrontierMarker, int, boolean)</em>
+<a name="1124" href="#1124">1124</a> <em class="comment">     */</em>
+<a name="1125" href="#1125">1125</a>     <strong>public</strong> <strong>synchronized</strong> ArrayList&lt;String> getURIsList(<a href="../../../../org/archive/crawler/framework/FrontierMarker.html">FrontierMarker</a> marker,
+<a name="1126" href="#1126">1126</a>             <strong>int</strong> numberOfMatches, <strong>boolean</strong> verbose)
+<a name="1127" href="#1127">1127</a>         throws <a href="../../../../org/archive/crawler/framework/exceptions/InvalidFrontierMarkerException.html">InvalidFrontierMarkerException</a> {
+<a name="1128" href="#1128">1128</a>         <em class="comment">// TODO Auto-generated method stub</em>
+<a name="1129" href="#1129">1129</a>         <strong>return</strong> <strong>null</strong>;
+<a name="1130" href="#1130">1130</a>     }
+<a name="1131" href="#1131">1131</a> 
+<a name="1132" href="#1132">1132</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1133" href="#1133">1133</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#deleteURIs(java.lang.String)</em>
+<a name="1134" href="#1134">1134</a> <em class="comment">     */</em>
+<a name="1135" href="#1135">1135</a>     <strong>public</strong> <strong>synchronized</strong> <strong>long</strong> deleteURIs(String match) {
+<a name="1136" href="#1136">1136</a>         <em class="comment">// TODO: implement?</em>
+<a name="1137" href="#1137">1137</a>         <strong>return</strong> 0;
+<a name="1138" href="#1138">1138</a>     }
+<a name="1139" href="#1139">1139</a>     
+<a name="1140" href="#1140">1140</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1141" href="#1141">1141</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#deleteURIs(java.lang.String)</em>
+<a name="1142" href="#1142">1142</a> <em class="comment">     */</em>
+<a name="1143" href="#1143">1143</a>     <strong>public</strong> <strong>synchronized</strong> <strong>long</strong> deleteURIs(String uriMatch, String queueMatch) {
+<a name="1144" href="#1144">1144</a>         <em class="comment">// TODO implement?</em>
+<a name="1145" href="#1145">1145</a>         <strong>return</strong> 0;
+<a name="1146" href="#1146">1146</a>     }
+<a name="1147" href="#1147">1147</a> 
+<a name="1148" href="#1148">1148</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1149" href="#1149">1149</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#deleted(org.archive.crawler.datamodel.CrawlURI)</em>
+<a name="1150" href="#1150">1150</a> <em class="comment">     */</em>
+<a name="1151" href="#1151">1151</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> deleted(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="1152" href="#1152">1152</a>         <em class="comment">// TODO Auto-generated method stub</em>
+<a name="1153" href="#1153">1153</a>     }
+<a name="1154" href="#1154">1154</a> 
+<a name="1155" href="#1155">1155</a>     <strong>public</strong> <strong>void</strong> considerIncluded(<a href="../../../../org/archive/net/UURI.html">UURI</a> u) {
+<a name="1156" href="#1156">1156</a>         <em class="comment">// This will cause the URI to be crawled!!!</em>
+<a name="1157" href="#1157">1157</a>         <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi = <strong>new</strong> <a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a>(u);
+<a name="1158" href="#1158">1158</a>         innerSchedule(curi);
+<a name="1159" href="#1159">1159</a> 
+<a name="1160" href="#1160">1160</a>     }
+<a name="1161" href="#1161">1161</a> 
+<a name="1162" href="#1162">1162</a>     <strong>public</strong> <strong>void</strong> kickUpdate() {
+<a name="1163" href="#1163">1163</a>         loadSeeds();
+<a name="1164" href="#1164">1164</a>     }
+<a name="1165" href="#1165">1165</a>     
+<a name="1166" href="#1166">1166</a>     <strong>public</strong> <strong>void</strong> start() {
+<a name="1167" href="#1167">1167</a>         unpause(); 
+<a name="1168" href="#1168">1168</a>     }
+<a name="1169" href="#1169">1169</a>     
+<a name="1170" href="#1170">1170</a>     <strong>synchronized</strong> <strong>public</strong> <strong>void</strong> pause() { 
+<a name="1171" href="#1171">1171</a>         shouldPause = <strong>true</strong>;
+<a name="1172" href="#1172">1172</a>         notifyAll();
+<a name="1173" href="#1173">1173</a>     }
+<a name="1174" href="#1174">1174</a>     <strong>synchronized</strong> <strong>public</strong> <strong>void</strong> unpause() { 
+<a name="1175" href="#1175">1175</a>         shouldPause = false;
+<a name="1176" href="#1176">1176</a>         notifyAll();
+<a name="1177" href="#1177">1177</a>     }
+<a name="1178" href="#1178">1178</a>     <strong>synchronized</strong> <strong>public</strong> <strong>void</strong> terminate() { 
+<a name="1179" href="#1179">1179</a>         shouldTerminate = <strong>true</strong>;
+<a name="1180" href="#1180">1180</a>     }  
+<a name="1181" href="#1181">1181</a> 
+<a name="1182" href="#1182">1182</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1183" href="#1183">1183</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#getFrontierJournal()</em>
+<a name="1184" href="#1184">1184</a> <em class="comment">     */</em>
+<a name="1185" href="#1185">1185</a>     <strong>public</strong> <a href="../../../../org/archive/crawler/frontier/FrontierJournal.html">FrontierJournal</a> getFrontierJournal() {
+<a name="1186" href="#1186">1186</a>         <strong>return</strong> <strong>null</strong>;
+<a name="1187" href="#1187">1187</a>     }
+<a name="1188" href="#1188">1188</a> 
+<a name="1189" href="#1189">1189</a>     <strong>private</strong> <strong>static</strong> <strong>class</strong> ThreadLocalQueue
+<a name="1190" href="#1190">1190</a>     <strong>extends</strong> ThreadLocal&lt;Queue&lt;CandidateURI>> implements Serializable {
+<a name="1191" href="#1191">1191</a> 
+<a name="1192" href="#1192">1192</a>         <strong>private</strong> <strong>static</strong> <strong>final</strong> <strong>long</strong> serialVersionUID = 8268977225156462059L;
+<a name="1193" href="#1193">1193</a> 
+<a name="1194" href="#1194">1194</a>         <strong>protected</strong> Queue&lt;CandidateURI> initialValue() {
+<a name="1195" href="#1195">1195</a>             <strong>return</strong> <strong>new</strong> MemQueue&lt;CandidateURI>();
+<a name="1196" href="#1196">1196</a>         }
+<a name="1197" href="#1197">1197</a> 
+<a name="1198" href="#1198">1198</a>         <em>/**<em>*</em></em>
+<a name="1199" href="#1199">1199</a> <em>         * @return Queue of 'batched' items</em>
+<a name="1200" href="#1200">1200</a> <em>         */</em>
+<a name="1201" href="#1201">1201</a>         <strong>public</strong> Queue&lt;CandidateURI> getQueue() {
+<a name="1202" href="#1202">1202</a>             <strong>return</strong> get();
+<a name="1203" href="#1203">1203</a>         }
+<a name="1204" href="#1204">1204</a>     }
+<a name="1205" href="#1205">1205</a>     
+<a name="1206" href="#1206">1206</a>     <em>/**<em>*</em></em>
+<a name="1207" href="#1207">1207</a> <em>     * This method is not supported by this Frontier implementation</em>
+<a name="1208" href="#1208">1208</a> <em>     * @param pathToLog</em>
+<a name="1209" href="#1209">1209</a> <em>     * @param retainFailures</em>
+<a name="1210" href="#1210">1210</a> <em>     * @throws IOException</em>
+<a name="1211" href="#1211">1211</a> <em>     */</em>
+<a name="1212" href="#1212">1212</a>     <strong>public</strong> <strong>void</strong> importRecoverLog(String pathToLog, <strong>boolean</strong> retainFailures)
+<a name="1213" href="#1213">1213</a>     throws IOException {
+<a name="1214" href="#1214">1214</a>         <strong>throw</strong> <strong>new</strong> IOException(<span class="string">"Unsupported"</span>);
+<a name="1215" href="#1215">1215</a>     }
+<a name="1216" href="#1216">1216</a> 
+<a name="1217" href="#1217">1217</a>     <em class="comment">//</em>
+<a name="1218" href="#1218">1218</a>     <em class="comment">// Reporter implementation</em>
+<a name="1219" href="#1219">1219</a>     <em class="comment">//</em>
+<a name="1220" href="#1220">1220</a>     
+<a name="1221" href="#1221">1221</a>     <strong>public</strong> String[] getReports() {
+<a name="1222" href="#1222">1222</a>         <em class="comment">// none but default for now</em>
+<a name="1223" href="#1223">1223</a>         <strong>return</strong> <strong>new</strong> String[] {};
+<a name="1224" href="#1224">1224</a>     }
+<a name="1225" href="#1225">1225</a>     
+<a name="1226" href="#1226">1226</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1227" href="#1227">1227</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineReport()</em>
+<a name="1228" href="#1228">1228</a> <em class="comment">     */</em>
+<a name="1229" href="#1229">1229</a>     <strong>public</strong> String singleLineReport() {
+<a name="1230" href="#1230">1230</a>         <strong>return</strong> ArchiveUtils.singleLineReport(<strong>this</strong>);
+<a name="1231" href="#1231">1231</a>     }
+<a name="1232" href="#1232">1232</a> 
+<a name="1233" href="#1233">1233</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1234" href="#1234">1234</a> <em class="comment">     * @see org.archive.util.Reporter#reportTo(java.io.Writer)</em>
+<a name="1235" href="#1235">1235</a> <em class="comment">     */</em>
+<a name="1236" href="#1236">1236</a>     <strong>public</strong> <strong>void</strong> reportTo(PrintWriter writer) throws IOException {
+<a name="1237" href="#1237">1237</a>         reportTo(<strong>null</strong>,writer);
+<a name="1238" href="#1238">1238</a>     }
+<a name="1239" href="#1239">1239</a>     
+<a name="1240" href="#1240">1240</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1241" href="#1241">1241</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#oneLineReport()</em>
+<a name="1242" href="#1242">1242</a> <em class="comment">     */</em>
+<a name="1243" href="#1243">1243</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> singleLineReportTo(PrintWriter w) throws IOException {
+<a name="1244" href="#1244">1244</a>         hostQueues.singleLineReportTo(w);
+<a name="1245" href="#1245">1245</a>     }
+<a name="1246" href="#1246">1246</a> 
+<a name="1247" href="#1247">1247</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1248" href="#1248">1248</a> <em class="comment">     * @see org.archive.util.Reporter#singleLineLegend()</em>
+<a name="1249" href="#1249">1249</a> <em class="comment">     */</em>
+<a name="1250" href="#1250">1250</a>     <strong>public</strong> String singleLineLegend() {
+<a name="1251" href="#1251">1251</a>         <strong>return</strong> hostQueues.singleLineLegend();
+<a name="1252" href="#1252">1252</a>     }
+<a name="1253" href="#1253">1253</a>     
+<a name="1254" href="#1254">1254</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1255" href="#1255">1255</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#report()</em>
+<a name="1256" href="#1256">1256</a> <em class="comment">     */</em>
+<a name="1257" href="#1257">1257</a>     <strong>public</strong> <strong>synchronized</strong> <strong>void</strong> reportTo(String name, PrintWriter writer) {
+<a name="1258" href="#1258">1258</a>         <em class="comment">// ignore name; only one report for now</em>
+<a name="1259" href="#1259">1259</a>         hostQueues.reportTo(name, writer);
+<a name="1260" href="#1260">1260</a>     }
+<a name="1261" href="#1261">1261</a> 
+<a name="1262" href="#1262">1262</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1263" href="#1263">1263</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlStarted(java.lang.String)</em>
+<a name="1264" href="#1264">1264</a> <em class="comment">     */</em>
+<a name="1265" href="#1265">1265</a>     <strong>public</strong> <strong>void</strong> crawlStarted(String message) {
+<a name="1266" href="#1266">1266</a>         <em class="comment">// Not interested</em>
+<a name="1267" href="#1267">1267</a>     }
+<a name="1268" href="#1268">1268</a> 
+<a name="1269" href="#1269">1269</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1270" href="#1270">1270</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlEnding(java.lang.String)</em>
+<a name="1271" href="#1271">1271</a> <em class="comment">     */</em>
+<a name="1272" href="#1272">1272</a>     <strong>public</strong> <strong>void</strong> crawlEnding(String sExitMessage) {
+<a name="1273" href="#1273">1273</a>         <em class="comment">// Not interested</em>
+<a name="1274" href="#1274">1274</a>     }
+<a name="1275" href="#1275">1275</a> 
+<a name="1276" href="#1276">1276</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1277" href="#1277">1277</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlEnded(java.lang.String)</em>
+<a name="1278" href="#1278">1278</a> <em class="comment">     */</em>
+<a name="1279" href="#1279">1279</a>     <strong>public</strong> <strong>void</strong> crawlEnded(String sExitMessage) {
+<a name="1280" href="#1280">1280</a>         <em class="comment">// Cleanup!</em>
+<a name="1281" href="#1281">1281</a>         <strong>if</strong> (<strong>this</strong>.alreadyIncluded != <strong>null</strong>) {
+<a name="1282" href="#1282">1282</a>             <strong>this</strong>.alreadyIncluded.close();
+<a name="1283" href="#1283">1283</a>             <strong>this</strong>.alreadyIncluded = <strong>null</strong>;
+<a name="1284" href="#1284">1284</a>         }
+<a name="1285" href="#1285">1285</a>         hostQueues.close();
+<a name="1286" href="#1286">1286</a>     }
+<a name="1287" href="#1287">1287</a> 
+<a name="1288" href="#1288">1288</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1289" href="#1289">1289</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlPausing(java.lang.String)</em>
+<a name="1290" href="#1290">1290</a> <em class="comment">     */</em>
+<a name="1291" href="#1291">1291</a>     <strong>public</strong> <strong>void</strong> crawlPausing(String statusMessage) {
+<a name="1292" href="#1292">1292</a>         <em class="comment">// Not interested</em>
+<a name="1293" href="#1293">1293</a>     }
+<a name="1294" href="#1294">1294</a> 
+<a name="1295" href="#1295">1295</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1296" href="#1296">1296</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlPaused(java.lang.String)</em>
+<a name="1297" href="#1297">1297</a> <em class="comment">     */</em>
+<a name="1298" href="#1298">1298</a>     <strong>public</strong> <strong>void</strong> crawlPaused(String statusMessage) {
+<a name="1299" href="#1299">1299</a>         <em class="comment">// Not interested</em>
+<a name="1300" href="#1300">1300</a>     }
+<a name="1301" href="#1301">1301</a> 
+<a name="1302" href="#1302">1302</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1303" href="#1303">1303</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlResuming(java.lang.String)</em>
+<a name="1304" href="#1304">1304</a> <em class="comment">     */</em>
+<a name="1305" href="#1305">1305</a>     <strong>public</strong> <strong>void</strong> crawlResuming(String statusMessage) {
+<a name="1306" href="#1306">1306</a>         <em class="comment">// Not interested</em>
+<a name="1307" href="#1307">1307</a>     }
+<a name="1308" href="#1308">1308</a> 
+<a name="1309" href="#1309">1309</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1310" href="#1310">1310</a> <em class="comment">     * @see org.archive.crawler.event.CrawlStatusListener#crawlCheckpoint(java.io.File)</em>
+<a name="1311" href="#1311">1311</a> <em class="comment">     */</em>
+<a name="1312" href="#1312">1312</a>     <strong>public</strong> <strong>void</strong> crawlCheckpoint(File checkpointDir) throws Exception {
+<a name="1313" href="#1313">1313</a>         <em class="comment">// Not interested</em>
+<a name="1314" href="#1314">1314</a>     }
+<a name="1315" href="#1315">1315</a> 
+<a name="1316" href="#1316">1316</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1317" href="#1317">1317</a> <em class="comment">     * @see org.archive.crawler.datamodel.UriUniqFilter.HasUriReceiver#receive(org.archive.crawler.datamodel.CandidateURI)</em>
+<a name="1318" href="#1318">1318</a> <em class="comment">     */</em>
+<a name="1319" href="#1319">1319</a>     <strong>public</strong> <strong>void</strong> receive(<a href="../../../../org/archive/crawler/datamodel/CandidateURI.html">CandidateURI</a> item) {
+<a name="1320" href="#1320">1320</a>         System.out.println(<span class="string">"Received "</span> + item);
+<a name="1321" href="#1321">1321</a>         innerSchedule(item);        
+<a name="1322" href="#1322">1322</a>     }
+<a name="1323" href="#1323">1323</a> 
+<a name="1324" href="#1324">1324</a>     <em class="comment">/*<em class="comment"> (non-Javadoc)</em></em>
+<a name="1325" href="#1325">1325</a> <em class="comment">     * @see org.archive.crawler.framework.Frontier#getGroup(org.archive.crawler.datamodel.CrawlURI)</em>
+<a name="1326" href="#1326">1326</a> <em class="comment">     */</em>
+<a name="1327" href="#1327">1327</a>     <strong>public</strong> FrontierGroup getGroup(<a href="../../../../org/archive/crawler/datamodel/CrawlURI.html">CrawlURI</a> curi) {
+<a name="1328" href="#1328">1328</a>         <strong>try</strong> {
+<a name="1329" href="#1329">1329</a>             <strong>return</strong> getHQ(curi);
+<a name="1330" href="#1330">1330</a>         } <strong>catch</strong> (IOException ioe) {
+<a name="1331" href="#1331">1331</a>             <strong>throw</strong> <strong>new</strong> RuntimeException(ioe);
+<a name="1332" href="#1332">1332</a>         }
+<a name="1333" href="#1333">1333</a>     }
+<a name="1334" href="#1334">1334</a>     
+<a name="1335" href="#1335">1335</a>     <strong>public</strong> <strong>long</strong> averageDepth() {
+<a name="1336" href="#1336">1336</a>         <strong>return</strong> hostQueues.getAverageDepth();
+<a name="1337" href="#1337">1337</a>     }
+<a name="1338" href="#1338">1338</a>     
+<a name="1339" href="#1339">1339</a>     <strong>public</strong> <strong>float</strong> congestionRatio() {
+<a name="1340" href="#1340">1340</a>         <strong>return</strong> hostQueues.getCongestionRatio();
+<a name="1341" href="#1341">1341</a>     }
+<a name="1342" href="#1342">1342</a>     
+<a name="1343" href="#1343">1343</a>     <strong>public</strong> <strong>long</strong> deepestUri() {
+<a name="1344" href="#1344">1344</a>         <strong>return</strong> hostQueues.getDeepestQueueSize();
+<a name="1345" href="#1345">1345</a>     }
+<a name="1346" href="#1346">1346</a> }
+</pre>
+<hr/><div id="footer">This page was automatically generated by <a href="http://maven.apache.org/">Maven</a></div></body>
+</html>
+
