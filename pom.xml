@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.archive</groupId>
+  <artifactId>heritrix</artifactId>
+  <version>1.14.1</version>
+  <name>Heritrix</name>
+  <description>The Internet Archive's open-source, extensible, web-scale,
+  archival-quality web crawler project.</description>
+  <url>http://crawler.archive.org</url>
+  <inceptionYear>2003</inceptionYear>
+  <organization>
+    <name>Internet Archive</name>
+    <url>http://www.archive.org/</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>GNU LESSER GENERAL PUBLIC LICENSE</name>
+      <url>http://www.gnu.org/licenses/lgpl.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>gojomo</id>
+      <name>Gordon Mohr</name>
+      <email>gojomo at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>michele</id>
+      <name>Michele Kimpton</name>
+      <email>michele at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>ia_igor</id>
+      <name>Igor Ranitovic</name>
+      <email>igor at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>johnerik</id>
+      <name>John Erik Halse</name>
+      <email>johnh at archive dot org</email>
+      <url>http://www.nb.no</url>
+      <organization>National Library of Norway</organization>
+      <timezone>-1</timezone>
+    </developer>
+    <developer>
+      <id>kristinn_sig</id>
+      <name>Kristinn Sigurdsson</name>
+      <email>kris at archive dot org</email>
+      <url>http://www.bok.hi.is/</url>
+      <organization>National and University Library of Iceland</organization>
+      <timezone>-0</timezone>
+    </developer>
+    <developer>
+      <id>rstata</id>
+      <name>Raymie Stata</name>
+      <email>rstata at archive dot org</email>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>stack-sf</id>
+      <name>Michael Stack</name>
+      <email>stack at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>danavery</id>
+      <name>Dan Avery</name>
+      <email>davery at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>karl</id>
+      <name>Karl Thiessen</name>
+      <email>karl at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>paul_jack</id>
+      <name>Paul Jack</name>
+      <email>pjack at archive dot org</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+    <developer>
+      <id>nlevitt</id>
+      <name>Noah Levitt</name>
+      <email>nlevitt at archive</email>
+      <url>http://www.archive.org</url>
+      <organization>Internet Archive</organization>
+      <timezone>-8</timezone>
+    </developer>
+  </developers>
+  <contributors>
+    <contributor>
+      <name>James Casey</name>
+      <email>me at jamesc dot net</email>
+      <url>http://www.jamesc.net</url>
+    </contributor>
+    <contributor>
+      <name>Parker Thompson</name>
+      <email>parkert at archive dot org</email>
+      <organization>Internet Archive</organization>
+    </contributor>
+    <contributor>
+      <name>Judy Ma</name>
+      <email>jma at archive dot org</email>
+      <organization>Internet Archive</organization>
+    </contributor>
+    <contributor>
+      <name>Soren Vejrup Carlsen</name>
+      <email>svc at kb dot dk</email>
+      <organization>The Royal Library</organization>
+    </contributor>
+    <contributor>
+      <name>Tom Emerson</name>
+      <email>tree at basistech dot com</email>
+      <organization>Basis Technology</organization>
+    </contributor>
+    <contributor>
+      <name>Andy Boyko</name>
+      <email>aboy at loc dot gov</email>
+      <organization>Library of Congress</organization>
+    </contributor>
+    <contributor>
+      <name>Mark Williamson</name>
+      <email>junklight at sourceforge dot net</email>
+      <organization>British Library</organization>
+    </contributor>
+    <contributor>
+      <name>Oskar Grenholm</name>
+      <email>oskar dot grenholm  at kb dot se</email>
+      <organization>Swedish Royal Library</organization>
+    </contributor>
+    <contributor>
+      <name>Howard Lee Gayle</name>
+      <email></email>
+      <organization></organization>
+    </contributor>
+    <contributor>
+      <name>Ansi Zhousp</name>
+      <email>zhousp at gmail dot com</email>
+      <organization></organization>
+    </contributor>
+    <contributor>
+      <name>Dave Skinner</name>
+      <email>dave at solid dot net</email>
+      <organization>Solid.net Consulting</organization>
+    </contributor>
+    <contributor>
+      <name>Christian Kohlschütter</name>
+      <email>kohlschuetter@l3s.de</email>
+      <organization>L3S Research Center</organization>
+    </contributor>
+    <contributor>
+      <name>Mike Schwartz</name>
+      <email>schwartz at CodeOnTheRoad dot com</email>
+      <organization></organization>
+    </contributor>
+    <contributor>
+      <name>Rob Eger</name>
+      <email>reger at aptas dot com</email>
+      <organization>Aptas</organization>
+    </contributor>
+    <contributor>
+      <name>Shifra Raffel</name>
+      <email>Shifra dot Raffel at ucop dot edu</email>
+      <organization>California Digital Library</organization>
+    </contributor>
+    <contributor>
+      <name>Nicolas Baly</name>
+      <email>nicolas dot baly at epfl dot ch</email>
+      <organization></organization>
+    </contributor>
+    <contributor>
+      <name>Olaf Freyer</name>
+      <email></email>
+      <organization></organization>
+    </contributor>
+  </contributors>
+  <mailingLists>
+    <mailingList>
+      <name>Crawler Discussion List</name>
+      <subscribe>archive-crawler-subscribe@yahoogroups.com</subscribe>
+      <unsubscribe>archive-crawler-unsubscribe@yahoogroups.com</unsubscribe>
+      <archive>http://groups.yahoo.com/group/archive-crawler/</archive>
+    </mailingList>
+    <mailingList>
+      <name>Crawler Commits</name>
+      <subscribe>http://lists.sourceforge.net/lists/listinfo/archive-crawler-cvs</subscribe>
+      <unsubscribe>http://lists.sourceforge.net/lists/listinfo/archive-crawler-cvs</unsubscribe>
+      <archive>http://sourceforge.net/mailarchive/forum.php?forum=archive-crawler-cvs</archive>
+    </mailingList>
+  </mailingLists>
+  <scm>
+    <connection>scm:svn:https://archive-crawler.svn.sourceforge.net/svnroot/archive-crawler</connection>
+    <url>https://archive-crawler.svn.sourceforge.net/svnroot/archive-crawler</url>
+  </scm>
+  <issueManagement>
+    <url>http://webteam.archive.org/jira/browse/HER</url>
+  </issueManagement>
+  <ciManagement>
+    <notifiers>
+      <notifier>
+        <configuration>
+          <address>webmaster@crawler.archive.org</address>
+        </configuration>
+      </notifier>
+    </notifiers>
+  </ciManagement>
+  <distributionManagement>
+    <repository>
+      <id>default</id>
+      <name>Default Repository</name>
+      <url>http://shell.sourceforge.net//home/users/s/st/${maven.username}</url>
+    </repository>
+    <site>
+      <id>default</id>
+      <name>Default Site</name>
+      <url>scp://crawler.archive.org/home/groups/a/ar/archive-crawler/htdocs/</url>
+    </site>
+  </distributionManagement>
+  <dependencies>
+    <dependency>
+      <groupId>net.htmlparser.jericho</groupId>
+      <artifactId>jericho-html</artifactId>
+      <version>2.6</version>
+    </dependency>
+    <dependency>
+      <!-- Available from Spring Plugins repo -->
+      <groupId>com.sleepycat</groupId>
+      <artifactId>je</artifactId>
+      <version>3.3.62</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-httpclient</groupId>
+      <artifactId>commons-httpclient</artifactId>
+      <version>3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+      <version>1.3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-logging</groupId>
+      <artifactId>commons-logging</artifactId>
+      <version>1.0.4</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-net</groupId>
+      <artifactId>commons-net</artifactId>
+      <version>1.4.1</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
+      <!-- Was originally 2.0.3 but switched to 2.0.6, as available from Central Repository -->
+      <groupId>dnsjava</groupId>
+      <artifactId>dnsjava</artifactId>
+      <version>2.0.6</version>
+    </dependency>
+    <dependency>
+      <!-- Switched to 4.2.12, as 4.2.23 not on Maven Central -->
+      <groupId>jetty</groupId>
+      <artifactId>jetty</artifactId>
+      <version>4.2.12</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>servlet-api</artifactId>
+      <version>2.3</version>
+    </dependency>
+    <dependency>
+      <groupId>tomcat</groupId>
+      <artifactId>jasper-runtime</artifactId>
+      <version>4.1.30</version>
+    </dependency>
+    <dependency>
+      <groupId>tomcat</groupId>
+      <artifactId>jasper-compiler</artifactId>
+      <version>4.1.30</version>
+    </dependency>
+    <dependency>
+      <groupId>poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>2.0-RC1-20031102</version>
+    </dependency>
+    <dependency>
+      <groupId>poi-scratchpad</groupId>
+      <artifactId>poi-scratchpad</artifactId>
+      <version>2.0-RC1-20031102</version>
+    </dependency>
+    <dependency>
+      <groupId>javaswf</groupId>
+      <artifactId>javaswf</artifactId>
+      <version>CVS-SNAPSHOT-1</version>
+    </dependency>
+    <dependency>
+      <groupId>itext</groupId>
+      <artifactId>itext</artifactId>
+      <version>1.2</version>
+    </dependency>
+    <dependency>
+      <groupId>ant</groupId>
+      <artifactId>ant</artifactId>
+      <version>1.6.2</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.2</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-pool</groupId>
+      <artifactId>commons-pool</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+      <version>3.1</version>
+    </dependency>
+    <dependency>
+      <groupId>commons-cli</groupId>
+      <artifactId>commons-cli</artifactId>
+      <version>1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>mg4j</groupId>
+      <artifactId>mg4j</artifactId>
+      <version>1.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>fastutil</groupId>
+      <artifactId>fastutil</artifactId>
+      <version>1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>libidn</groupId>
+      <artifactId>libidn</artifactId>
+      <version>0.5.9</version>
+    </dependency>
+    <dependency>
+      <groupId>beanshell</groupId>
+      <artifactId>beanshell</artifactId>
+      <version>2.0b4</version>
+    </dependency>
+    <dependency>
+      <groupId>jets3t</groupId>
+      <artifactId>jets3t</artifactId>
+      <version>0.5.0</version>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.2</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <sourceDirectory>src/java</sourceDirectory>
+    <testSourceDirectory>src/java</testSourceDirectory>
+    <resources>
+      <resource>
+        <directory>${basedir}/src/resources</directory>
+        <includes>
+          <include>*.xsl</include>
+        </includes>
+      </resource>
+      <resource>
+        <directory>${maven.build.dir}/conf/</directory>
+        <includes>
+          <include>heritrix.properties</include>
+          <include>jndi.properties</include>
+          <include>profiles/*default/**</include>
+          <include>modules/**</include>
+          <include>selftest/**</include>
+          <include>effective_tld_names.dat</include>
+        </includes>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>2.5.1</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+          <source>1.5</source>
+          <target>1.5</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.1.1</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <addExtensions>false</addExtensions>
+              <mainClass>org.archive.crawler.Heritrix</mainClass>
+            </manifest>
+            <manifestFile>${basedir}/src/java/META-INF/MANIFEST-MF</manifestFile>
+          </archive>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>3.3</version>
+        <configuration>
+          <moduleExcludes>
+            <xdoc>navigation.xml</xdoc>
+          </moduleExcludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.0.0-M3</version>
+        <configuration>
+          <argLine>-ea</argLine>
+          <forkMode>once</forkMode>
+          <systemProperties>
+            <testtmpdir>${maven.build.dir}/test-tmp</testtmpdir>
+          </systemProperties>
+          <excludes>
+            <exclude>**/*SelfTest.java</exclude>
+          </excludes>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>2.3</version>
+        <configuration>
+          <warSourceDirectory>src/webapps/admin/</warSourceDirectory>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <reporting>
+    <plugins>
+      <plugin>
+        <artifactId>maven-changes-plugin</artifactId>
+        <reportSets>
+          <reportSet>
+            <reports>
+              <report>changes-report</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+        <configuration>
+          <xmlPath>${basedir}/xdocs/changes.xml</xmlPath>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <author>true</author>
+          <destDir>${maven.docs.dest}/apidocs</destDir>
+          <doctitle>${project.name} ${project.currentVersion} </doctitle>
+          <links>
+            <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
+          </links>
+          <show>package</show>
+          <source>1.5</source>
+          <use>true</use>
+          <version>true</version>
+          <windowtitle>${project.name} ${project.currentVersion} </windowtitle>
+          <docencoding>UTF-8</docencoding>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jxr-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-pmd-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <artifactId>maven-surefire-report-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>taglist-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </reporting>
+</project>
