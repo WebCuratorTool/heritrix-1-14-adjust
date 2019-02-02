@@ -38,12 +38,17 @@ at this point this approach has been abandoned in favour of Approach 2.
 
 There are several steps to this process:
 
-1. Download and unpack the maven 1.x distribution, the final 1.x release being 1.1, found at
+1. Download and install Java 1.5 from Oracle (https://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase5-419410.html).
+This JVM can be run simply by setting `JAVA_HOME` to the unpacked location and including `JAVA_HOME/bin` in the shell
+path. See the note on *Accommodating unit test failures* below regarding the failures that occur when building with
+Java 1.8. The original `aheritrix-1.14.1.jar` was built with Java 1.5, so we are replicating that process. 
+
+2. Download and unpack the maven 1.x distribution, the final 1.x release being 1.1, found at
 http://archive.apache.org/dist/maven/binaries/. For linux, one option is to download
 `http://archive.apache.org/dist/maven/binaries/maven-1.1.tar.gz`. There are some installation notes at
 https://maven.apache.org/archives/maven-1.x/start/install.html.
 
-2. You don't want to replace your existing maven distribution, so perhaps you can put this unpacked distribution in
+3. You don't want to replace your existing maven distribution, so perhaps you can put this unpacked distribution in
 `~/bin`. Set `MAVEN_HOME` to the location on this unpacked distribution. To run the 1.x version of maven execute in
 linux:
 ```
@@ -54,7 +59,7 @@ For Windows it would be:
 %MAVEN_HOME%\bin\maven.bat <command-arguments>
 ```
 
-3. Load the necessary jars from maven2 repositories. The structure of maven 1 repositories (the local one typically
+4. Load the necessary jars from maven2 repositories. The structure of maven 1 repositories (the local one typically
 found at ~/.maven/repository) is:
 ```
 <groupId-with-dot-separated-package-names-as-a-single-folder-name>/jars/<artifactId>-<version>.jar
@@ -78,7 +83,11 @@ download-maven2-dependencies-and-copy-to-maven1-repository.bat
 
 ## Versioning
 
-See the `project.xml` file for the current jar version that will be generated.
+See the `project.xml` file for the current jar version that will be generated. Previous versions have been tagged in the
+git repository. To list the tags, use:
+```
+git tag -l
+```
 
 ## Installation
 
@@ -91,17 +100,152 @@ See ./docs/articles/developer_manual/index.html or
 
 Simply put, execute the following on linx:
 ```
-$MAVEN_HOME/bin/maven dist
+$MAVEN_HOME/bin/maven [clean] dist
 ```
 or for Windows:
 ```
-%MAVEN_HOME/bin/maven.bat dist
+%MAVEN_HOME%/bin/maven.bat [clean] dist
+```
+
+### Accommodating unit test failures
+
+To perform a build that ignores unit test failures, execute the following on linux:
+```
+$MAVEN_HOME/bin/maven [clean] dist -Dmaven.test.error.ignore=true -Dmaven.test.failure.ignore=true [--debug]
+```
+or for Windows:
+```
+%MAVEN_HOME%/bin/maven.bat [clean] dist -Dmaven.test.error.ignore=true -Dmaven.test.failure.ignore=true [--debug]
+```
+
+## Notes on unit test failures
+
+When building with:
+```
+java -version
+java version "1.8.0_191"
+Java(TM) SE Runtime Environment (build 1.8.0_191-b12)
+Java HotSpot(TM) 64-Bit Server VM (build 25.191-b12, mixed mode)
+```
+and:
+```
+$MAVEN_HOME/bin/maven --version
+ __  __
+|  \/  |__ _Apache__ ___
+| |\/| / _` \ V / -_) ' \  ~ intelligent projects ~
+|_|  |_\__,_|\_/\___|_||_|  v. 1.1
+```
+and executing the following:
+```
+$MAVEN_HOME/bin/maven clean dist -Dmaven.test.error.ignore=true -Dmaven.test.failure.ignore=true
+```
+the list of unit test failures given below occurs. These unit test failures do *not* occur when using:
+```
+java -version
+java version "1.5.0_22"
+Java(TM) 2 Runtime Environment, Standard Edition (build 1.5.0_22-b03)
+Java HotSpot(TM) 64-Bit Server VM (build 1.5.0_22-b03, mixed mode)
+```
+
+This means that there are potential issues when running Heritrix 1.14.1 with more recent JDK's. Those relevant errors
+and failures are given to help with future issue resolution.
+
+### Unit test org.archive.io.arc.ARCWriterTest
+```
+[junit] Running org.archive.io.arc.ARCWriterTest
+[junit] Tests run: 15, Failures: 2, Errors: 2, Time elapsed: 0.219 sec
+[junit] [ERROR] Test org.archive.io.arc.ARCWriterTest FAILED
+
+Testcase: testWriteRecordCompressed(org.archive.io.arc.ARCWriterTest):	Caused an ERROR
+java.io.IOException: Record ENDING at 475 has 175 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/writeRecordCompressed-JUNIT-20190202011421-00005.arc.gz: {subject-uri=http://www.one.net/id=0, ip-address=0.1.2.3, length=113, absolute-offset=167, creation-date=26091020212651, content-type=text/html, version=1.0}
+java.lang.RuntimeException: java.io.IOException: Record ENDING at 475 has 175 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/writeRecordCompressed-JUNIT-20190202011421-00005.arc.gz: {subject-uri=http://www.one.net/id=0, ip-address=0.1.2.3, length=113, absolute-offset=167, creation-date=26091020212651, content-type=text/html, version=1.0}
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.hasNext(ArchiveReader.java:477)
+	at org.archive.io.ArchiveReader.validate(ArchiveReader.java:262)
+	at org.archive.io.arc.ARCWriterTest.validate(ARCWriterTest.java:163)
+	at org.archive.io.arc.ARCWriterTest.testWriteRecordCompressed(ARCWriterTest.java:245)
+Caused by: java.io.IOException: Record ENDING at 475 has 175 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/writeRecordCompressed-JUNIT-20190202011421-00005.arc.gz: {subject-uri=http://www.one.net/id=0, ip-address=0.1.2.3, length=113, absolute-offset=167, creation-date=26091020212651, content-type=text/html, version=1.0}
+	at org.archive.io.arc.ARCReaderFactory$CompressedARCReader.gotoEOR(ARCReaderFactory.java:427)
+	at org.archive.io.ArchiveReader.cleanupCurrentRecord(ArchiveReader.java:192)
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.hasNext(ArchiveReader.java:474)
+	... 18 more
+
+
+Testcase: testLengthTooShortCompressed(org.archive.io.arc.ARCWriterTest):	FAILED
+Count wrong 2
+junit.framework.AssertionFailedError: Count wrong 2
+	at org.archive.io.arc.ARCWriterTest.lengthTooShort(ARCWriterTest.java:397)
+	at org.archive.io.arc.ARCWriterTest.testLengthTooShortCompressed(ARCWriterTest.java:361)
+
+
+Testcase: testLengthTooLongCompressed(org.archive.io.arc.ARCWriterTest):	FAILED
+Count wrong 2
+junit.framework.AssertionFailedError: Count wrong 2
+	at org.archive.io.arc.ARCWriterTest.lengthTooLong(ARCWriterTest.java:451)
+	at org.archive.io.arc.ARCWriterTest.testLengthTooLongCompressed(ARCWriterTest.java:416)
+
+
+Testcase: testLengthTooLongCompressedStrict(org.archive.io.arc.ARCWriterTest):	Caused an ERROR
+java.io.IOException: Record ENDING at 653 has 374 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/testLengthTooLongCompressed-JUNIT-20190202011421-00011.arc.gz: {subject-uri=http://www.archive.org/test/, ip-address=192.168.1.1, length=116, absolute-offset=170, creation-date=20190202011421, content-type=text/html, version=1.0}
+java.lang.RuntimeException: java.io.IOException: Record ENDING at 653 has 374 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/testLengthTooLongCompressed-JUNIT-20190202011421-00011.arc.gz: {subject-uri=http://www.archive.org/test/, ip-address=192.168.1.1, length=116, absolute-offset=170, creation-date=20190202011421, content-type=text/html, version=1.0}
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.hasNext(ArchiveReader.java:477)
+	at org.archive.io.arc.ARCWriterTest.iterateRecords(ARCWriterTest.java:300)
+	at org.archive.io.arc.ARCWriterTest.lengthTooLong(ARCWriterTest.java:450)
+	at org.archive.io.arc.ARCWriterTest.testLengthTooLongCompressedStrict(ARCWriterTest.java:423)
+Caused by: java.io.IOException: Record ENDING at 653 has 374 trailing byte(s): /go/repos-webcurator/heritrix-1-14-adjust/target/test-tmp/testLengthTooLongCompressed-JUNIT-20190202011421-00011.arc.gz: {subject-uri=http://www.archive.org/test/, ip-address=192.168.1.1, length=116, absolute-offset=170, creation-date=20190202011421, content-type=text/html, version=1.0}
+	at org.archive.io.arc.ARCReaderFactory$CompressedARCReader.gotoEOR(ARCReaderFactory.java:427)
+	at org.archive.io.ArchiveReader.cleanupCurrentRecord(ArchiveReader.java:192)
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.hasNext(ArchiveReader.java:474)
+	... 18 more
+```
+
+### Unit test org.archive.io.warc.WARCWriterTest
+```
+[junit] Running org.archive.io.warc.WARCWriterTest
+[junit] Tests run: 9, Failures: 1, Errors: 2, Time elapsed: 0.151 sec
+[junit] [ERROR] Test org.archive.io.warc.WARCWriterTest FAILED
+
+Testcase: testArcRecordOffsetReads(org.archive.io.warc.WARCWriterTest):	Caused an ERROR
+Failed move to EOR or failed header read: null
+java.lang.RuntimeException: Failed move to EOR or failed header read: null
+	at org.archive.io.GzippedInputStream$1.next(GzippedInputStream.java:239)
+	at org.archive.io.warc.WARCReaderFactory$CompressedWARCReader$1.innerNext(WARCReaderFactory.java:280)
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.exceptionNext(ArchiveReader.java:560)
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.next(ArchiveReader.java:518)
+	at org.archive.io.ArchiveReader$ArchiveRecordIterator.next(ArchiveReader.java:461)
+	at org.archive.io.warc.WARCWriterTest.testArcRecordOffsetReads(WARCWriterTest.java:456)
+
+
+Testcase: testRandomAccess(org.archive.io.warc.WARCWriterTest):	FAILED
+expected:<0> but was:<1>
+junit.framework.AssertionFailedError: expected:<0> but was:<1>
+	at org.archive.io.warc.WARCWriterTest.testRandomAccess(WARCWriterTest.java:316)
+
+
+Testcase: testWriteRecordCompressed(org.archive.io.warc.WARCWriterTest):	Caused an ERROR
+Count of records, 1 is less than expected 3
+java.io.IOException: Count of records, 1 is less than expected 3
+	at org.archive.io.ArchiveReader.validate(ArchiveReader.java:279)
+	at org.archive.io.warc.WARCWriterTest.validate(WARCWriterTest.java:248)
+	at org.archive.io.warc.WARCWriterTest.testWriteRecordCompressed(WARCWriterTest.java:323)
+```
+
+### Unit test org.archive.util.ArchiveUtilsTest
+```
+[junit] Running org.archive.util.ArchiveUtilsTest
+[junit] Tests run: 16, Failures: 1, Errors: 0, Time elapsed: 11.358 sec
+[junit] [ERROR] Test org.archive.util.ArchiveUtilsTest FAILED
+
+Testcase: testDoubleToString(org.archive.util.ArchiveUtilsTest):	FAILED
+cecking 2 character precision
+junit.framework.AssertionFailedError: cecking 2 character precision
+	at org.archive.util.ArchiveUtilsTest.testDoubleToString(ArchiveUtilsTest.java:242)
 ```
 
 ## Contributors
 
-See git commits to see who contributors are. Issues are tracked through the git repository issue tracker. Note that
-there is no history prior to version 1.14.1 (which is when the source was imported into this repository).
+The original commits are attributed to the people named in the `project.xml` file. Issues are tracked through the github
+repository issue tracker. Note that there is no history prior to version 1.14.1 (which is when the source was imported
+into this repository). See the git commits after the tagged 1.14.1 version for those contributors.
 
 ## License
 

@@ -64,3 +64,5 @@ local.properties
 
 # Don't check in hs_err files
 hs_err*.log
+
+/velocity.log
