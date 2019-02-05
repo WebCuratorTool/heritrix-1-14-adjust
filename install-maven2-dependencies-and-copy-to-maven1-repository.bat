@@ -133,13 +133,12 @@ call md %userprofile%\.maven\repository\org.gnu.inet\jars
 call copy %userprofile%\.m2\repository\org\gnu\inet\libidn\0.6.5\libidn-0.6.5.jar %userprofile%\.maven\repository\org.gnu.inet\jars
 
 rem jetty-4.2.23.jar - the latest 4.2.x version available from maven central is org.mortbay.jetty:jetty:4.2.12 (November 2007),
-rem so it's not clear where this version sits. We load it manually.
-call mvn install:install-file -DgroupId=org.mortbay.jetty -DartifactId=jetty ^
-      -Dversion=4.2.23 ^
-      -Dpackaging=jar ^
-      -Dfile=.\lib\jetty-4.2.23.jar
+rem so it's not clear where this version sits. Heritrix SimpleHttpServer only uses the org.mortbay.http classes
+rem and it may only be used for self-test, so we'll use the 4.2.12 version.
+call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^
+  -Dartifact=org.mortbay.jetty:jetty:4.2.12
 call md %userprofile%\.maven\repository\org.mortbay.jetty\jars
-call copy %userprofile%\.m2\repository\org\mortbay\jetty\jetty\4.2.23\jetty-4.2.23.jar %userprofile%\.maven\repository\org.mortbay.jetty\jars
+call copy %userprofile%\.m2\repository\org\mortbay\jetty\jetty\4.2.12\jetty-4.2.12.jar %userprofile%\.maven\repository\org.mortbay.jetty\jars
 
 rem poi-2.0-RC1-20031102.jar - this version does not exist on maven central but poi:poi:2.0-final-20040126 does, so we use it (November 2006) (3.1-FINAL is available June 2008)
 call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^

@@ -302,9 +302,14 @@
       <version>2.0.6</version>
     </dependency>
     <dependency>
+      <!-- This does not seem to be required for heritrix to run (maybe just for the self-test.
+           It uses the package org.mortbay.http for the SimpleHttpServer.
+           There is no version 4.2.23 available on maven central, but 4.2.12 does exist and
+           may work in a pinch.
+      -->
       <groupId>org.mortbay.jetty</groupId>
       <artifactId>jetty</artifactId>
-      <version>4.2.23</version>
+      <version>4.2.12</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -412,7 +417,7 @@
         </includes>
       </resource>
       <resource>
-        <directory>${maven.build.dir}/conf/</directory>
+        <directory>${project.build.directory}/conf/</directory>
         <includes>
           <include>heritrix.properties</include>
           <include>jndi.properties</include>
@@ -470,7 +475,7 @@
           <argLine>-ea</argLine>
           <forkMode>once</forkMode>
           <systemProperties>
-            <testtmpdir>${maven.build.dir}/test-tmp</testtmpdir>
+            <testtmpdir>${project.build.directory}/test-tmp</testtmpdir>
           </systemProperties>
           <excludes>
             <exclude>**/*SelfTest.java</exclude>
@@ -516,8 +521,8 @@
         <version>2.6.1</version>
         <configuration>
           <author>true</author>
-          <destDir>${maven.docs.dest}/apidocs</destDir>
-          <doctitle>${project.name} ${pom.currentVersion} </doctitle>
+          <destDir>${project.build.directory}/apidocs</destDir>
+          <doctitle>${project.name} ${project.version} </doctitle>
           <links>
             <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
           </links>
@@ -525,7 +530,7 @@
           <source>1.5</source>
           <use>true</use>
           <version>true</version>
-          <windowtitle>${project.name} ${pom.currentVersion} </windowtitle>
+          <windowtitle>${project.name} ${project.version} </windowtitle>
           <docencoding>UTF-8</docencoding>
           <encoding>UTF-8</encoding>
         </configuration>
