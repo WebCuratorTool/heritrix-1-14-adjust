@@ -4,7 +4,6 @@
 /bin
 /eclipse-bin
 /out
-/lib
 *.ipr
 *.iws
 .packaging
