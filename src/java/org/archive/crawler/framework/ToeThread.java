@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.httpclient.heritrix.HttpRecorderMarker;
 import org.archive.crawler.datamodel.CoreAttributeConstants;
 import org.archive.crawler.datamodel.CrawlOrder;
 import org.archive.crawler.datamodel.CrawlURI;
@@ -37,7 +38,6 @@ import org.archive.crawler.framework.exceptions.EndedException;
 import org.archive.util.ArchiveUtils;
 import org.archive.util.DevUtils;
 import org.archive.util.HttpRecorder;
-import org.archive.util.HttpRecorderMarker;
 import org.archive.util.ProgressStatisticsReporter;
 import org.archive.util.Reporter;
 

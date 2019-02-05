@@ -31,6 +31,7 @@ import java.net.URISyntaxException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.httpclient.heritrix.LaxURI;
 import org.apache.commons.httpclient.URIException;
 import org.archive.crawler.datamodel.CandidateURI;
 import org.archive.util.SURT;

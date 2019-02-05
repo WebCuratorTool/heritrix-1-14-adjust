@@ -4,12 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.archive</groupId>
   <artifactId>heritrix</artifactId>
-  <!--
-    IMPORTANT This version should match the version found in project.xml.
-    The version in pom.xml is used for downstream projects that have heritrix as dependency
-    (whereas project.xml, project.properties and maven.xml are used to build this project using maven 1.x).
-    -->
-  <version>1.14.2-webcuratortool-2.0.1</version>
+  <version>1.14.1</version>
   <name>Heritrix</name>
   <description>The Internet Archive's open-source, extensible, web-scale,
   archival-quality web crawler project.</description>
@@ -243,52 +238,40 @@
       <url>scp://crawler.archive.org/home/groups/a/ar/archive-crawler/htdocs/</url>
     </site>
   </distributionManagement>
-  <repositories>
-    <repository>
-      <id>maven-central</id>
-      <name>Maven Central repository</name>
-      <url>https://repo.maven.apache.org/maven2/</url>
-    </repository>
-    <repository>
-      <id>spring-plugins</id>
-      <name>Spring Plugin repository</name>
-      <url>http://repo.spring.io/plugins-release/</url>
-    </repository>
-  </repositories>
   <dependencies>
     <dependency>
-      <groupId>net.htmlparser.jericho</groupId>
+      <groupId>jericho-html</groupId>
       <artifactId>jericho-html</artifactId>
-      <version>2.6.1</version>
+      <version>2.6</version>
     </dependency>
     <dependency>
-      <groupId>com.sleepycat</groupId>
+      <groupId>je</groupId>
       <artifactId>je</artifactId>
       <version>3.3.62</version>
     </dependency>
     <dependency>
-      <groupId>commons-httpclient</groupId>
-      <artifactId>commons-httpclient</artifactId>
-      <version>3.1.1-heritrix-1.14.2-webcuratortool-2.0.1</version>
+      <groupId>commons-httpclient-local</groupId>
+      <artifactId>commons-httpclient-local</artifactId>
+      <version>3.1</version>
     </dependency>
     <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
+      <groupId>commons-io-local</groupId>
+      <artifactId>commons-io-local</artifactId>
       <version>1.3.1</version>
     </dependency>
     <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
+      <groupId>commons-lang-local</groupId>
+      <artifactId>commons-lang-local</artifactId>
       <version>2.3</version>
     </dependency>
     <dependency>
-      <groupId>commons-logging</groupId>
-      <artifactId>commons-logging</artifactId>
+      <groupId>commons-logging-local</groupId>
+      <artifactId>commons-logging-local</artifactId>
       <version>1.0.4</version>
     </dependency>
     <dependency>
-      <groupId>commons-net</groupId>
-      <artifactId>commons-net</artifactId>
+      <groupId>commons-net-local</groupId>
+      <artifactId>commons-net-local</artifactId>
       <version>1.4.1</version>
     </dependency>
     <dependency>
@@ -299,67 +282,66 @@
     <dependency>
       <groupId>dnsjava</groupId>
       <artifactId>dnsjava</artifactId>
-      <version>2.0.6</version>
+      <version>2.0.3</version>
     </dependency>
     <dependency>
-      <groupId>org.mortbay.jetty</groupId>
+      <groupId>jetty</groupId>
       <artifactId>jetty</artifactId>
       <version>4.2.23</version>
     </dependency>
     <dependency>
-      <groupId>javax.servlet</groupId>
-      <artifactId>servlet-api</artifactId>
+      <groupId>servlet</groupId>
+      <artifactId>servlet</artifactId>
       <version>2.3</version>
     </dependency>
     <dependency>
-      <groupId>tomcat</groupId>
+      <groupId>jasper-runtime</groupId>
       <artifactId>jasper-runtime</artifactId>
-      <version>4.1.36</version>
-      <scope>provided</scope>
+      <version>4.1.30</version>
     </dependency>
     <dependency>
-      <groupId>tomcat</groupId>
+      <groupId>jasper-compiler</groupId>
       <artifactId>jasper-compiler</artifactId>
       <version>4.1.30</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
-      <!-- Because the unit tests are mixed with the actual code, we include poi with a scope of provided -->
       <groupId>poi</groupId>
       <artifactId>poi</artifactId>
-      <version>2.0-final-20040126</version>
-      <scope>provided</scope>
+      <version>2.0-RC1-20031102</version>
     </dependency>
     <dependency>
-      <!-- Because the unit tests are mixed with the actual code, we include poi-scratchpad with a scope of provided -->
-      <groupId>poi</groupId>
+      <groupId>poi-scratchpad</groupId>
       <artifactId>poi-scratchpad</artifactId>
-      <version>2.0-final-20040126</version>
-      <scope>provided</scope>
+      <version>2.0-RC1-20031102</version>
     </dependency>
     <dependency>
       <groupId>javaswf</groupId>
       <artifactId>javaswf</artifactId>
-      <version>CVS-SNAPSHOT</version>
+      <version></version>
     </dependency>
     <dependency>
-      <groupId>com.lowagie</groupId>
+      <groupId>itext</groupId>
       <artifactId>itext</artifactId>
-      <version>1.2.3</version>
+      <version>1.2</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.ant</groupId>
-      <artifactId>ant</artifactId>
-      <version>1.7.1</version>
+      <groupId>ant-local</groupId>
+      <artifactId>ant-local</artifactId>
+      <version>1.6.2</version>
+    </dependency>
+    <dependency>
+      <groupId>junit-local</groupId>
+      <artifactId>junit-local</artifactId>
+      <version>3.8.2</version>
     </dependency>
     <dependency>
       <groupId>commons-pool</groupId>
       <artifactId>commons-pool</artifactId>
-      <version>1.3.1-heritrix-1.14.2-webcuratortool-2.0.1</version>
+      <version>1.3</version>
     </dependency>
     <dependency>
-      <groupId>commons-collections</groupId>
-      <artifactId>commons-collections</artifactId>
+      <groupId>commons-collections-local</groupId>
+      <artifactId>commons-collections-local</artifactId>
       <version>3.1</version>
     </dependency>
     <dependency>
@@ -368,37 +350,35 @@
       <version>1.0</version>
     </dependency>
     <dependency>
-      <groupId>it.unimi.dsi</groupId>
-      <artifactId>mg4j</artifactId>
+      <groupId>mg4j-local</groupId>
+      <artifactId>mg4j-local</artifactId>
       <version>1.0.1</version>
     </dependency>
     <dependency>
-      <groupId>fastutil</groupId>
-      <artifactId>fastutil</artifactId>
-      <version>5.0.3-heritrix-subset-1.0</version>
+      <groupId>fastutil-local</groupId>
+      <artifactId>fastutil-local</artifactId>
+      <version>1.0</version>
     </dependency>
     <dependency>
-      <groupId>org.gnu.inet</groupId>
+      <groupId>libidn</groupId>
       <artifactId>libidn</artifactId>
-      <version>0.6.5</version>
+      <version>0.5.9</version>
     </dependency>
     <dependency>
-      <groupId>org.beanshell</groupId>
-      <artifactId>bsh</artifactId>
+      <groupId>beanshell</groupId>
+      <artifactId>beanshell</artifactId>
       <version>2.0b4</version>
-      <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.mahout.jets3t</groupId>
+      <groupId>jets3t</groupId>
       <artifactId>jets3t</artifactId>
-      <version>0.6.1</version>
+      <version>0.5.0</version>
     </dependency>
     <dependency>
-      <!-- Because the unit tests are mixed with the actual code, we include junit with a scope of provided -->
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>3.8.2</version>
-      <scope>compile</scope>
+      <scope>test</scope>
     </dependency>
   </dependencies>
   <build>
@@ -412,7 +392,7 @@
         </includes>
       </resource>
       <resource>
-        <directory>${project.build.directory}/conf/</directory>
+        <directory>${maven.build.dir}/conf/</directory>
         <includes>
           <include>heritrix.properties</include>
           <include>jndi.properties</include>
@@ -425,21 +405,15 @@
     </resources>
     <plugins>
       <plugin>
-        <!-- Corresponds to December 2009 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.1</version>
         <configuration>
           <encoding>UTF-8</encoding>
-          <source>1.6</source>
-          <target>1.6</target>
+          <source>1.5</source>
+          <target>1.5</target>
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to August 2011 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>2.3.2</version>
         <configuration>
           <archive>
             <manifest>
@@ -451,10 +425,7 @@
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to May 2010 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-site-plugin</artifactId>
-        <version>2.1.1</version>
         <configuration>
           <moduleExcludes>
             <xdoc>navigation.xml</xdoc>
@@ -462,15 +433,12 @@
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to May 2008 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.4.3</version>
         <configuration>
           <argLine>-ea</argLine>
           <forkMode>once</forkMode>
           <systemProperties>
-            <testtmpdir>${project.build.directory}/test-tmp</testtmpdir>
+            <testtmpdir>${maven.build.dir}/test-tmp</testtmpdir>
           </systemProperties>
           <excludes>
             <exclude>**/*SelfTest.java</exclude>
@@ -481,10 +449,7 @@
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to October 2010 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
-        <version>2.1.1</version>
         <configuration>
           <warSourceDirectory>src/webapps/admin/</warSourceDirectory>
         </configuration>
@@ -494,10 +459,7 @@
   <reporting>
     <plugins>
       <plugin>
-        <!-- Corresponds to January 2011 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-changes-plugin</artifactId>
-        <version>2.4</version>
         <reportSets>
           <reportSet>
             <reports>
@@ -510,14 +472,11 @@
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to October 2009 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.6.1</version>
         <configuration>
           <author>true</author>
-          <destDir>${project.build.directory}/apidocs</destDir>
-          <doctitle>${project.name} ${project.version} </doctitle>
+          <destDir>${maven.docs.dest}/apidocs</destDir>
+          <doctitle>${pom.name} ${pom.currentVersion} </doctitle>
           <links>
             <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
           </links>
@@ -525,33 +484,23 @@
           <source>1.5</source>
           <use>true</use>
           <version>true</version>
-          <windowtitle>${project.name} ${project.version} </windowtitle>
+          <windowtitle>${pom.name} ${pom.currentVersion} </windowtitle>
           <docencoding>UTF-8</docencoding>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
       <plugin>
-        <!-- Corresponds to June 2010 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jxr-plugin</artifactId>
-        <version>2.2</version>
       </plugin>
       <plugin>
-        <!-- Corresponds to May 2008 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-pmd-plugin</artifactId>
-        <version>2.4</version>
       </plugin>
       <plugin>
-        <!-- Corresponds to May 2008 -->
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>2.4.3</version>
       </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>taglist-maven-plugin</artifactId>
-        <version>2.4</version>
       </plugin>
     </plugins>
   </reporting>

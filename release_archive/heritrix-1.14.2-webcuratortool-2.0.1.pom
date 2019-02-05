@@ -412,7 +412,7 @@
         </includes>
       </resource>
       <resource>
-        <directory>${project.build.directory}/conf/</directory>
+        <directory>${maven.build.dir}/conf/</directory>
         <includes>
           <include>heritrix.properties</include>
           <include>jndi.properties</include>
@@ -470,7 +470,7 @@
           <argLine>-ea</argLine>
           <forkMode>once</forkMode>
           <systemProperties>
-            <testtmpdir>${project.build.directory}/test-tmp</testtmpdir>
+            <testtmpdir>${maven.build.dir}/test-tmp</testtmpdir>
           </systemProperties>
           <excludes>
             <exclude>**/*SelfTest.java</exclude>
@@ -516,8 +516,8 @@
         <version>2.6.1</version>
         <configuration>
           <author>true</author>
-          <destDir>${project.build.directory}/apidocs</destDir>
-          <doctitle>${project.name} ${project.version} </doctitle>
+          <destDir>${maven.docs.dest}/apidocs</destDir>
+          <doctitle>${project.name} ${pom.currentVersion} </doctitle>
           <links>
             <link>http://java.sun.com/j2se/1.5.0/docs/api</link>
           </links>
@@ -525,7 +525,7 @@
           <source>1.5</source>
           <use>true</use>
           <version>true</version>
-          <windowtitle>${project.name} ${project.version} </windowtitle>
+          <windowtitle>${project.name} ${pom.currentVersion} </windowtitle>
           <docencoding>UTF-8</docencoding>
           <encoding>UTF-8</encoding>
         </configuration>

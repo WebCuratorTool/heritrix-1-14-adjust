@@ -3,17 +3,43 @@ An adjusted version of heritrix-1.14.1 to work with updated dependencies.
 
 ## Synopsis
 
-The heritrix-1.14.1.jar includes Apache commons-httpclient code in its jar instead of relying on an external dependency.
-Unfortunately, this version packaged with the code conflicts with commons-httpclient versions used with the
-Web Curator Tool (https://github.com/DIA-NZ/webcurator).
+The heritrix-1.14.1.jar includes Apache commons-httpclient and commons-pool code in its jar instead of relying on an
+external dependency. Unfortunately, this version packaged with the code conflicts with commons-httpclient and
+commons-pool versions used with the Web Curator Tool (https://github.com/DIA-NZ/webcurator).
 
-This version attempts to correct the conflicts with commons-httpclient version 3.1.
+This version attempts to correct the conflicts with commons-httpclient version 3.1 and commons-pool version 1.3. It does
+this by moving the changed `commons-httpclient` and `commons-pool` code to special versions of those libraries. These
+changed versions can be found at https://github.com/WebCuratorTool/commons-httpclient-heritrix-1-14 and
+https://github.com/WebCuratorTool/commons-pool-heritrix-1-14 respectively. See their respective `README.md`s for more
+details.
 
 ## Motivation
 
 Provide a non-conflicting set of dependencies so the heritrix 1.14.1 crawler can work without classpath conflicts.
 
-## Accomodating Maven Version 1
+## Code changes
+
+Several code changes have been done to remove the `commons-httpclient` and `commons-pool` code from the generated jar.
+
+1. The `heritrix-1.14.1` code that appeared in `org/apache/commons/httpclient` and `org/apache/commons/pool` has been
+moved to the `commons-httpclient-heritrix-1-14` and `commons-pool-heritrix-1-14` github projects respectively. This code no
+longer appears in this codebase.
+
+2. The classes `LaxURI`, `LaxURLCodec` and `HttpRecorderMarker` have been moved to the `commons-httpclient-heritrix-1-14`
+codebase. This is because these classes are used in the commons-httpclient modified code and maven builds do not allow
+cyclic dependencies. Their package is now `org.apache.commons.httpclient.heritrix`.
+
+3. The `commons-httpclient-heritrix-1-14` codebase has added an interface
+`org.apache.commons.httpclient.heritrix.HttpRecorder` that allows classes in `commons-httpclient` to reference
+`HttpRecorder` without having a dependency on the heritrix `HttpRecorder` class. The heritrix `HttpRecorder` class
+implements the `commons-httpclient` `org.apache.commons.httpclient.heritrix.HttpRecorder` interface.
+
+4. The static method `HttpRecorder#getHttpRecorder` has been replaced with
+`org.apache.commons.httpclient.heritrix.HttpRecorderRetriever#getHttpRecorder`. This method returns the
+interface `org.apache.commons.httpclient.heritrix.HttpRecorder`. To use non-interface methods, the returned object must
+be cast to `org.archive.util.HttpRecorder`.
+
+## Accommodating Maven Version 1
 
 This project is built using maven version 1. Maven version 1 configuration files are incompatible with maven version 2.x
 and 3.x. There are two approaches to build this project:
@@ -27,12 +53,15 @@ mvn one:convert
 ```
 
 This takes the `maven.xml`, `project.xml` and possibly the `project.properties` file and generates a `pom.xml` file that
-can be used by maven version 2 or 3. This file still needs work to correct some errors (such as missing plugin groupId
-and versions). And there's no telling how much work is required to actually make it function like a regular maven 1.x
-build.
+can be used by maven version 2 or 3. This original raw converted file is `pom-converted.xml`.
 
-Currently there is a pom.xml that has been checked in as the output of the `mvn one:convert` with some corrections, but
-at this point this approach has been abandoned in favour of Approach 2.
+The `pom.xml` that has been checked into source is the output of the `mvn one:convert` with some corrections,
+notably that dependencies found in `./lib` that exist in maven central or spring plugins have been replaced with the
+real dependency (see the script `install-maven2-dependencies-and-copy-to-maven1-repository.[bat|sh]` for more details).
+This `pom.xml` should not be considered valid for actually building the project (it will build a jar, but that jar
+will not include everything that the maven 1 approach will include). However, that `pom.xml` can be used to indicate
+dependencies for the heritrix jar produced by the maven 1.x build. At this point the conversion approach has been
+abandoned in favour of Approach 2. See the section *Updating the release_archive* for the use of this `pom.xml`.
 
 ### Approach 2: Build the project with maven version 1
 
@@ -74,12 +103,14 @@ compatible with maven 1). That means that all dependencies that are required wil
 maven 2 repository (`~/.m2/repository`) and then copied in the local maven 1 repository (`~/.maven/repository`). This
 download and copy is accomplished by executing the bash script:
 ```
-download-maven2-dependencies-and-copy-to-maven1-repository.sh
+install-maven2-dependencies-and-copy-to-maven1-repository.sh
 ```
 or for Windows:
 ```
-download-maven2-dependencies-and-copy-to-maven1-repository.bat
+install-maven2-dependencies-and-copy-to-maven1-repository.bat
 ```
+These scripts also install the `commons-httpclient-heritrix-1-14` and `commons-pool-heritrix-1-14` dependencies in the
+local maven 1.x repository.
 
 ## Versioning
 
@@ -89,9 +120,28 @@ git repository. To list the tags, use:
 git tag -l
 ```
 
+### Versioned artifacts
+
+The original source files can be found in the subfolder `original_source`.
+
+Pre-built artifacts can be found in the subfolder `release_archive`.
+
+### Running a maven 2.x/3.x/gradle build with a heritrix 1.x dependency
+
+When running a maven or gradle build that requires this version of heritrix, the following commands can be used to
+install the dependency in a local maven 2 repository (run these commands from the root folder of this project):
+```
+mkdir -pv ./target/
+git clone https://github.com/WebCuratorTool/heritrix-1-14-adjust.git ./target/heritrix-1-14-adjust
+mvn install:install-file -Dfile=./target/heritrix-1-14-adjust/heritrix-<version>.jar -DpomFile=./target/heritrix-1-14-adjust/heritrix-<version>-pom.xml
+```
+TODO setup the pom file
+Note that the version needs to be chosen for this script to work.
+
 ## Installation
 
 The artifacts are built using maven and will deploy to a maven version 1 repository.
+
 
 ### Complete build
 
@@ -240,6 +290,15 @@ cecking 2 character precision
 junit.framework.AssertionFailedError: cecking 2 character precision
 	at org.archive.util.ArchiveUtilsTest.testDoubleToString(ArchiveUtilsTest.java:242)
 ```
+
+## Updating the release_archive
+
+When updating the release_archive with a newer version, include the `pom.xml` for that version of the project. This makes
+it easier for other dependent projects (especially the webcuratortool project) to populate its local maven
+repository with the pom associated with the jar. This does involving copying the `pom.xml` into `release-archive` and
+renaming it to `heritrix-<version>.pom`.
+
+**NOTE** Make sure the version found in the `pom.xml` matches the version found in the `project.xml`.
 
 ## Contributors
 

@@ -34,10 +34,10 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 
 import org.apache.commons.codec.DecoderException;
+import org.apache.commons.httpclient.heritrix.LaxURLCodec;
 import org.apache.commons.httpclient.URIException;
 import org.archive.crawler.datamodel.CoreAttributeConstants;
 import org.archive.crawler.datamodel.CrawlURI;
-import org.archive.net.LaxURLCodec;
 import org.archive.net.UURI;
 import org.archive.util.TextUtils;
 

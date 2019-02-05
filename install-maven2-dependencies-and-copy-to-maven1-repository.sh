@@ -4,6 +4,178 @@
 # TODO This could be made a little cleaner creating a list of groupId:artifactId:version and looping through for all entries
 # in the list
 
+##
+## Install dependencies that are in the ./lib folder into both local maven 1 and local maven 2 repositories.
+## If they exist in maven central or some other public repository, load them from that repository.
+## Note that these dependencies, when manually loaded, do not include a pom.
+## They are in alphabetical order by groupId, artifactId.
+
+# je-3.3.62.jar is available from spring plugins com.sleepycat:je:3.3.62 (April 2018?) (18.3.12 is available November 2018)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://repo.spring.io/plugins-release/ \
+  -Dartifact=com.sleepycat:je:3.3.62
+mkdir -pv ~/.maven/repository/com.sleepycat/jars
+cp -v ~/.m2/repository/com/sleepycat/je/3.3.62/je-3.3.62.jar ~/.maven/repository/com.sleepycat/jars
+
+# itext-1.2.0.jar - this version does not exist on maven central but com.lowagie:itext:1.2.3 does, so we use it (June 2006) (4.2.2 is available July 2015)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=com.lowagie:itext:1.2.3
+mkdir -pv ~/.maven/repository/com.lowagie/jars
+cp -v ~/.m2/repository/com/lowagie/itext/1.2.3/itext-1.2.3.jar ~/.maven/repository/com.lowagie/jars
+
+# commons-cli-1.0.jar is available from maven central commons-cli:commons-cli:1.0 (November 2005) (1.4 is available - March 2017)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-cli:commons-cli:1.0
+mkdir -pv ~/.maven/repository/commons-cli/jars
+cp -v ~/.m2/repository/commons-cli/commons-cli/1.0/commons-cli-1.0.jar ~/.maven/repository/commons-cli/jars
+
+# commons-collections-3.1.jar is available from maven central commons-collections:commons-collections:3.1 (November 2005) (3.2.2 is available - November 2015)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-collections:commons-collections:3.1
+mkdir -pv ~/.maven/repository/commons-collections/jars
+cp -v ~/.m2/repository/commons-collections/commons-collections/3.1/commons-collections-3.1.jar ~/.maven/repository/commons-collections/jars
+
+# commons-codec-1.3.jar is available from maven central commons-codec:commons-codec:1.3 (November 2005) (1.11 is available October 2017)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-codec:commons-codec:1.3
+mkdir -pv ~/.maven/repository/commons-codec/jars
+cp -v ~/.m2/repository/commons-codec/commons-codec/1.3/commons-codec-1.3.jar ~/.maven/repository/commons-codec/jars
+
+# commons-io-1.3.1.jar is available from maven central commons-io:commons-io:1.3.1 (February 2007) (2.6 is available October 2017)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-io:commons-io:1.3.1
+mkdir -pv ~/.maven/repository/commons-io/jars
+cp -v ~/.m2/repository/commons-io/commons-io/1.3.1/commons-io-1.3.1.jar ~/.maven/repository/commons-io/jars
+
+# commons-lang-2.3.jar is available from maven central commons-lang:commons-lang:2.3 (February 2007) (2.6 is available - January 2007)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-lang:commons-lang:2.3
+mkdir -pv ~/.maven/repository/commons-lang/jars
+cp -v ~/.m2/repository/commons-lang/commons-lang/2.3/commons-lang-2.3.jar ~/.maven/repository/commons-lang/jars
+
+# commons-logging-1.0.4.jar is available from maven central commons-logging:commons-logging:1.0.4 (November 2005) (1.2 is available July 2014)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-logging:commons-logging:1.0.4
+mkdir -pv ~/.maven/repository/commons-logging/jars
+cp -v ~/.m2/repository/commons-logging/commons-logging/1.0.4/commons-logging-1.0.4.jar ~/.maven/repository/commons-logging/jars
+
+# commons-net-1.4.1.jar is available from maven central commons-net:commons-net:1.4.1 (December 2005) (3.6 is available - February 2017)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=commons-net:commons-net:1.4.1
+mkdir -pv ~/.maven/repository/commons-lang/jars
+cp -v ~/.m2/repository/commons-net/commons-net/1.4.1/commons-net-1.4.1.jar ~/.maven/repository/commons-net/jars
+
+# dnsjava-2.0.3.jar - this version does not exist on maven central but dnsjava:dnsjava:jar:2.0.6 does, so we use it (October 2009) (2.1.8 is available January 2017)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=dnsjava:dnsjava:2.0.6
+mkdir -pv ~/.maven/repository/dnsjava/jars
+cp -v ~/.m2/repository/dnsjava/dnsjava/2.0.6/dnsjava-2.0.6.jar ~/.maven/repository/dnsjava/jars
+
+# fastutil-5.0.3-heritrix-subset-1.0.jar - this is a very specific heritrix version. Maven central only has fastutil:fastutil:5.0.4 (August 2006)
+mvn install:install-file -DgroupId=fastutil -DartifactId=fastutil \
+      -Dversion=5.0.3-heritrix-subset-1.0 \
+      -Dpackaging=jar \
+      -Dfile=./lib/fastutil-5.0.3-heritrix-subset-1.0.jar
+mkdir -pv ~/.maven/repository/fastutil/jars
+cp -v ~/.m2/repository/fastutil/fastutil/5.0.3-heritrix-subset-1.0/fastutil-5.0.3-heritrix-subset-1.0.jar ~/.maven/repository/fastutil/jars
+
+# mg4j-1.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
+# we load it manually
+mvn install:install-file -DgroupId=it.unimi.dsi -DartifactId=mg4j \
+      -Dversion=1.0.1 \
+      -Dpackaging=jar \
+      -Dfile=./lib/mg4j-1.0.1.jar
+mkdir -pv ~/.maven/repository/it.unimi.dsi/jars
+cp -v ~/.m2/repository/it/unimi/dsi/mg4j/1.0.1/mg4j-1.0.1.jar ~/.maven/repository/it.unimi.dsi/jars
+
+# javaswf-CVS-SNAPSHOT-1.jar - this is a very specific javaswf version. There is nothing about javaswf on Maven Central.
+# It seems to be related to this sourceforge flash-related project: http://javaswf.sourceforge.net/
+mvn install:install-file -DgroupId=javaswf -DartifactId=javaswf \
+      -Dversion=CVS-SNAPSHOT \
+      -Dpackaging=jar \
+      -Dfile=./lib/javaswf-CVS-SNAPSHOT-1.jar
+mkdir -pv ~/.maven/repository/javaswf/jars
+cp -v ~/.m2/repository/javaswf/javaswf/CVS-SNAPSHOT/javaswf-CVS-SNAPSHOT.jar ~/.maven/repository/javaswf/jars
+
+# junit-3.8.2.jar is available from maven central junit:junit:3.8.2 (May 2007) (4.12 is available December 2014)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=junit:junit:3.8.2
+mkdir -pv ~/.maven/repository/junit/jars
+cp -v ~/.m2/repository/junit/junit/3.8.2/junit-3.8.2.jar ~/.maven/repository/junit/jars
+
+# jericho-html-2.6.jar is available from maven central net.htmlparser.jericho:jericho-html:2.6 (July 2008) (3.4 is available October 2015)
+# but the 2.6 version seems to have an invalid header, so we use 2.6.1 (January 2009)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=net.htmlparser.jericho:jericho-html:2.6.1
+mkdir -pv ~/.maven/repository/net.htmlparser.jericho/jars
+cp -v ~/.m2/repository/net/htmlparser/jericho/jericho-html/2.6.1/jericho-html-2.6.1.jar ~/.maven/repository/net.htmlparser.jericho/jars
+
+# ant-1.6.2.jar can probably be replaced with org.apache.ant:ant:1.7.1 (July 2008) (1.10.5 is available - July 2018)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=org.apache.ant:ant:1.7.1
+mkdir -pv ~/.maven/repository/org.apache.ant/jars
+cp -v ~/.m2/repository/org/apache/ant/ant/1.7.1/ant-1.7.1.jar ~/.maven/repository/org.apache.ant/jars
+
+# jets3t-0.5.0.jar - this version does not exist on maven central but org.apache.mahout.jets3t:jets3t:0.6.1 does, so we use it (April 2009) (0.7.1 is available November 2009)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=org.apache.mahout.jets3t:jets3t:0.6.1
+mkdir -pv ~/.maven/repository/org.apache.mahout.jets3t/jars
+cp -v ~/.m2/repository/org/apache/mahout/jets3t/jets3t/0.6.1/jets3t-0.6.1.jar ~/.maven/repository/org.apache.mahout.jets3t/jars
+
+# bsh-2.0b4.jar is available from maven central org.beanshell:bsh:2.0b4 (May 2006) (2.0b5 is available March 2012)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=org.beanshell:bsh:2.0b4
+mkdir -pv ~/.maven/repository/org.beanshell/jars
+cp -v ~/.m2/repository/org/beanshell/bsh/2.0b4/bsh-2.0b4.jar ~/.maven/repository/org.beanshell/jars
+
+# libidn-0.5.9.jar - this version does not exist on maven central but org.gnu.inet:libidn:0.6.5 does, so we use it (July 2006) (1.1.5 is available October 2009)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=org.gnu.inet:libidn:0.6.5
+mkdir -pv ~/.maven/repository/org.gnu.inet/jars
+cp -v ~/.m2/repository/org/gnu/inet/libidn/0.6.5/libidn-0.6.5.jar ~/.maven/repository/org.gnu.inet/jars
+
+# jetty-4.2.23.jar - the latest 4.2.x version available from maven central is org.mortbay.jetty:jetty:4.2.12 (November 2007),
+# so it's not clear where this version sits. We load it manually.
+mvn install:install-file -DgroupId=org.mortbay.jetty -DartifactId=jetty \
+      -Dversion=4.2.23 \
+      -Dpackaging=jar \
+      -Dfile=./lib/jetty-4.2.23.jar
+mkdir -pv ~/.maven/repository/org.mortbay.jetty/jars
+cp -v ~/.m2/repository/org/mortbay/jetty/jetty/4.2.23/jetty-4.2.23.jar ~/.maven/repository/org.mortbay.jetty/jars
+
+# poi-2.0-RC1-20031102.jar - this version does not exist on maven central but poi:poi:2.0-final-20040126 does, so we use it (November 2006) (3.1-FINAL is available June 2008)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=poi:poi:2.0-final-20040126
+mkdir -pv ~/.maven/repository/poi/jars
+cp -v ~/.m2/repository/poi/poi/2.0-final-20040126/poi-2.0-final-20040126.jar ~/.maven/repository/poi/jars
+
+# poi-scratchpad-2.0-RC1-20031102.jar is identical to maven central poi:poi-scratchpad:jar:2.0-final-20040126 (November 2006) (3.1-FINAL is available June 2008)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=poi:poi-scratchpad:2.0-final-20040126
+mkdir -pv ~/.maven/repository/poi/jars
+cp -v ~/.m2/repository/poi/poi-scratchpad/2.0-final-20040126/poi-scratchpad-2.0-final-20040126.jar ~/.maven/repository/poi/jars
+
+# jasper-compiler-tomcat-4.1.30.jar is available from maven central tomcat:jasper-compiler:4.1.30 (November 2005) (5.5.23 is available January 2008)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=tomcat:jasper-compiler:4.1.30
+mkdir -pv ~/.maven/repository/tomcat/jars
+cp -v ~/.m2/repository/tomcat/jasper-compiler/4.1.30/jasper-compiler-4.1.30.jar ~/.maven/repository/tomcat/jars
+
+# servlet-tomcat-4.1.30.jar - this version does not exist on maven central but tomcat:servlet:4.1.36 does, so we use it (July 2007)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=tomcat:servlet:4.1.36
+mkdir -pv ~/.maven/repository/tomcat/jars
+cp -v ~/.m2/repository/tomcat/servlet/4.1.36/servlet-4.1.36.jar ~/.maven/repository/tomcat/jars
+
+# jasper-runtime-tomcat-4.1.30.jar - this version does not exist on maven central but tomcat:jasper-runtime:4.1.36 does, so we use it (July 2007) (5.5.23 is available January 2008)
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
+  -Dartifact=tomcat:jasper-runtime:4.1.36
+mkdir -pv ~/.maven/repository/tomcat/jars
+cp -v ~/.m2/repository/tomcat/jasper-runtime/4.1.36/jasper-runtime-4.1.36.jar ~/.maven/repository/tomcat/jars
+
+
+##
+## Dependencies required (aside from commons-httpclient and commons-pool, which are at the bottom of this script)
+
 # Note that these dependencies are in alphabetical order by groupId then artifactId
 
 mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ -Dartifact=ant:ant-commons-net:1.6.5
@@ -259,3 +431,56 @@ cp -v ~/.m2/repository/xml-apis/xml-apis/1.3.03/xml-apis-1.3.03.jar ~/.maven/rep
 mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ -Dartifact=xml-resolver:xml-resolver:1.1
 mkdir -pv ~/.maven/repository/xml-resolver/jars
 cp -v ~/.m2/repository/xml-resolver/xml-resolver/1.1/xml-resolver-1.1.jar ~/.maven/repository/xml-resolver/jars
+
+
+##
+## Download and install special version of commons-httpclient
+
+mkdir -pv ./target
+
+# Get the commons-httpclient repository that has the jar checked in
+git clone https://github.com/WebCuratorTool/commons-httpclient-heritrix-1-14.git ./target/commons-httpclient-heritrix-1-14
+
+# Create the local maven 1.x repository jar location
+mkdir -pv ~/.maven/repository/commons-httpclient/jars
+
+# Copy the jar to the local maven 1.x repository
+cp -v ./target/commons-httpclient-heritrix-1-14/release_archive/commons-httpclient-3.1.1-heritrix-1.14.2-webcuratortool-2.0.1.jar \
+      ~/.maven/repository/commons-httpclient/jars
+# Copy the pom to the local maven 1.x repository
+cp -v ./target/commons-httpclient-heritrix-1-14/release_archive/commons-httpclient-3.1.1-heritrix-1.14.2-webcuratortool-2.0.1.pom \
+      ~/.maven/repository/commons-httpclient/jars
+
+# Install the jar in the local maven 2.x repository
+mvn install:install-file -DgroupId=commons-httpclient -DartifactId=commons-httpclient \
+      -Dversion=3.1.1-heritrix-1.14.2-webcuratortool-2.0.1 \
+      -Dpackaging=jar \
+      -DpomFile=./target/commons-httpclient-heritrix-1-14/release_archive/commons-httpclient-3.1.1-heritrix-1.14.2-webcuratortool-2.0.1.pom \
+      -Dfile=./target/commons-httpclient-heritrix-1-14/release_archive/commons-httpclient-3.1.1-heritrix-1.14.2-webcuratortool-2.0.1.jar
+
+##
+## Download and install special version of commons-pool
+
+mkdir -pv ./target
+
+# Get the commons-pool repository that has the jar checked in
+git clone https://github.com/WebCuratorTool/commons-pool-heritrix-1-14.git ./target/commons-pool-heritrix-1-14
+
+# Create the local maven 1.x repository jar location
+mkdir -pv ~/.maven/repository/commons-pool/jars
+
+# Copy the jar to the local maven 1.x repository
+cp -v ./target/commons-pool-heritrix-1-14/release_archive/commons-pool-1.3.1-heritrix-1.14.2-webcuratortool-2.0.1.jar \
+      ~/.maven/repository/commons-pool/jars
+
+# Copy the pom to the local maven 1.x repository
+cp -v ./target/commons-pool-heritrix-1-14/release_archive/commons-pool-1.3.1-heritrix-1.14.2-webcuratortool-2.0.1.pom \
+      ~/.maven/repository/commons-pool/jars
+
+# Install the jar in the local maven 2.x repository
+mvn install:install-file -DgroupId=commons-pool -DartifactId=commons-pool \
+      -Dversion=1.3.1-heritrix-1.14.2-webcuratortool-2.0.1 \
+      -Dpackaging=jar \
+      -DpomFile=./target/commons-pool-heritrix-1-14/release_archive/commons-pool-1.3.1-heritrix-1.14.2-webcuratortool-2.0.1.pom \
+      -Dfile=./target/commons-pool-heritrix-1-14/release_archive/commons-pool-1.3.1-heritrix-1.14.2-webcuratortool-2.0.1.jar
+

@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 
 import javax.management.AttributeNotFoundException;
 
+import org.apache.commons.httpclient.heritrix.HttpRecorderRetriever;
 import org.apache.commons.httpclient.URIException;
 import org.apache.commons.net.ftp.FTPCommand;
 import org.archive.crawler.datamodel.CrawlURI;
@@ -245,7 +246,7 @@ public class FetchFTP extends Processor implements CoreAttributeConstants {
         }
         
         curi.putLong(A_FETCH_BEGAN_TIME, System.currentTimeMillis());
-        HttpRecorder recorder = HttpRecorder.getHttpRecorder();
+        HttpRecorder recorder = (HttpRecorder) HttpRecorderRetriever.getHttpRecorder();
         ClientFTP client = new ClientFTP();
         
         try {

@@ -48,7 +48,12 @@
     be picked up and appended to the currentVersion.  Handy for continuous
     builds if the version.build.suffix holds time of build.
     -->
-  <currentVersion>1.14.1</currentVersion>
+  <!--
+    IMPORTANT When this version is changed, change the version found in pom.xml as well.
+    The version in pom.xml is used for downstream projects that have heritrix as dependency
+    (whereas project.xml, project.properties and maven.xml are used to build this project using maven 1.x).
+    -->
+  <currentVersion>1.14.2-webcuratortool-2.0.1</currentVersion>
   
   <!-- Details about the organization that 'owns' the project -->
   <organization>
@@ -327,7 +332,7 @@
     <dependencies>
          <dependency>
              <id>jericho-html</id>
-             <version>2.6</version>
+             <version>2.6.1</version>
              <url>http://jerichohtml.sourceforge.net/</url>
              <properties>
                  <war.bundle>true</war.bundle>
@@ -359,8 +364,8 @@
             </properties>
         </dependency>
         <dependency>
-            <id>commons-httpclient-local</id>
-            <version>3.1</version>
+            <id>commons-httpclient</id>
+            <version>3.1.1-heritrix-1.14.2-webcuratortool-2.0.1</version>
             <url>http://jakarta.apache.org/commons/httpclient/</url>
             <properties>
                 <war.bundle>true</war.bundle>
@@ -373,6 +378,8 @@
                 a local copy rather than pull one from the net is causing
                 it confusion on initial setup (This feature worked fine in
                 earlier mavens).
+                    This version includes the code changes found in heritrix-1.14.1 and well as some classes pushed
+                    out of this codebase into that codebase (HttpRecorderMarker, LaxURI, LaxURLCodec).
                 </description>
                 <license>Apache 2.0
                 http://www.apache.org/licenses/LICENSE-2.0</license>
@@ -626,13 +633,13 @@
         </dependency>
         <dependency>
             <id>commons-pool</id>
-            <version>1.3</version>
+            <version>1.3.1-heritrix-1.14.2-webcuratortool-2.0.1</version>
             <url>http://jakarta.apache.org/site/binindex.cgi#commons-pool</url>
             <properties>
                 <war.bundle>true</war.bundle>
                 <ear.bundle>true</ear.bundle>
                 <ear.bundle.dir>APP-INF/lib</ear.bundle.dir>
-                <description>For object pooling.
+                <description>For object pooling. This version has the code changes found in heritrix-1.14.1.
                 </description>
                 <license>Apache 1.1 http://www.apache.org/LICENSE.txt</license>
             </properties>

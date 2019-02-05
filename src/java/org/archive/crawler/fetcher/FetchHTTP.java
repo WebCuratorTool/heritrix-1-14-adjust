@@ -74,6 +74,7 @@ import org.apache.commons.httpclient.auth.BasicScheme;
 import org.apache.commons.httpclient.auth.DigestScheme;
 import org.apache.commons.httpclient.auth.MalformedChallengeException;
 import org.apache.commons.httpclient.cookie.CookiePolicy;
+import org.apache.commons.httpclient.heritrix.HttpRecorderRetriever;
 import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.httpclient.params.HttpConnectionManagerParams;
 import org.apache.commons.httpclient.params.HttpMethodParams;
@@ -427,7 +428,7 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
         curi.putLong(A_FETCH_BEGAN_TIME, System.currentTimeMillis());
 
         // Get a reference to the HttpRecorder that is set into this ToeThread.
-        HttpRecorder rec = HttpRecorder.getHttpRecorder();
+        HttpRecorder rec = (HttpRecorder) HttpRecorderRetriever.getHttpRecorder();
         
         // Shall we get a digest on the content downloaded?
         boolean digestContent  = ((Boolean)getUncheckedAttribute(curi,
@@ -826,7 +827,7 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
      * @param sourceHeader header to consult in URI history
      * @param targetHeader header to set if possible
      */
-    protected void setConditionalGetHeader(CrawlURI curi, HttpMethod method, 
+    protected void setConditionalGetHeader(CrawlURI curi, HttpMethod method,
             String setting, String sourceHeader, String targetHeader) {
         if(((Boolean)getUncheckedAttribute(curi,setting))) {
             try {

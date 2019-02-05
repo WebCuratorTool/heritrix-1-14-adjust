@@ -34,6 +34,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
 
+import org.apache.commons.httpclient.heritrix.HttpRecorderRetriever;
 import org.apache.commons.httpclient.URIException;
 import org.archive.crawler.datamodel.CoreAttributeConstants;
 import org.archive.crawler.datamodel.CrawlHost;
@@ -245,7 +246,7 @@ implements CoreAttributeConstants, FetchStatusCodes {
 	throws IOException {
 		final byte[] dnsRecord =
 			getDNSRecord(curi.getLong(A_FETCH_BEGAN_TIME), rrecordSet);
-		HttpRecorder rec = HttpRecorder.getHttpRecorder();
+		HttpRecorder rec = (HttpRecorder) HttpRecorderRetriever.getHttpRecorder();
         
         // Shall we get a digest on the content downloaded?
 		boolean digestContent  = ((Boolean)getUncheckedAttribute(curi,

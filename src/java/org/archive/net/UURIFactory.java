@@ -36,6 +36,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.httpclient.heritrix.LaxURLCodec;
 import org.apache.commons.httpclient.URI;
 import org.apache.commons.httpclient.URIException;
 import org.archive.util.TextUtils;

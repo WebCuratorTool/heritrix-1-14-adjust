@@ -49,7 +49,7 @@ import org.archive.io.ReplayInputStream;
  *
  * @author gojomo
  */
-public class HttpRecorder {
+public class HttpRecorder implements org.apache.commons.httpclient.heritrix.HttpRecorder {
     protected static Logger logger =
         Logger.getLogger("org.archive.util.HttpRecorder");
 
@@ -253,21 +253,6 @@ public class HttpRecorder {
         if (f.exists()) {
             f.delete();
         }
-    }
-
-    /**
-     * Get the current threads' HttpRecorder.
-     *
-     * @return This threads' HttpRecorder.  Returns null if can't find a
-     * HttpRecorder in current instance.
-     */
-    public static HttpRecorder getHttpRecorder() {
-        HttpRecorder recorder = null;
-        Thread thread = Thread.currentThread();
-        if (thread instanceof HttpRecorderMarker) {
-            recorder = ((HttpRecorderMarker)thread).getHttpRecorder();
-        }
-        return recorder;
     }
 
     /**
