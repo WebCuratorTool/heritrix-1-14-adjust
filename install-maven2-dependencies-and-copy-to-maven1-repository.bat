@@ -70,12 +70,13 @@ call md %userprofile%\.maven\repository\dnsjava\jars
 call copy %userprofile%\.m2\repository\dnsjava\dnsjava\2.0.6\dnsjava-2.0.6.jar %userprofile%\.maven\repository\dnsjava\jars
 
 rem fastutil-5.0.3-heritrix-subset-1.0.jar - this is a very specific heritrix version. Maven central only has fastutil:fastutil:5.0.4 (August 2006)
-call mvn install:install-file -DgroupId=fastutil -DartifactId=fastutil ^
-      -Dversion=5.0.3-heritrix-subset-1.0 ^
-      -Dpackaging=jar ^
-      -Dfile=.\lib\fastutil-5.0.3-heritrix-subset-1.0.jar
+rem What it looks like is that they've only included a small set of classes, specific ones that they use, maybe because the fastutil jar
+rem is so big (5.0.9 is almost 13 MB). But there may not be any specific functionality there.
+rem Web Curator Tool uses fastutil-5.0.9, so we will switch to that.
+call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^
+  -Dartifact=fastutil:fastutil:5.0.9
 call md %userprofile%\.maven\repository\fastutil\jars
-call copy %userprofile%\.m2\repository\fastutil\fastutil\5.0.3-heritrix-subset-1.0\fastutil-5.0.3-heritrix-subset-1.0.jar %userprofile%\.maven\repository\fastutil\jars
+call copy %userprofile%\.m2\repository\fastutil\fastutil\5.0.9\fastutil-5.0.9.jar %userprofile%\.maven\repository\fastutil\jars
 
 rem mg4j-2.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
 rem we load it manually
