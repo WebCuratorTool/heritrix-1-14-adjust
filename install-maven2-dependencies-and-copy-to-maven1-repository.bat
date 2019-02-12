@@ -77,23 +77,25 @@ call mvn install:install-file -DgroupId=fastutil -DartifactId=fastutil ^
 call md %userprofile%\.maven\repository\fastutil\jars
 call copy %userprofile%\.m2\repository\fastutil\fastutil\5.0.3-heritrix-subset-1.0\fastutil-5.0.3-heritrix-subset-1.0.jar %userprofile%\.maven\repository\fastutil\jars
 
-rem mg4j-1.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
+rem mg4j-2.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
 rem we load it manually
 call mvn install:install-file -DgroupId=it.unimi.dsi -DartifactId=mg4j ^
-      -Dversion=1.0.1 ^
+      -Dversion=2.0.1 ^
       -Dpackaging=jar ^
-      -Dfile=.\lib\mg4j-1.0.1.jar
+      -Dfile=.\lib\mg4j-2.0.1.jar
 call md %userprofile%\.maven\repository\it.unimi.dsi\jars
-call copy %userprofile%\.m2\repository\it\unimi\dsi\mg4j\1.0.1\mg4j-1.0.1.jar %userprofile%\.maven\repository\it.unimi.dsi\jars
+call copy %userprofile%\.m2\repository\it\unimi\dsi\mg4j\2.0.1\mg4j-2.0.1.jar %userprofile%\.maven\repository\it.unimi.dsi\jars
 
 rem javaswf-CVS-SNAPSHOT-1.jar - this is a very specific javaswf version. There is nothing about javaswf on Maven Central.
 rem It seems to be related to this sourceforge flash-related project: http://javaswf.sourceforge.net/
-call mvn install:install-file -DgroupId=javaswf -DartifactId=javaswf ^
-      -Dversion=CVS-SNAPSHOT ^
+rem We use the groupId com.anotherbigidea and the version CVS-SNAPSHOT-1 to make it consistent with the same jar
+rem used by Web Curator Tool
+call mvn install:install-file -DgroupId=com.anotherbigidea -DartifactId=javaswf ^
+      -Dversion=CVS-SNAPSHOT-1 ^
       -Dpackaging=jar ^
       -Dfile=.\lib\javaswf-CVS-SNAPSHOT-1.jar
-call md %userprofile%\.maven\repository\javaswf\jars
-call copy %userprofile%\.m2\repository\javaswf\javaswf\CVS-SNAPSHOT\javaswf-CVS-SNAPSHOT.jar %userprofile%\.maven\repository\javaswf\jars
+call md %userprofile%\.maven\repository\com.anotherbigidea\jars
+call copy %userprofile%\.m2\repository\com\anotherbigidea\javaswf\CVS-SNAPSHOT-1\javaswf-CVS-SNAPSHOT.jar %userprofile%\.maven\repository\com.anotherbigidea\jars
 
 rem junit-3.8.2.jar is available from maven central junit:junit:3.8.2 (May 2007) (4.12 is available December 2014)
 call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^

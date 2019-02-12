@@ -343,9 +343,9 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>javaswf</groupId>
+      <groupId>com.anotherbigidea</groupId>
       <artifactId>javaswf</artifactId>
-      <version>CVS-SNAPSHOT</version>
+      <version>CVS-SNAPSHOT-1</version>
     </dependency>
     <dependency>
       <groupId>com.lowagie</groupId>
@@ -375,7 +375,7 @@
     <dependency>
       <groupId>it.unimi.dsi</groupId>
       <artifactId>mg4j</artifactId>
-      <version>1.0.1</version>
+      <version>2.0.1</version>
     </dependency>
     <dependency>
       <groupId>fastutil</groupId>

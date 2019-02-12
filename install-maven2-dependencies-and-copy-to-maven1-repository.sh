@@ -78,23 +78,25 @@ mvn install:install-file -DgroupId=fastutil -DartifactId=fastutil \
 mkdir -pv ~/.maven/repository/fastutil/jars
 cp -v ~/.m2/repository/fastutil/fastutil/5.0.3-heritrix-subset-1.0/fastutil-5.0.3-heritrix-subset-1.0.jar ~/.maven/repository/fastutil/jars
 
-# mg4j-1.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
+# mg4j-2.0.1.jar - nothing related to this version exists on maven central (it.unimi.dsi:mg4j:jar:4.0.3 February 2012 seems too incompatible)
 # we load it manually
 mvn install:install-file -DgroupId=it.unimi.dsi -DartifactId=mg4j \
-      -Dversion=1.0.1 \
+      -Dversion=2.0.1 \
       -Dpackaging=jar \
-      -Dfile=./lib/mg4j-1.0.1.jar
+      -Dfile=./lib/mg4j-2.0.1.jar
 mkdir -pv ~/.maven/repository/it.unimi.dsi/jars
-cp -v ~/.m2/repository/it/unimi/dsi/mg4j/1.0.1/mg4j-1.0.1.jar ~/.maven/repository/it.unimi.dsi/jars
+cp -v ~/.m2/repository/it/unimi/dsi/mg4j/2.0.1/mg4j-2.0.1.jar ~/.maven/repository/it.unimi.dsi/jars
 
 # javaswf-CVS-SNAPSHOT-1.jar - this is a very specific javaswf version. There is nothing about javaswf on Maven Central.
 # It seems to be related to this sourceforge flash-related project: http://javaswf.sourceforge.net/
-mvn install:install-file -DgroupId=javaswf -DartifactId=javaswf \
-      -Dversion=CVS-SNAPSHOT \
+# We use the groupId com.anotherbigidea and the version CVS-SNAPSHOT-1 to make it consistent with the same jar
+# used by Web Curator Tool
+mvn install:install-file -DgroupId=com.anotherbigidea -DartifactId=javaswf \
+      -Dversion=CVS-SNAPSHOT-1 \
       -Dpackaging=jar \
       -Dfile=./lib/javaswf-CVS-SNAPSHOT-1.jar
-mkdir -pv ~/.maven/repository/javaswf/jars
-cp -v ~/.m2/repository/javaswf/javaswf/CVS-SNAPSHOT/javaswf-CVS-SNAPSHOT.jar ~/.maven/repository/javaswf/jars
+mkdir -pv ~/.maven/repository/com.anotherbigidea/jars
+cp -v ~/.m2/repository/com/anotherbigidea/javaswf/CVS-SNAPSHOT-1/javaswf-CVS-SNAPSHOT-1.jar ~/.maven/repository/com.anotherbigidea/jars
 
 # junit-3.8.2.jar is available from maven central junit:junit:3.8.2 (May 2007) (4.12 is available December 2014)
 mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \

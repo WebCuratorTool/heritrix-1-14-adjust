@@ -133,10 +133,10 @@ install the dependency in a local maven 2 repository (run these commands from th
 ```
 mkdir -pv ./target/
 git clone https://github.com/WebCuratorTool/heritrix-1-14-adjust.git ./target/heritrix-1-14-adjust
-mvn install:install-file -Dfile=./target/heritrix-1-14-adjust/heritrix-<version>.jar -DpomFile=./target/heritrix-1-14-adjust/heritrix-<version>-pom.xml
+mvn install:install-file -Dfile=./target/heritrix-1-14-adjust/release_archive/heritrix-<version>.jar \
+  -DpomFile=./target/heritrix-1-14-adjust/release_archive/heritrix-<version>.pom
 ```
-TODO setup the pom file
-Note that the version needs to be chosen for this script to work.
+Note that the version needs to be chosen for this script to work and the `mvn` in the command above is version 2.x or 3.x.
 
 ## Installation
 
