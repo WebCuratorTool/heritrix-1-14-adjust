@@ -356,18 +356,26 @@ public class RecordingOutputStream extends OutputStream {
             // (so that a -1 never survives to replay step)
             contentBeginMark = 0;
         }
-        if (this.out != null) {
-            this.out.close();
-            this.out = null;
+        try {
+            if (this.out != null) {
+                // clear this.out before we attempt a close in case the close() fails
+                OutputStream tempOut = this.out;
+                this.out = null;
+                tempOut.close();
+            }
+        } finally {
+            // Even if an exception occurs we still want to call closeRecorder()
+            closeRecorder();
         }
-        closeRecorder();
     }
     
     protected synchronized void closeDiskStream()
     throws IOException {
         if (this.diskStream != null) {
-            this.diskStream.close();
+            // clear this.diskstream before we attempt a close in case the close() fails
+            OutputStream tempDiskStream = this.diskStream;
             this.diskStream = null;
+            tempDiskStream.close();
         }
     }
 

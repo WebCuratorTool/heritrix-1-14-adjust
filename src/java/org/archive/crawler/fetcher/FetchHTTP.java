@@ -500,8 +500,11 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
             // when too much header material, abort like other truncations
             doAbort(curi, method, HEADER_TRUNC);
         } catch (IOException e) {
-        	failedExecuteCleanup(method, curi, e);
-        	return;
+            if (logger.isLoggable(Level.FINE)) {
+                logger.log(Level.FINE, "Exception=" + e + ", ignoring and continuing with failedExecuteCleanup.", e);
+            }
+            failedExecuteCleanup(method, curi, e);
+            return;
         } catch (ArrayIndexOutOfBoundsException e) {
             // For weird windows-only ArrayIndex exceptions in native
             // code... see
