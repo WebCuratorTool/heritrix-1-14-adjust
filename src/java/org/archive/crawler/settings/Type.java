@@ -175,9 +175,72 @@ public abstract class Type extends Attribute {
      * value are equal. Description is allowed to differ.
      */
     public boolean equals(Object o) {
-        return this == o
-                || (o instanceof Type
-                        && this.getName().equals(((Type) o).getName()) && this
-                        .getValue().equals(((Type) o).getValue()));
+        if (o == null) {
+            return false;
+        }
+        if (this == o) {
+            return true;
+        } else if (o instanceof Type) {
+            Type oType = (Type) o;
+            boolean nameSame;
+            if (this.getName() == null) {
+                nameSame = (oType.getName() == null);
+            } else {
+                nameSame = this.getName().equals(oType.getName());
+            }
+            boolean valueSame;
+            if (this.getValue() == null) {
+                valueSame = (oType.getValue() == null);
+            } else {
+                // For some Types, the value is the type itself, so we can get into infinite loops.
+                if (this.getValue() == this) {
+                    valueSame = (this == oType.getValue());
+                } else {
+                    valueSame = this.getValue().equals(oType.getValue());
+                }
+            }
+            return nameSame && valueSame;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        final int PRIME = 31;
+        int result = 1;
+        final String name = this.getName();
+        result = (PRIME * result) + ((name == null) ? 0 : name.hashCode());
+
+        // For some Types, the value is the type itself, so we can get into infinite loops.
+        final Object value = this.getValue();
+        int valueHashCode;
+        if (value == null) {
+            valueHashCode = 0;
+        } else {
+            if (value instanceof Type) {
+                valueHashCode = System.identityHashCode(value);
+            } else {
+                valueHashCode = value.hashCode();
+            }
+        }
+        result = (PRIME * result) + valueHashCode;
+
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(this.getClass().getName());
+        stringBuilder.append(" name=");
+        stringBuilder.append(this.getName());
+        stringBuilder.append(", value=");
+        if (this == this.getValue()) {
+            stringBuilder.append("this");
+        } else {
+            stringBuilder.append(this.getValue());
+        }
+
+        return stringBuilder.toString();
     }
 }

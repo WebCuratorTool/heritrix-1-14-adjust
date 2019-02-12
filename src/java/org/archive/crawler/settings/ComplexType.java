@@ -1113,14 +1113,5 @@ public abstract class ComplexType extends Type implements DynamicMBean {
            return attributeCount;
        }
    }
-   
-   @Override
-   public String toString() {
-       // In 1.6, toString goes into infinite loop.  Default implementation is
-       // return getName() + '=' + getValue() but this class returns itself
-       // for a value on which we do a toString... and around we go.  Short
-       // circuit it here.
-       return getName() + ": " +
-           getClass().getName() + "@" + Integer.toHexString(hashCode());
-   }
+
 }
