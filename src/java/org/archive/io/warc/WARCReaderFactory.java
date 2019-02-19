@@ -283,8 +283,22 @@ implements WARCConstants {
             };
         }
         
-        protected void gotoEOR(ArchiveRecord rec) throws IOException {
-        	// TODO
+        protected void gotoEOR(ArchiveRecord record) throws IOException {
+            if (record.available() != 0) {
+                throw new IOException("Record should be exhausted before coming in here");
+            } else {
+                this.readExpectedChar(this.getIn(), "\r\n".charAt(0));
+                this.readExpectedChar(this.getIn(), "\r\n".charAt(1));
+                this.readExpectedChar(this.getIn(), "\r\n".charAt(0));
+                this.readExpectedChar(this.getIn(), "\r\n".charAt(1));
+            }
+        }
+
+        protected void readExpectedChar(InputStream is, int expected) throws IOException {
+            int c = is.read();
+            if (c != expected) {
+                throw new IOException("Unexpected character " + Integer.toHexString(c) + "(Expecting " + Integer.toHexString(expected) + ")");
+            }
         }
     }
     
