@@ -293,28 +293,7 @@ junit.framework.AssertionFailedError: cecking 2 character precision
 
 ## Known issues
 
-### com.sleepycat.je.DatabaseException for `http_cookies` database
-
-You may see the following message in the Web Curator Tool harvest-agent-h1 logs:
-```
-com.sleepycat.je.DatabaseException: (JE 3.3.74) There is 1 open Database in the Environment.
-Closing the following databases:
-http_cookies
-    at com.sleepycat.je.Environment.close(Environment.java:378)
-    at org.archive.util.bdbje.EnhancedEnvironment.close(EnhancedEnvironment.java:82)
-    at org.archive.crawler.framework.CrawlController.completeStop(CrawlController.java:1076)
-    at org.archive.crawler.admin.CrawlJob$MBeanCrawlController.completeStop(CrawlJob.java:801)
-    at org.archive.crawler.framework.CrawlController.toeEnded(CrawlController.java:1816)
-    at org.archive.crawler.framework.ToeThread.run(ToeThread.java:186)
-Feb 13, 2019 12:57:41 PM org.archive.crawler.admin.CrawlJob postDeregister
-```
-
-This shows the CrawlController going to a complete stop and finding that the `http_cookies` database in an unclosed
-state, and thus closing it. The `http_cookies` database is setup by the FetchHTTP processor (and is closed as part of
-that processor's finalTasks). When the CrawlController does a completeStop, it goes through its processor chain and
-calls `finalTasks` on each processor. For some reason the FetchHttp processor finalTasks is not being called by the
-CrawlController, perhaps because it's not associated with that CrawlController. This seems to be a benign error and
-can be ignored for the moment.
+There are no known issues at this time.
 
 ## Updating the release_archive
 
