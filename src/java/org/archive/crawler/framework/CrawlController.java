@@ -1669,10 +1669,17 @@ public class CrawlController implements Serializable, Reporter {
      *
      */
     private void runProcessorFinalTasks(){
-        for (Iterator ic = processorChains.iterator(); ic.hasNext(); ) {
-            for (Iterator ip = ((ProcessorChain) ic.next()).iterator();
-                    ip.hasNext(); ) {
-                ((Processor) ip.next()).finalTasks();
+        Iterator ic = this.processorChains.iterator();
+        while (ic.hasNext()) {
+            Iterator ip = ((ProcessorChain) ic.next()).iterator();
+            while (ip.hasNext()) {
+                Processor processor = (Processor) ip.next();
+                try {
+                    processor.finalTasks();
+                } catch (Throwable t) {
+                    LOGGER.log(Level.WARNING, "Exception calling finalTasks() on processor=" + processor +
+                            " ...will continue calling finalTasks() with any other processors", t);
+                }
             }
         }
     }
