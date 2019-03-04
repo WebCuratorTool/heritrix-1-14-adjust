@@ -1764,6 +1764,7 @@ public class Heritrix implements DynamicMBean, MBeanRegistration {
                 final Object objToRegister, final ObjectName objName)
     throws InstanceAlreadyExistsException, MBeanRegistrationException,
     NotCompliantMBeanException {
+        logger.info("Registering bean " + objName.getCanonicalName());
         server.registerMBean(objToRegister, objName);
         return server;
     }
@@ -1786,7 +1787,8 @@ public class Heritrix implements DynamicMBean, MBeanRegistration {
             server.unregisterMBean(name);
             logger.info("Unregistered bean " + name.getCanonicalName());
         } catch (InstanceNotFoundException e) {
-            e.printStackTrace();
+            logger.warning("InstanceNotFoundException unregistering bean " + name.getCanonicalName() +
+                    " -- has this bean already been deregistered?");
         } catch (MBeanRegistrationException e) {
             e.printStackTrace();
         } catch (NullPointerException e) {
