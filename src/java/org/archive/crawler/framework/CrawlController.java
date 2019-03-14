@@ -1075,7 +1075,7 @@ public class CrawlController implements Serializable, Reporter {
                 this.bdbEnvironment.sync();
                 this.bdbEnvironment.close();
             } catch (DatabaseException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Problem syncing or closing bdbEnvironment", e);
             }
             this.bdbEnvironment = null;
         }

@@ -282,6 +282,13 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
     public FetchHTTP(String name) {
         super(name, "HTTP Fetcher");
 
+        System.out.println("* * * DEBUG * * * FetchHTTP created=" + this + ", hashCode=" + this.hashCode());
+        System.out.println("* * * DEBUG * * * AT:");
+        try {
+            throw new Exception();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         addElementToDefinition(
             new DecideRuleSequence(ATTR_MIDFETCH_DECIDE_RULES, 
                 "DecideRules which, if final decision is REJECT, " +
@@ -1160,6 +1167,13 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
 
     public void initialTasks() {
         super.initialTasks();
+        System.out.println("* * * DEBUG * * * FetchHttp#initialTasks this=" + this + ", " + this.hashCode() + ", cookieDb=" + cookieDb);
+        System.out.println("* * * DEBUG * * * AT:");
+        try {
+            throw new Exception();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.getController().addCrawlStatusListener(this);
         configureHttp();
 
@@ -1182,6 +1196,13 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
     }
     
     public void finalTasks() {
+        System.out.println("* * * DEBUG * * * FetchHttp#finalTasks this=" + this + ", " + this.hashCode() + ", cookieDb=" + cookieDb);
+        System.out.println("* * * DEBUG * * * AT:");
+        try {
+            throw new Exception();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         // At the end save cookies to the file specified in the order file.
         saveCookies();
         cleanupHttp();
@@ -1192,14 +1213,47 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
      * Perform any final cleanup related to the HttpClient instance.
      */
     protected void cleanupHttp() {
+        System.out.println("* * * DEBUG * * * FetchHttp#cleanupHttp this=" + this + ", " + this.hashCode() + ", cookieDb=" + cookieDb);
         if(cookieDb!=null) {
             try {
-                cookieDb.sync();
-                cookieDb.close();
+                // clear cookieDb before we attempt a sync/close in case it fails
+                Database tempCookieDb = cookieDb;
+                System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp, cookieDb=" + cookieDb);
+                cookieDb = null;
+                tempCookieDb.sync();
+                tempCookieDb.close();
+                EnhancedEnvironment env = getController().getBdbEnvironment();
+                System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp, env=" + env);
+                env.removeDatabase(null, COOKIEDB_NAME);
+                System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp done removing, COOKIEDB_NAME=" + COOKIEDB_NAME);
             } catch (DatabaseException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+                logger.log(Level.WARNING, "Problem removing database " + COOKIEDB_NAME + ": " +
+                        e.getMessage(), e);
             }
+        } else {
+            System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp, NULL cookieDb=" + cookieDb);
+            // What if cookieDB still exists?
+            try {
+                EnhancedEnvironment env = getController().getBdbEnvironment();
+                System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp, env=" + env);
+                DatabaseConfig dbConfig = new DatabaseConfig();
+                dbConfig.setTransactional(false);
+                dbConfig.setAllowCreate(true);
+                dbConfig.setDeferredWrite(true);
+                Database theCookieDb = env.openDatabase(null, COOKIEDB_NAME, dbConfig);
+                if (theCookieDb != null) {
+                    System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp, (opened) (the) cookieDb=" + theCookieDb);
+                    theCookieDb.sync();
+                    theCookieDb.close();
+                } else {
+                    System.out.println("* * * DEBUG * * * Could not get the cookieDb, so can't close it");
+                }
+                System.out.println("* * * DEBUG * * * FetchHTTP#cleanupHttp ALTERNATE done removing, COOKIEDB_NAME=" + COOKIEDB_NAME);
+            } catch (DatabaseException e) {
+                logger.log(Level.WARNING, "Problem accessing (to remove) database " + COOKIEDB_NAME + ": " +
+                        e.getMessage(), e);
+            }
+
         }
     }
 
@@ -1257,6 +1311,9 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
      */
     private void configureHttpCookies() {
         // If Bdb-backed cookies chosen, replace map in HttpState
+        System.out.println("* * * DEBUG * * * FetchHttp#configureHttpCookies this=" + this + ", " + this.hashCode() + ", cookieDb=" + cookieDb);
+        System.out.println("* * * DEBUG * * * FetchHttp#configureHttpCookies cookieDb=" + cookieDb +
+                ", getUncheckedAttribute(null, ATTR_BDB_COOKIES)=" + getUncheckedAttribute(null, ATTR_BDB_COOKIES));
         if(((Boolean)getUncheckedAttribute(null, ATTR_BDB_COOKIES)).
                 booleanValue()) {
             try {
@@ -1267,6 +1324,7 @@ implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
                 dbConfig.setAllowCreate(true);
                 dbConfig.setDeferredWrite(true);
                 cookieDb = env.openDatabase(null, COOKIEDB_NAME, dbConfig);
+                System.out.println("* * * DEBUG * * * FetchHttp#configureHttpCookies setting cookieDb=" + cookieDb);
                 StoredSortedMap cookiesMap = new StoredSortedMap(cookieDb,
                         new StringBinding(), new SerialBinding(classCatalog,
                                 Cookie.class), true);
