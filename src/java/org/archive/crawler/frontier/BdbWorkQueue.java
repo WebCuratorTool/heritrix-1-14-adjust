@@ -30,6 +30,7 @@ import java.util.logging.Logger;
 
 import org.archive.crawler.datamodel.CrawlURI;
 import org.archive.util.ArchiveUtils;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 import org.archive.util.IoUtils;
 
 import com.sleepycat.je.DatabaseEntry;
@@ -46,7 +47,7 @@ implements Comparable, Serializable {
         Logger.getLogger(BdbWorkQueue.class.getName());
     
     // be robust against trivial implementation changes
-    private static final long serialVersionUID = ArchiveUtils
+    private static final long serialVersionUID = ArchiveUtilsClassnameBasedUIDOnly
         .classnameBasedUID(BdbWorkQueue.class, 1);
 
     /**

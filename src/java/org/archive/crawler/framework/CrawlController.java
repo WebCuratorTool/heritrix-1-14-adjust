@@ -77,6 +77,7 @@ import org.archive.io.GenerationFileHandler;
 import org.archive.net.UURI;
 import org.archive.net.UURIFactory;
 import org.archive.util.ArchiveUtils;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 import org.archive.util.CachedBdbMap;
 import org.archive.util.FileUtils;
 import org.archive.util.Reporter;
@@ -106,7 +107,7 @@ import com.sleepycat.je.utilint.DbLsn;
 public class CrawlController implements Serializable, Reporter {
     // be robust against trivial implementation changes
     private static final long serialVersionUID =
-        ArchiveUtils.classnameBasedUID(CrawlController.class,1);
+        ArchiveUtilsClassnameBasedUIDOnly.classnameBasedUID(CrawlController.class,1);
 
     /**
      * Messages from the crawlcontroller.

@@ -621,22 +621,6 @@ public class ArchiveUtils {
         return sb.toString();
     }
 
-
-    /**
-     * Generate a long UID based on the given class and version number.
-     * Using this instead of the default will assume serialization
-     * compatibility across class changes unless version number is
-     * intentionally bumped.
-     *
-     * @param class1
-     * @param version
-     * @return UID based off class and version number.
-     */
-    public static long classnameBasedUID(Class class1, int version) {
-        String callingClassname = class1.getName();
-        return (long)callingClassname.hashCode() << 32 + version;
-    }
-    
     /**
      * Copy the raw bytes of a long into a byte array, starting at
      * the specified offset.

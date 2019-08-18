@@ -45,6 +45,7 @@ import com.sleepycat.je.DatabaseNotFoundException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.OperationStatus;
 import com.sleepycat.util.RuntimeExceptionWrapper;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 
 
 /**
@@ -60,7 +61,7 @@ import com.sleepycat.util.RuntimeExceptionWrapper;
  * @author gojomo
  */
 public class BdbMultipleWorkQueues {
-	private static final long serialVersionUID = ArchiveUtils
+	private static final long serialVersionUID = ArchiveUtilsClassnameBasedUIDOnly
     	.classnameBasedUID(BdbMultipleWorkQueues.class, 1);
 	
     private static final Logger LOGGER =

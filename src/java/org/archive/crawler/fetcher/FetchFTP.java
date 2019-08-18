@@ -53,7 +53,7 @@ import org.archive.net.ClientFTP;
 import org.archive.net.FTPException;
 import org.archive.net.UURI;
 import org.archive.net.UURIFactory;
-import org.archive.util.ArchiveUtils;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 import org.archive.util.HttpRecorder;
 
 
@@ -71,7 +71,7 @@ public class FetchFTP extends Processor implements CoreAttributeConstants {
     
     /** Serialization ID; robust against trivial API changes. */
     private static final long serialVersionUID =
-     ArchiveUtils.classnameBasedUID(FetchFTP.class,1);
+     ArchiveUtilsClassnameBasedUIDOnly.classnameBasedUID(FetchFTP.class,1);
 
     /** Logger for this class. */
     private static Logger logger = Logger.getLogger(FetchFTP.class.getName());

@@ -55,10 +55,10 @@ import org.archive.crawler.util.CheckpointUtils;
 import org.archive.crawler.util.DiskFPMergeUriUniqFilter;
 import org.archive.crawler.util.MemFPMergeUriUniqFilter;
 import org.archive.queue.StoredQueue;
-import org.archive.util.ArchiveUtils;
 
 import com.sleepycat.je.Database;
 import com.sleepycat.je.DatabaseException;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 
 /**
  * A Frontier using several BerkeleyDB JE Databases to hold its record of
@@ -68,7 +68,7 @@ import com.sleepycat.je.DatabaseException;
  */
 public class BdbFrontier extends WorkQueueFrontier implements Serializable {
     // be robust against trivial implementation changes
-    private static final long serialVersionUID = ArchiveUtils
+    private static final long serialVersionUID = ArchiveUtilsClassnameBasedUIDOnly
         .classnameBasedUID(BdbFrontier.class, 1);
 
     private static final Logger logger =

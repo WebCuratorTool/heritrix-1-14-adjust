@@ -28,7 +28,7 @@ package org.archive.net;
 import java.io.IOException;
 
 import org.archive.crawler.fetcher.FetchFTP;
-import org.archive.util.ArchiveUtils;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 
 
 /**
@@ -42,7 +42,7 @@ public class FTPException extends IOException {
 
     /** Serialization ID; robust against trivial API changes. */
     private static final long serialVersionUID =
-     ArchiveUtils.classnameBasedUID(FetchFTP.class,1);
+     ArchiveUtilsClassnameBasedUIDOnly.classnameBasedUID(FetchFTP.class,1);
 
 
     /**

@@ -53,7 +53,7 @@
     The version in pom.xml is used for downstream projects that have heritrix as dependency
     (whereas project.xml, project.properties and maven.xml are used to build this project using maven 1.x).
     -->
-  <currentVersion>1.14.2-webcuratortool-2.0.1</currentVersion>
+  <currentVersion>1.14.2-webcuratortool-2.0.2</currentVersion>
   
   <!-- Details about the organization that 'owns' the project -->
   <organization>

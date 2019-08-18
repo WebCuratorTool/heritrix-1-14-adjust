@@ -78,8 +78,7 @@ implements SecureProtocolSocketFactory {
         // point at a physical keystore. Passing null seems to do the right
         // thing so we'll go w/ that.
         context.init(null, new TrustManager[] {
-            new ConfigurableX509TrustManager(
-                ConfigurableX509TrustManager.DEFAULT)}, null);
+            new ConfigurableX509TrustManager()}, null);
         this.sslDefaultFactory = context.getSocketFactory();
     }
 

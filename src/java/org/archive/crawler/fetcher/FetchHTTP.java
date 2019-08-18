@@ -110,6 +110,7 @@ import org.archive.io.RecorderLengthExceededException;
 import org.archive.io.RecorderTimeoutException;
 import org.archive.io.RecorderTooMuchHeaderException;
 import org.archive.util.ArchiveUtils;
+import org.archive.util.ArchiveUtilsClassnameBasedUIDOnly;
 import org.archive.util.HttpRecorder;
 import org.archive.util.bdbje.EnhancedEnvironment;
 
@@ -137,7 +138,7 @@ public class FetchHTTP extends Processor
 implements CoreAttributeConstants, FetchStatusCodes, CrawlStatusListener {
     // be robust against trivial implementation changes
     private static final long serialVersionUID =
-        ArchiveUtils.classnameBasedUID(FetchHTTP.class,1);
+        ArchiveUtilsClassnameBasedUIDOnly.classnameBasedUID(FetchHTTP.class,1);
     
     private static Logger logger = Logger.getLogger(FetchHTTP.class.getName());
 
