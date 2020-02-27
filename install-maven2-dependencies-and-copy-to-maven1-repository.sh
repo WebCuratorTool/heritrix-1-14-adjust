@@ -1,5 +1,5 @@
 #!/bin/sh
-# Downloads the given dependencies to a local maven 2 repository and copies them to a local maven 1 repository
+# Downloads the given dependencies to the default local maven 2 repository and copies them to a local maven 1 repository
 #
 # TODO This could be made a little cleaner creating a list of groupId:artifactId:version and looping through for all entries
 # in the list
@@ -11,8 +11,11 @@
 ## They are in alphabetical order by groupId, artifactId.
 
 # je-3.3.62.jar is available from spring plugins com.sleepycat:je:3.3.62 (April 2018?) (18.3.12 is available November 2018)
-mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://repo.spring.io/plugins-release/ \
-  -Dartifact=com.sleepycat:je:3.3.62
+# je-3.3.62.jar is no longer available from spring plugins (Feb 2020), we now load it manually.
+mvn install:install-file -DgroupId=com.sleepycat -DartifactId=je \
+      -Dversion=3.3.62 \
+      -Dpackaging=jar \
+      -Dfile=./lib/je-3.3.62.jar
 mkdir -pv ~/.maven/repository/com.sleepycat/jars
 cp -v ~/.m2/repository/com/sleepycat/je/3.3.62/je-3.3.62.jar ~/.maven/repository/com.sleepycat/jars
 
@@ -61,7 +64,7 @@ cp -v ~/.m2/repository/commons-logging/commons-logging/1.0.4/commons-logging-1.0
 # commons-net-1.4.1.jar is available from maven central commons-net:commons-net:1.4.1 (December 2005) (3.6 is available - February 2017)
 mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ \
   -Dartifact=commons-net:commons-net:1.4.1
-mkdir -pv ~/.maven/repository/commons-lang/jars
+mkdir -pv ~/.maven/repository/commons-net/jars
 cp -v ~/.m2/repository/commons-net/commons-net/1.4.1/commons-net-1.4.1.jar ~/.maven/repository/commons-net/jars
 
 # dnsjava-2.0.3.jar - this version does not exist on maven central but dnsjava:dnsjava:jar:2.0.6 does, so we use it (October 2009) (2.1.8 is available January 2017)

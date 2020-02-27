@@ -10,10 +10,13 @@ rem Note that these dependencies, when manually loaded, do not include a pom.
 rem They are in alphabetical order by groupId, artifactId.
 
 rem je-3.3.62.jar is available from spring plugins com.sleepycat:je:3.3.62 (April 2018?) (18.3.12 is available November 2018)
-call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://repo.spring.io/plugins-release/ ^
-  -Dartifact=com.sleepycat:je:3.3.62
+rem je-3.3.62.jar is no longer available from spring plugins (Feb 2020), we now load it manually.
+call mvn install:install-file -DgroupId=com.sleepycat -DartifactId=je ^
+      -Dversion=3.3.62 ^
+      -Dpackaging=jar ^
+      -Dfile=.\lib\je-3.3.62.jar
 call md %userprofile%\.maven\repository\com.sleepycat\jars
-call copy %userprofile%\.m2\repository\com\sleepycat\je\3.3.62\je-3.3.62.jar %userprofile%\.maven\repository\com.sleepycat\jars
+call copy %userprofile%\.m2\repository\com/sleepycat/je/3.3.62/je-3.3.62.jar %userprofile%\.maven\repository\com.sleepycat\jars
 
 rem itext-1.2.0.jar - this version does not exist on maven central but com.lowagie:itext:1.2.3 does, so we use it (June 2006) (4.2.2 is available July 2015)
 call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^
@@ -60,7 +63,7 @@ call copy %userprofile%\.m2\repository\commons-logging\commons-logging\1.0.4\com
 rem commons-net-1.4.1.jar is available from maven central commons-net:commons-net:1.4.1 (December 2005) (3.6 is available - February 2017)
 call mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get -DrepoUrl=http://central.maven.org/maven2/ ^
   -Dartifact=commons-net:commons-net:1.4.1
-call md %userprofile%\.maven\repository\commons-lang\jars
+call md %userprofile%\.maven\repository\commons-net\jars
 call copy %userprofile%\.m2\repository\commons-net\commons-net\1.4.1\commons-net-1.4.1.jar %userprofile%\.maven\repository\commons-net\jars
 
 rem dnsjava-2.0.3.jar - this version does not exist on maven central but dnsjava:dnsjava:jar:2.0.6 does, so we use it (October 2009) (2.1.8 is available January 2017)
