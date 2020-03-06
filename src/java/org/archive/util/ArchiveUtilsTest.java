@@ -237,13 +237,13 @@ public class ArchiveUtilsTest extends TestCase {
     public void testDoubleToString(){
         double test = 12.345;
         assertTrue(
-            "cecking zero precision",
+            "checking zero precision",
             ArchiveUtils.doubleToString(test, 0).equals("12"));
         assertTrue(
-            "cecking 2 character precision",
-            ArchiveUtils.doubleToString(test, 2).equals("12.34"));
+            "checking 2 character precision",
+            ArchiveUtils.doubleToString(test, 2).equals("12.35"));
         assertTrue(
-            "cecking precision higher then the double has",
+            "checking precision higher then the double has",
             ArchiveUtils.doubleToString(test, 65).equals("12.345"));
     }
 

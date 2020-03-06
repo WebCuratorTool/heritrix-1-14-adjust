@@ -243,6 +243,9 @@
       <url>scp://crawler.archive.org/home/groups/a/ar/archive-crawler/htdocs/</url>
     </site>
   </distributionManagement>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
   <repositories>
     <repository>
       <id>maven-central</id>
@@ -319,7 +322,7 @@
     <dependency>
       <groupId>tomcat</groupId>
       <artifactId>jasper-runtime</artifactId>
-      <version>4.1.36</version>
+      <version>4.1.30</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -417,7 +420,7 @@
         </includes>
       </resource>
       <resource>
-        <directory>${project.build.directory}/conf/</directory>
+        <directory>${basedir}/src/conf/</directory>
         <includes>
           <include>heritrix.properties</include>
           <include>jndi.properties</include>
@@ -438,6 +441,7 @@
           <encoding>UTF-8</encoding>
           <source>1.6</source>
           <target>1.6</target>
+	  <compilerArgument>-XDignore.symbol.file</compilerArgument>
         </configuration>
       </plugin>
       <plugin>

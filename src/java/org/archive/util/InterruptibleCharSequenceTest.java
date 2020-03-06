@@ -22,6 +22,7 @@
  */
 package org.archive.util;
 
+import java.util.Date;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
@@ -113,9 +114,8 @@ public class InterruptibleCharSequenceTest extends TestCase {
     public void testInterruptibility() throws InterruptedException {
         BlockingQueue<Object> q = new LinkedBlockingQueue<Object>();
         Thread t = tryMatchInThread(new InterruptibleCharSequence(INPUT), BACKTRACKER, q);
-        Thread.sleep(1000);
         t.interrupt();
-        Object result = q.take(); 
+        Object result = q.take();
         assertTrue("exception not thrown",result instanceof RuntimeException);
     }
 }
