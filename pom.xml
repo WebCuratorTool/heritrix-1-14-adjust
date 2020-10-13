@@ -402,7 +402,7 @@
       <!-- Because the unit tests are mixed with the actual code, we include junit with a scope of provided -->
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.2</version>
+      <version>4.13.1</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
