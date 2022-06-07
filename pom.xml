@@ -304,12 +304,12 @@
     <dependency>
       <!-- This does not seem to be required for heritrix to run (maybe just for the self-test.
            It uses the package org.mortbay.http for the SimpleHttpServer.
-           There is no version 4.2.23 available on maven central, but 4.2.12 does exist and
+           There is no version 4.2.23 available on maven central, but 6.1.17 does exist and
            may work in a pinch.
       -->
       <groupId>org.mortbay.jetty</groupId>
       <artifactId>jetty</artifactId>
-      <version>4.2.12</version>
+      <version>6.1.17</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
